@@ -32,7 +32,7 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
   const [preview, setPreview] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [form, setForm] = useState<TagForm | null>(null);
-  const [imageFilename, setImageFilename] = useState<string | null>(null);
+  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
@@ -40,7 +40,7 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setErr(''); setForm(null); setImageFilename(null); setPreview(null);
+    setErr(''); setForm(null); setImageDataUrl(null); setPreview(null);
 
     let dataUrl: string;
     try {
@@ -50,47 +50,29 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
       return;
     }
     setPreview(dataUrl);
+    setImageDataUrl(dataUrl);
     setAnalyzing(true);
 
+    // Ask Claude to tag — if it fails, user fills in manually but photo is still kept
     try {
-      const imageId = genId();
+      const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+      const mediaType = match ? match[1] : 'image/jpeg';
+      const base64Data = match ? match[2] : dataUrl;
 
-      // Step 1: upload the file (fast — no Claude call yet)
-      const uploadRes = await fetch('/api/upload', {
+      const tagRes = await fetch('/api/tag', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: dataUrl, imageId }),
+        body: JSON.stringify({ base64Data, mediaType }),
       });
-      const uploadData = await uploadRes.json() as {
-        imageFilename?: string; base64Data?: string; mediaType?: string; error?: string;
-      };
-      if (!uploadRes.ok) throw new Error(uploadData.error ?? 'Upload failed');
-      if (uploadData.imageFilename) setImageFilename(uploadData.imageFilename);
-
-      // Step 2: ask Claude to tag (slow — can fail without losing the photo)
-      try {
-        const tagRes = await fetch('/api/tag', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base64Data: uploadData.base64Data, mediaType: uploadData.mediaType }),
-        });
-        const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
-        if (tagRes.ok && tagData.tags) {
-          setForm(tagData.tags);
-        } else {
-          setErr('Auto-tagging didn\'t come through — fill in the details below.');
-          setForm(EMPTY_FORM);
-        }
-      } catch {
+      const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
+      if (tagRes.ok && tagData.tags) {
+        setForm(tagData.tags);
+      } else {
         setErr('Auto-tagging didn\'t come through — fill in the details below.');
         setForm(EMPTY_FORM);
       }
-    } catch (e2) {
-      setErr(
-        'Photo upload failed (' +
-        (e2 instanceof Error ? e2.message : 'connection issue') +
-        ') — try again.'
-      );
+    } catch {
+      setErr('Auto-tagging didn\'t come through — fill in the details below.');
       setForm(EMPTY_FORM);
     } finally {
       setAnalyzing(false);
@@ -101,17 +83,17 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
     if (!form?.name?.trim()) { setErr('Give this piece a name first.'); return; }
     setSaving(true);
     try {
-      const id = imageFilename ? imageFilename.split('.')[0] : genId();
+      const id = genId();
       const res = await fetch('/api/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, imageFilename: imageFilename ?? '', ...form }),
+        body: JSON.stringify({ id, imageDataUrl: imageDataUrl ?? '', ...form }),
       });
       const data = await res.json() as WardrobeItem & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
 
       onAdd(data);
-      setPreview(null); setForm(null); setImageFilename(null);
+      setPreview(null); setForm(null); setImageDataUrl(null);
       if (fileRef.current) fileRef.current.value = '';
       setErr('');
       setJustSaved(true);

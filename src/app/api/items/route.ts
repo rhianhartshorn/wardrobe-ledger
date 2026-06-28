@@ -12,7 +12,7 @@ function toClient(row: ItemRow) {
     formality: row.formality,
     season: row.season,
     imageFilename: row.image_filename || null,
-    imageUrl: row.image_filename ? `/api/uploads/${row.image_filename}` : null,
+    imageUrl: row.image_data_url || null,
     addedAt: row.added_at,
   };
 }
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     const {
       id, name, category,
       primaryColor = '', secondaryColor = '',
-      pattern = '', formality = '', season = '', imageFilename = '',
+      pattern = '', formality = '', season = '',
+      imageDataUrl = '',
     } = body;
 
     if (!id || !name || !category) {
@@ -39,7 +40,8 @@ export async function POST(req: NextRequest) {
       primary_color: primaryColor,
       secondary_color: secondaryColor,
       pattern, formality, season,
-      image_filename: imageFilename,
+      image_filename: '',
+      image_data_url: imageDataUrl,
       added_at: Date.now(),
     };
 

@@ -18,6 +18,7 @@ export type ItemRow = {
   formality: string;
   season: string;
   image_filename: string;
+  image_data_url: string; // full data URL stored directly, no filesystem needed
   added_at: number;
 };
 
