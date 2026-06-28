@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { profileToContext } from '@/app/api/body-profile/route';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 
 type WardrobeItem = {
   id: string; category: string; name: string;

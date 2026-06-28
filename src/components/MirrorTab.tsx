@@ -4,7 +4,7 @@ import { Loader2, BarChart3, TrendingUp, TrendingDown, RefreshCw, ShoppingBag, C
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
 
 type Ranked = { item: WardrobeItem; score: number; verdict: string };
 type Highlighted = { item: WardrobeItem; reason: string };

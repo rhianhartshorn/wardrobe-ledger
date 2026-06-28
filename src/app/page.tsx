@@ -9,7 +9,8 @@ import StyleTab from '@/components/StyleTab';
 import MirrorTab from '@/components/MirrorTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
 import { ErrorBanner } from '@/components/ui';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
+import { EMPTY_PROFILE } from '@/lib/body-profile';
 
 export type WardrobeItem = {
   id: string;
@@ -23,10 +24,6 @@ export type WardrobeItem = {
   imageFilename: string | null;
   imageUrl: string | null;
   addedAt: number;
-};
-
-const EMPTY_PROFILE: BodyProfile = {
-  height: '', bodyShape: '', features: [], fitPreference: '', undertone: '', hairTone: '',
 };
 
 type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror';

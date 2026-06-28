@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Shirt, Trash2, X, Loader2, ArrowLeft } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { colorDot, slim } from './utils';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
 
 type Look = {
   title: string;

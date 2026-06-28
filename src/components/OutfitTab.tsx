@@ -5,7 +5,7 @@ import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
 import { OCCASIONS } from './constants';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
 
 type Weather = {
   locationName: string;

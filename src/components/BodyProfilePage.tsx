@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { ArrowLeft, Check, Loader2, User } from 'lucide-react';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
 
 export { type BodyProfile };
 

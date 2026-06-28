@@ -4,7 +4,7 @@ import { Loader2, Gem, RefreshCw, Target, User, ChevronRight } from 'lucide-reac
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/lib/body-profile';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',

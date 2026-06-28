@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
-import { profileToContext } from '@/app/api/body-profile/route';
-import type { BodyProfile } from '@/app/api/body-profile/route';
+import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 
 type WeatherSnapshot = {
   locationName: string;
