@@ -208,6 +208,7 @@ function GroupCard({ group, items }: { group: StyleGroup; items: WardrobeItem[] 
 
 export default function StyleTab({ items }: { items: WardrobeItem[] }) {
   const [analyzing, setAnalyzing] = useState(false);
+  const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState<StyleResult | null>(null);
 
@@ -223,6 +224,19 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
       const data = await res.json() as StyleResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
       setResult(data);
+      // Load fashion currency separately so it doesn't bloat the main response
+      setLoadingCurrency(true);
+      fetch('/api/fashion-currency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slim(items) }),
+      })
+        .then((r) => r.json())
+        .then((fc: { fashionCurrency?: FashionCurrency[] }) => {
+          if (fc.fashionCurrency) setResult((prev) => prev ? { ...prev, fashionCurrency: fc.fashionCurrency } : prev);
+        })
+        .catch(() => { /* non-fatal */ })
+        .finally(() => setLoadingCurrency(false));
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't run style analysis right now.");
     } finally {
@@ -321,6 +335,11 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
           </div>
 
           {/* Fashion currency */}
+          {loadingCurrency && (
+            <div className="flex items-center gap-2 text-xs text-[#A89F96] font-light">
+              <Loader2 size={12} className="animate-spin" /> Loading fashion currency...
+            </div>
+          )}
           {result.fashionCurrency && result.fashionCurrency.length > 0 && (
             <div>
               <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Fashion currency — 2026</p>
