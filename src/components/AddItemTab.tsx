@@ -322,7 +322,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         </div>
       )}
 
-      <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+      <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />
 
       <button
         onClick={() => fileRef.current?.click()}
