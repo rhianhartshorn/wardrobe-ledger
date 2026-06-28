@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import path from 'path';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { UPLOADS_DIR } from '@/lib/db';
+import { getImage } from '@/lib/db';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -40,15 +38,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
     }
 
-    // Load profile photo from disk if one is saved
+    // Load profile photo from DB if one is saved
     let profileImageBase64: string | undefined;
     let profileMediaType = 'image/jpeg';
     if (profileImageFilename) {
       const safeName = profileImageFilename.replace(/[^a-zA-Z0-9._-]/g, '');
-      const buf = await readFile(path.join(UPLOADS_DIR, safeName)).catch(() => null);
-      if (buf) {
-        profileImageBase64 = buf.toString('base64');
-        profileMediaType = safeName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      const img = getImage(safeName);
+      if (img) {
+        profileImageBase64 = img.data;
+        profileMediaType = img.mimeType;
       }
     }
 
