@@ -24,10 +24,17 @@ function ItemRow({ item, reason, tone }: { item: WardrobeItem; reason: string; t
   );
 }
 
+const STORAGE_KEY = 'mirror_last_result';
+
 export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [err, setErr] = useState('');
-  const [result, setResult] = useState<Result | null>(null);
+  const [result, setResult] = useState<Result | null>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+      return raw ? JSON.parse(raw) as Result : null;
+    } catch { return null; }
+  });
 
   const runAnalysis = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to get a meaningful read.'); return; }
@@ -59,7 +66,9 @@ export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
         .map((r) => ({ item: byIndex(r.i), reason: r.reason }))
         .filter((r): r is Highlighted => Boolean(r.item));
 
-      setResult({ rankings, mostValuable, worthReconsidering, purchases: data.purchases ?? [] });
+      const newResult = { rankings, mostValuable, worthReconsidering, purchases: data.purchases ?? [] };
+      setResult(newResult);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newResult)); } catch { /* quota */ }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Couldn't run the analysis just now. Try again.");
     } finally {

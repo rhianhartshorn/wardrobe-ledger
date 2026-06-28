@@ -322,14 +322,16 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         </div>
       )}
 
-      <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
-        <Camera size={24} />
-        <div className="text-center">
-          <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
-          <p className="text-[10px] text-[#C4BAB0] mt-1 font-light">Select as many as you like — they'll be tagged automatically</p>
-        </div>
-      </label>
+      {queue.length === 0 && (
+        <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
+          <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+          <Camera size={24} />
+          <div className="text-center">
+            <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
+            <p className="text-[10px] text-[#C4BAB0] mt-1 font-light">Tap one photo at a time — they queue up automatically</p>
+          </div>
+        </label>
+      )}
 
       {queue.length > 0 && (
         <div className="space-y-2">
@@ -358,6 +360,13 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
               />
             ))}
           </div>
+
+          {/* Add more */}
+          <label className="w-full border border-dashed border-[#D6CFC0] py-3 flex items-center justify-center gap-2 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
+            <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+            <Camera size={13} />
+            <span className="text-[10px] uppercase tracking-[0.15em] font-light">Add more photos</span>
+          </label>
 
           {readyCount > 0 && (
             <button

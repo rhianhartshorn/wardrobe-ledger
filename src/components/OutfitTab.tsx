@@ -64,6 +64,7 @@ type Outfit = {
   rationale?: string;
   accessorizing?: string[];
   weatherNote?: string;
+  inspirationImageUrl?: string;
   inspirationLinks?: InspirationLink[];
 };
 
@@ -74,18 +75,38 @@ function OutfitCard({ outfit, items }: { outfit: Outfit; items: WardrobeItem[] }
 
   return (
     <div className="border border-[#E5DDD0] bg-white">
-      <div className="p-4">
-        <p className="text-[9px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Look</p>
-        <div className="flex gap-3 mt-2">
-          <LookSketch pieces={pieces} />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-xl leading-snug text-[#1A1714]">{outfit.title}</h3>
+      {outfit.inspirationImageUrl && (
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F5F2EC]">
+          <img
+            src={outfit.inspirationImageUrl}
+            alt={outfit.title}
+            className="w-full h-full object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          <div className="absolute bottom-0 left-0 p-4">
+            <p className="text-[9px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Look</p>
+            <h3 className="font-serif text-xl leading-snug text-white">{outfit.title}</h3>
             {outfit.styleReference && (
-              <p className="text-[10px] uppercase tracking-widest text-[#9B7B3A] mt-1 font-light">{outfit.styleReference}</p>
+              <p className="text-[10px] uppercase tracking-widest text-white/70 mt-0.5 font-light">{outfit.styleReference}</p>
             )}
           </div>
         </div>
-      </div>
+      )}
+      {!outfit.inspirationImageUrl && (
+        <div className="p-4">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Look</p>
+          <div className="flex gap-3 mt-2">
+            <LookSketch pieces={pieces} />
+            <div className="flex-1 min-w-0">
+              <h3 className="font-serif text-xl leading-snug text-[#1A1714]">{outfit.title}</h3>
+              {outfit.styleReference && (
+                <p className="text-[10px] uppercase tracking-widest text-[#9B7B3A] mt-1 font-light">{outfit.styleReference}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Piece thumbnails */}
       <div className="flex gap-px border-t border-[#E5DDD0]">

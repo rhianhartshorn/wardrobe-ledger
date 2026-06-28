@@ -4,6 +4,7 @@ import { Loader2, Gem, RefreshCw } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 
 type StyleGroup = { groupName: string; mood: string; itemIds: string[] };
+type FashionCurrency = { itemId: string; era: string; status: 'timeless' | 'current' | 'dated' | 'coming-back'; how2026: string | null };
 type StyleResult = {
   archetype: string;
   archetypeDescription: string;
@@ -12,6 +13,7 @@ type StyleResult = {
   wardrobeStrengths: string[];
   wardrobeGaps: string[];
   styleGroups: StyleGroup[];
+  fashionCurrency?: FashionCurrency[];
 };
 
 function GroupCard({ group, items }: { group: StyleGroup; items: WardrobeItem[] }) {
@@ -151,6 +153,44 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
               ))}
             </div>
           </div>
+
+          {/* Fashion currency */}
+          {result.fashionCurrency && result.fashionCurrency.length > 0 && (
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Fashion currency — 2026</p>
+              <div className="border border-[#E5DDD0] bg-white divide-y divide-[#E5DDD0]">
+                {result.fashionCurrency.map((fc) => {
+                  const item = items.find((i) => i.id === fc.itemId);
+                  if (!item) return null;
+                  const statusStyles: Record<string, string> = {
+                    timeless: 'text-green-700 bg-green-50 border-green-200',
+                    current: 'text-[#9B7B3A] bg-amber-50 border-amber-200',
+                    'coming-back': 'text-purple-700 bg-purple-50 border-purple-200',
+                    dated: 'text-[#A89F96] bg-[#F5F2EC] border-[#E5DDD0]',
+                  };
+                  return (
+                    <div key={fc.itemId} className="flex gap-3 p-3">
+                      <div className="w-10 h-10 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
+                        {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <p className="text-xs text-[#1A1714] font-light truncate">{item.name}</p>
+                          <span className={`text-[9px] uppercase tracking-widest border px-1.5 py-0.5 font-light shrink-0 ${statusStyles[fc.status] ?? statusStyles.dated}`}>
+                            {fc.status === 'coming-back' ? 'Coming back' : fc.status}
+                          </span>
+                          <span className="text-[9px] text-[#A89F96] font-light shrink-0">peaked {fc.era}</span>
+                        </div>
+                        {fc.how2026 && (
+                          <p className="text-[11px] text-[#6B6058] font-light leading-snug">{fc.how2026}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

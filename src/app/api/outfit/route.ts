@@ -31,40 +31,28 @@ export async function POST(req: NextRequest) {
     };
     const { items, weather, occasion, note, profileImageFilename } = body;
 
-    if (!items?.length) {
-      return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
-    }
-    if (!weather) {
-      return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
-    }
+    if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
+    if (!weather) return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
 
     let profileImageBase64: string | undefined;
     let profileMediaType = 'image/jpeg';
     if (profileImageFilename) {
       const safeName = profileImageFilename.replace(/[^a-zA-Z0-9._-]/g, '');
-      const img = getImage(safeName);
-      if (img) {
-        profileImageBase64 = img.data;
-        profileMediaType = img.mimeType;
-      }
+      const img = await getImage(safeName);
+      if (img) { profileImageBase64 = img.data; profileMediaType = img.mimeType; }
     }
 
     const itemListText = items
-      .map(
-        (i) =>
-          `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}, ${i.season}`
-      )
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}, ${i.season}`)
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? "The attached photo is of the client who will wear these outfits. In each rationale, weave in one brief, respectful, flattering coloring or contrast observation tied to the photo — never comment on body shape, weight, or size. "
+      ? "The attached photo is of the client. In each rationale, weave in one brief, respectful, flattering observation about their colouring — never comment on body shape, weight, or size. "
       : '';
 
-    const today = new Date().toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric',
-    });
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}Use web search to find 1–2 real, specific, currently-shoppable pages (editorial lookbooks, brand pages, or style guides) that show the aesthetic of each outfit — return real URLs you found via search, not invented ones.
+    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}
 
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}
@@ -72,17 +60,15 @@ Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.conditi
 Wardrobe (id :: details):
 ${itemListText}
 
-Using ONLY items from this wardrobe list (reference them by their exact id), assemble exactly 3 distinct, polished outfit combinations. For each, name the current style aesthetic (be specific — something a real style search would surface). Find real inspiration links via web search. Respond with ONLY valid JSON, no markdown fences:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific current aesthetic max 6 words","rationale":"max 20 words on why it works","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationLinks":[{"label":"Source name + what it shows, max 8 words","url":"real URL you found"}]}]}`;
+Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each:
+- Name the current style aesthetic (be specific)
+- Use web search to find 1 real editorial or brand page showing this aesthetic — return the real URL
+- Use web search to find 1 real photo URL (direct image link ending in .jpg/.png or an editorial image) of a person wearing a similar outfit — this will be shown as the outfit inspiration image
 
-    const raw = await callClaude({
-      prompt,
-      imageBase64: profileImageBase64,
-      mediaType: profileMediaType,
-      useWebSearch: true,
-      maxTokens: 2000,
-    });
+Respond with ONLY valid JSON, no markdown:
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific aesthetic max 6 words","rationale":"max 20 words","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationImageUrl":"direct image URL of person in similar outfit","inspirationLinks":[{"label":"source name + what it shows max 8 words","url":"real URL"}]}]}`;
 
+    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, useWebSearch: true, maxTokens: 2000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };
     return NextResponse.json({ outfits: parsed.outfits ?? [] });
   } catch (err) {
