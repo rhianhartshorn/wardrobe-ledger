@@ -75,6 +75,18 @@ export function parseJSON(text: string): unknown {
   } catch {
     // fall through
   }
+  // Find the outermost { } or [ ] block by tracking brace depth
+  const start = cleaned.search(/[{[]/);
+  if (start !== -1) {
+    const opener = cleaned[start];
+    const closer = opener === '{' ? '}' : ']';
+    let depth = 0;
+    for (let i = start; i < cleaned.length; i++) {
+      if (cleaned[i] === opener) depth++;
+      else if (cleaned[i] === closer) { depth--; if (depth === 0) { try { return JSON.parse(cleaned.slice(start, i + 1)); } catch { break; } } }
+    }
+  }
+  // Last resort: trim to last closing brace
   const first = cleaned.search(/[{[]/);
   const last = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
   if (first !== -1 && last !== -1 && last > first) {

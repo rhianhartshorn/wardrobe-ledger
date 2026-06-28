@@ -68,7 +68,7 @@ Using ONLY items from this wardrobe list (reference by exact id), assemble exact
 Respond with ONLY valid JSON, no markdown:
 {"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific aesthetic max 6 words","rationale":"max 20 words","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationImageUrl":"direct image URL of person in similar outfit","inspirationLinks":[{"label":"source name + what it shows max 8 words","url":"real URL"}]}]}`;
 
-    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, useWebSearch: true, maxTokens: 2000 });
+    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, useWebSearch: true, maxTokens: 4000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };
     return NextResponse.json({ outfits: parsed.outfits ?? [] });
   } catch (err) {
