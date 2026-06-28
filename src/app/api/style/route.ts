@@ -47,7 +47,7 @@ Respond with ONLY valid JSON, no markdown:
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood — not by category. Every item in exactly one group.
 fashionCurrency: include an entry for EVERY item. Be honest but constructive about what's dated.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 2000 });
+    const raw = await callClaude({ prompt, maxTokens: 4000 });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {
