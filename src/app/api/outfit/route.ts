@@ -60,15 +60,12 @@ Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.conditi
 Wardrobe (id :: details):
 ${itemListText}
 
-Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each:
-- Name the current style aesthetic (be specific)
-- Use web search to find 1 real editorial or brand page showing this aesthetic — return the real URL
-- Use web search to find 1 real photo URL (direct image link ending in .jpg/.png or an editorial image) of a person wearing a similar outfit — this will be shown as the outfit inspiration image
+Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each, name the current 2026 style aesthetic and provide 1–2 real inspiration links from well-known fashion sources you know (Vogue, Net-a-Porter, Matches, Mr Porter, Who What Wear, Refinery29, The Outnet, SSENSE, editorials etc.) — use URLs you are confident exist.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific aesthetic max 6 words","rationale":"max 20 words","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationImageUrl":"direct image URL of person in similar outfit","inspirationLinks":[{"label":"source name + what it shows max 8 words","url":"real URL"}]}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationLinks":[{"label":"source name + what it shows max 8 words","url":"real URL you know exists"}]}]}`;
 
-    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, useWebSearch: true, maxTokens: 4000 });
+    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };
     return NextResponse.json({ outfits: parsed.outfits ?? [] });
   } catch (err) {

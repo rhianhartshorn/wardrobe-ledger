@@ -6,6 +6,7 @@ interface ClaudeOptions {
   mediaType?: string;
   useWebSearch?: boolean;
   maxTokens?: number;
+  model?: string;
 }
 
 export async function callClaude({
@@ -14,6 +15,7 @@ export async function callClaude({
   mediaType = 'image/jpeg',
   useWebSearch = false,
   maxTokens = 1000,
+  model = 'claude-sonnet-4-6',
 }: ClaudeOptions): Promise<string> {
   const content: unknown[] = [];
 
@@ -26,7 +28,7 @@ export async function callClaude({
   content.push({ type: 'text', text: prompt });
 
   const body: Record<string, unknown> = {
-    model: 'claude-sonnet-4-6',
+    model,
     max_tokens: maxTokens,
     messages: [{ role: 'user', content }],
   };

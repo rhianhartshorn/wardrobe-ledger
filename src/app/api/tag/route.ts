@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const prompt = `You are tagging a clothing item photo for a digital wardrobe app. Look closely at the item in the photo and respond with ONLY valid JSON, no markdown fences, no other text, in exactly this shape: {"name":"short descriptive name, max 5 words","category":"one of Top, Bottom, Outerwear, Footwear, Accessory, Dress/One-piece","primaryColor":"one or two word color","secondaryColor":"one or two word color or empty string","pattern":"e.g. solid, striped, plaid, checked, floral, textured","formality":"one of Casual, Smart Casual, Business, Formal, Athletic","season":"one of All-season, Summer, Winter, Spring/Fall"}`;
 
-    const raw = await callClaude({ prompt, imageBase64: base64Data, mediaType: mediaType ?? 'image/jpeg', maxTokens: 500 });
+    const raw = await callClaude({ prompt, imageBase64: base64Data, mediaType: mediaType ?? 'image/jpeg', maxTokens: 300, model: 'claude-haiku-4-5-20251001' });
     const tags = parseJSON(raw);
     return NextResponse.json({ tags });
   } catch (err) {
