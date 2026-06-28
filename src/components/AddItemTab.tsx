@@ -54,33 +54,42 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
 
     try {
       const imageId = genId();
-      const res = await fetch('/api/tag', {
+
+      // Step 1: upload the file (fast — no Claude call yet)
+      const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: dataUrl, imageId }),
       });
-      const data = await res.json() as {
-        tags?: TagForm; imageFilename?: string; error?: string; taggingError?: string;
+      const uploadData = await uploadRes.json() as {
+        imageFilename?: string; base64Data?: string; mediaType?: string; error?: string;
       };
+      if (!uploadRes.ok) throw new Error(uploadData.error ?? 'Upload failed');
+      if (uploadData.imageFilename) setImageFilename(uploadData.imageFilename);
 
-      if (!res.ok) throw new Error(data.error ?? 'Upload failed');
-
-      // imageFilename is returned even when tagging fails
-      if (data.imageFilename) setImageFilename(data.imageFilename);
-
-      if (data.taggingError) {
-        setErr(
-          'Auto-tagging didn\'t come through (' + data.taggingError + ') — fill in the details below.'
-        );
+      // Step 2: ask Claude to tag (slow — can fail without losing the photo)
+      try {
+        const tagRes = await fetch('/api/tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64Data: uploadData.base64Data, mediaType: uploadData.mediaType }),
+        });
+        const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
+        if (tagRes.ok && tagData.tags) {
+          setForm(tagData.tags);
+        } else {
+          setErr('Auto-tagging didn\'t come through — fill in the details below.');
+          setForm(EMPTY_FORM);
+        }
+      } catch {
+        setErr('Auto-tagging didn\'t come through — fill in the details below.');
         setForm(EMPTY_FORM);
-      } else if (data.tags) {
-        setForm(data.tags);
       }
     } catch (e2) {
       setErr(
-        'Auto-tagging didn\'t come through (' +
+        'Photo upload failed (' +
         (e2 instanceof Error ? e2.message : 'connection issue') +
-        ') — fill in the details below.'
+        ') — try again.'
       );
       setForm(EMPTY_FORM);
     } finally {
