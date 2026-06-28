@@ -5,15 +5,15 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const item = getItem(params.id);
+  const item = await getItem(params.id);
   if (!item) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  deleteItem(params.id);
+  await deleteItem(params.id);
 
   if (item.image_filename) {
-    deleteImage(item.image_filename);
+    await deleteImage(item.image_filename);
   }
 
   return NextResponse.json({ ok: true });

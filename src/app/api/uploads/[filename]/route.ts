@@ -10,7 +10,7 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
   }
 
-  const image = getImage(safeName);
+  const image = await getImage(safeName);
   if (!image) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

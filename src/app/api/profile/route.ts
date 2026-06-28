@@ -4,7 +4,7 @@ import { getSetting, setSetting, deleteSetting, saveImage, deleteImage } from '@
 const PROFILE_KEY = 'profile_photo';
 
 export async function GET() {
-  const filename = getSetting(PROFILE_KEY);
+  const filename = await getSetting(PROFILE_KEY);
   if (!filename) return NextResponse.json({ imageUrl: null, imageFilename: null });
   return NextResponse.json({
     imageUrl: `/api/uploads/${filename}`,
@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
     const ext = mimeType.includes('png') ? 'png' : 'jpg';
     const filename = `profile.${ext}`;
 
-    saveImage(filename, base64Data, mimeType);
-    setSetting(PROFILE_KEY, filename);
+    await saveImage(filename, base64Data, mimeType);
+    await setSetting(PROFILE_KEY, filename);
 
     return NextResponse.json({ imageUrl: `/api/uploads/${filename}`, imageFilename: filename });
   } catch (err) {
@@ -36,10 +36,10 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE() {
-  const filename = getSetting(PROFILE_KEY);
+  const filename = await getSetting(PROFILE_KEY);
   if (filename) {
-    deleteImage(filename);
-    deleteSetting(PROFILE_KEY);
+    await deleteImage(filename);
+    await deleteSetting(PROFILE_KEY);
   }
   return NextResponse.json({ ok: true });
 }

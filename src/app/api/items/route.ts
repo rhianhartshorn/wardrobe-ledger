@@ -18,7 +18,8 @@ function toClient(row: ItemRow) {
 }
 
 export async function GET() {
-  return NextResponse.json(getAllItems().map(toClient));
+  const items = await getAllItems();
+  return NextResponse.json(items.map(toClient));
 }
 
 export async function POST(req: NextRequest) {
@@ -45,8 +46,9 @@ export async function POST(req: NextRequest) {
       added_at: Date.now(),
     };
 
-    insertItem(row);
-    return NextResponse.json(toClient(getItem(id)!), { status: 201 });
+    await insertItem(row);
+    const saved = await getItem(id);
+    return NextResponse.json(toClient(saved!), { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
