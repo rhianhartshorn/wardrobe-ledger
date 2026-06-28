@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
-import { Camera, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { Camera, Loader2, Check, AlertTriangle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage } from './utils';
 import { Field } from './ui';
@@ -27,18 +27,32 @@ const EMPTY_FORM: TagForm = {
   pattern: '', formality: 'Casual', season: 'All-season',
 };
 
+type QueueStatus = 'pending' | 'analyzing' | 'ready' | 'duplicate' | 'saved' | 'error';
+
+type QueueItem = {
+  localId: string;
+  file: File;
+  preview: string;
+  imageDataUrl: string;
+  status: QueueStatus;
+  form: TagForm;
+  error?: string;
+  expanded: boolean;
+  duplicateOf?: WardrobeItem[];
+  confirmedDuplicate?: boolean;
+};
+
+function normalize(s: string) { return s.toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
 function findDuplicates(form: TagForm, items: WardrobeItem[]): WardrobeItem[] {
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const nameNorm = normalize(form.name);
   if (!nameNorm) return [];
   return items.filter((it) => {
-    const sameCat = it.category === form.category;
     const existName = normalize(it.name);
     if (!existName) return false;
     if (existName === nameNorm) return true;
-    // partial overlap: one is a substring of the other
+    const sameCat = it.category === form.category;
     if (sameCat && (existName.includes(nameNorm) || nameNorm.includes(existName))) return true;
-    // fuzzy: same category + same primary color + long name overlap
     if (sameCat && normalize(it.primaryColor) === normalize(form.primaryColor) && normalize(form.primaryColor)) {
       const shorter = existName.length < nameNorm.length ? existName : nameNorm;
       const longer = existName.length < nameNorm.length ? nameNorm : existName;
@@ -48,232 +62,321 @@ function findDuplicates(form: TagForm, items: WardrobeItem[]): WardrobeItem[] {
   });
 }
 
-export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeItem) => void; items: WardrobeItem[] }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [form, setForm] = useState<TagForm | null>(null);
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
-  const [err, setErr] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [justSaved, setJustSaved] = useState(false);
-  const [duplicates, setDuplicates] = useState<WardrobeItem[]>([]);
-  const [confirmedDuplicate, setConfirmedDuplicate] = useState(false);
+function StatusBadge({ status }: { status: QueueStatus }) {
+  const map: Record<QueueStatus, { label: string; className: string }> = {
+    pending: { label: 'Waiting', className: 'text-[#A89F96] border-[#E5DDD0]' },
+    analyzing: { label: 'Reading…', className: 'text-[#9B7B3A] border-[#9B7B3A]/30' },
+    ready: { label: 'Ready', className: 'text-green-700 border-green-200' },
+    duplicate: { label: 'Possible duplicate', className: 'text-amber-700 border-amber-200' },
+    saved: { label: 'Saved', className: 'text-green-700 border-green-200 bg-green-50' },
+    error: { label: 'Error', className: 'text-red-700 border-red-200' },
+  };
+  const { label, className } = map[status];
+  return (
+    <span className={`text-[10px] font-light border px-2 py-0.5 ${className}`}>{label}</span>
+  );
+}
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setErr(''); setForm(null); setImageDataUrl(null); setPreview(null); setDuplicates([]); setConfirmedDuplicate(false);
+function QueueCard({
+  item, onUpdate, onRemove, existingItems,
+}: {
+  item: QueueItem;
+  onUpdate: (localId: string, patch: Partial<QueueItem>) => void;
+  onRemove: (localId: string) => void;
+  existingItems: WardrobeItem[];
+}) {
+  const { localId, preview, status, form, expanded, duplicateOf, confirmedDuplicate } = item;
 
-    let dataUrl: string;
-    try { dataUrl = await compressImage(file); }
-    catch (e1) { setErr(e1 instanceof Error ? e1.message : "Couldn't read that photo."); return; }
-
-    setPreview(dataUrl);
-    setImageDataUrl(dataUrl);
-    setAnalyzing(true);
-
-    try {
-      const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
-      const mediaType = match ? match[1] : 'image/jpeg';
-      const base64Data = match ? match[2] : dataUrl;
-
-      const tagRes = await fetch('/api/tag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ base64Data, mediaType }),
-      });
-      const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
-      const tagged = tagRes.ok && tagData.tags ? tagData.tags : EMPTY_FORM;
-      if (!tagRes.ok || !tagData.tags) setErr("Auto-tagging didn't come through — fill in the details below.");
-      setForm(tagged);
-      const dupes = findDuplicates(tagged, items);
-      setDuplicates(dupes);
-    } catch {
-      setErr("Auto-tagging didn't come through — fill in the details below.");
-      setForm(EMPTY_FORM);
-    } finally {
-      setAnalyzing(false);
-    }
+  const updateForm = (patch: Partial<TagForm>) => {
+    const newForm = { ...form, ...patch };
+    const dupes = findDuplicates(newForm, existingItems);
+    onUpdate(localId, {
+      form: newForm,
+      duplicateOf: dupes,
+      status: dupes.length > 0 && !confirmedDuplicate ? 'duplicate' : status === 'duplicate' ? 'ready' : status,
+      confirmedDuplicate: dupes.length > 0 ? confirmedDuplicate : false,
+    });
   };
 
-  const checkDupes = (updatedForm: TagForm) => {
-    setForm(updatedForm);
-    setDuplicates(findDuplicates(updatedForm, items));
-    setConfirmedDuplicate(false);
-  };
-
-  const handleSave = async () => {
-    if (!form?.name?.trim()) { setErr('Give this piece a name first.'); return; }
-    if (duplicates.length > 0 && !confirmedDuplicate) { setErr(''); return; }
-    setSaving(true);
-    try {
-      const id = genId();
-      const res = await fetch('/api/items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, imageDataUrl: imageDataUrl ?? '', ...form }),
-      });
-      const data = await res.json() as WardrobeItem & { error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Save failed');
-
-      onAdd(data);
-      setPreview(null); setForm(null); setImageDataUrl(null); setDuplicates([]); setConfirmedDuplicate(false);
-      if (fileRef.current) fileRef.current.value = '';
-      setErr('');
-      setJustSaved(true);
-      setTimeout(() => setJustSaved(false), 2500);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Save failed — try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const canExpand = status !== 'pending' && status !== 'analyzing' && status !== 'saved';
 
   return (
-    <div className="space-y-4">
-      {justSaved && (
-        <div className="flex items-center gap-2 border border-green-200 bg-green-50 text-green-800 text-xs px-3 py-2.5 font-light">
-          <Check size={13} /> Piece added to your closet.
+    <div className={`border bg-white ${status === 'saved' ? 'border-green-200 opacity-60' : 'border-[#E5DDD0]'}`}>
+      <div className="flex items-center gap-3 p-3">
+        <div className="w-12 h-12 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
+          <img src={preview} alt="" className="w-full h-full object-cover" />
         </div>
-      )}
-
-      <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-
-      {!preview ? (
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="w-full border border-dashed border-[#D6CFC0] py-14 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors"
-        >
-          <Camera size={24} />
-          <span className="text-xs tracking-[0.12em] uppercase font-light">Take or upload a photo</span>
-        </button>
-      ) : (
-        <div className="overflow-hidden border border-[#E5DDD0] bg-[#F5F2EC]">
-          <img src={preview} alt="preview" className="w-full max-h-72 object-contain" />
-          <button
-            onClick={() => { setPreview(null); setForm(null); setImageDataUrl(null); setDuplicates([]); if (fileRef.current) fileRef.current.value = ''; }}
-            className="w-full text-xs text-[#A89F96] py-2 hover:text-[#9B7B3A] font-light transition-colors"
-          >
-            Change photo
-          </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-[#1A1714] font-light truncate">{form.name || item.file.name}</p>
+          <p className="text-[10px] text-[#A89F96] font-light">{form.category}</p>
         </div>
-      )}
-
-      {analyzing && (
-        <div className="flex items-center gap-2 text-xs text-[#A89F96] font-light">
-          <Loader2 className="animate-spin" size={13} /> Reading the garment...
+        <div className="flex items-center gap-2 shrink-0">
+          {status === 'analyzing' && <Loader2 size={13} className="animate-spin text-[#9B7B3A]" />}
+          <StatusBadge status={status} />
+          {canExpand && (
+            <button onClick={() => onUpdate(localId, { expanded: !expanded })} className="text-[#A89F96] hover:text-[#1A1714] transition-colors">
+              {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          )}
+          {status !== 'saved' && (
+            <button onClick={() => onRemove(localId)} className="text-[#D6CFC0] hover:text-red-600 transition-colors ml-1">
+              <X size={14} />
+            </button>
+          )}
         </div>
-      )}
-
-      {err && <p className="text-xs text-red-700 font-light">{err}</p>}
+      </div>
 
       {/* Duplicate warning */}
-      {duplicates.length > 0 && !confirmedDuplicate && (
-        <div className="border border-amber-200 bg-amber-50 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={13} className="text-amber-600 shrink-0" />
-            <p className="text-xs text-amber-800 font-light">
-              This looks like it might already be in your closet:
-            </p>
+      {status === 'duplicate' && !confirmedDuplicate && duplicateOf && duplicateOf.length > 0 && (
+        <div className="border-t border-amber-100 bg-amber-50 px-3 py-2 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle size={11} className="text-amber-600 shrink-0" />
+            <p className="text-[10px] text-amber-800 font-light">May already be in your closet:</p>
           </div>
-          <ul className="space-y-1 pl-5">
-            {duplicates.map((d) => (
-              <li key={d.id} className="text-xs text-amber-700 font-light flex items-center gap-2">
-                {d.imageUrl && (
-                  <img src={d.imageUrl} alt={d.name} className="w-7 h-7 object-cover border border-amber-200 shrink-0" />
-                )}
-                {d.name} <span className="text-amber-500">({d.category})</span>
-              </li>
+          <div className="flex gap-2 flex-wrap">
+            {duplicateOf.map((d) => (
+              <span key={d.id} className="text-[10px] text-amber-700 font-light">{d.name}</span>
             ))}
-          </ul>
-          <div className="flex gap-2 pt-1">
+          </div>
+          <div className="flex gap-2">
             <button
-              onClick={() => { setConfirmedDuplicate(true); }}
-              className="text-xs border border-amber-300 text-amber-800 px-3 py-1.5 font-light hover:bg-amber-100 transition-colors"
+              onClick={() => onUpdate(localId, { confirmedDuplicate: true, status: 'ready' })}
+              className="text-[10px] border border-amber-300 text-amber-800 px-2 py-1 font-light hover:bg-amber-100 transition-colors"
             >
-              Add anyway — it's different
+              Add anyway
             </button>
             <button
-              onClick={() => { setPreview(null); setForm(null); setImageDataUrl(null); setDuplicates([]); if (fileRef.current) fileRef.current.value = ''; }}
-              className="text-xs text-[#A89F96] px-3 py-1.5 font-light hover:text-[#1A1714] transition-colors"
+              onClick={() => onRemove(localId)}
+              className="text-[10px] text-[#A89F96] px-2 py-1 font-light hover:text-red-600 transition-colors"
             >
-              Cancel
+              Remove
             </button>
           </div>
         </div>
       )}
 
-      {form && !analyzing && (
-        <div className="bg-white border border-[#E5DDD0] p-5 space-y-4">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Details</p>
+      {/* Expanded edit form */}
+      {expanded && canExpand && (
+        <div className="border-t border-[#E5DDD0] p-3 space-y-3">
           <Field label="Name">
             <input
               value={form.name}
-              onChange={(e) => checkDupes({ ...form, name: e.target.value })}
-              className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
-              placeholder="e.g. Navy linen blazer"
+              onChange={(e) => updateForm({ name: e.target.value })}
+              className="w-full border border-[#E5DDD0] px-3 py-1.5 text-sm font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]"
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Field label="Category">
-              <select
-                value={form.category}
-                onChange={(e) => checkDupes({ ...form, category: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] bg-white focus:outline-none focus:border-[#9B7B3A]"
-              >
+              <select value={form.category} onChange={(e) => updateForm({ category: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
                 {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Formality">
-              <select
-                value={form.formality}
-                onChange={(e) => setForm({ ...form, formality: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] bg-white focus:outline-none focus:border-[#9B7B3A]"
-              >
+              <select value={form.formality} onChange={(e) => updateForm({ formality: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
                 {FORMALITY.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Primary color">
-              <input
-                value={form.primaryColor}
-                onChange={(e) => checkDupes({ ...form, primaryColor: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
-              />
-            </Field>
-            <Field label="Secondary color">
-              <input
-                value={form.secondaryColor}
-                onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
-              />
-            </Field>
-            <Field label="Pattern">
-              <input
-                value={form.pattern}
-                onChange={(e) => setForm({ ...form, pattern: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
-              />
+              <input value={form.primaryColor} onChange={(e) => updateForm({ primaryColor: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]" />
             </Field>
             <Field label="Season">
-              <select
-                value={form.season}
-                onChange={(e) => setForm({ ...form, season: e.target.value })}
-                className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] bg-white focus:outline-none focus:border-[#9B7B3A]"
-              >
+              <select value={form.season} onChange={(e) => updateForm({ season: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
                 {SEASONS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving || (duplicates.length > 0 && !confirmedDuplicate)}
-            className="w-full bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
-          >
-            {saving ? <><Loader2 className="animate-spin" size={13} /> Saving...</> : 'Add to closet'}
-          </button>
-          {duplicates.length > 0 && !confirmedDuplicate && (
-            <p className="text-[10px] text-[#A89F96] text-center font-light">Confirm the duplicate check above to continue.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeItem) => void; items: WardrobeItem[] }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [savedCount, setSavedCount] = useState(0);
+
+  const update = (localId: string, patch: Partial<QueueItem>) => {
+    setQueue((q) => q.map((it) => it.localId === localId ? { ...it, ...patch } : it));
+  };
+
+  const remove = (localId: string) => {
+    setQueue((q) => q.filter((it) => it.localId !== localId));
+  };
+
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    if (fileRef.current) fileRef.current.value = '';
+
+    // Add all to queue as pending first
+    const newItems: QueueItem[] = await Promise.all(
+      files.map(async (file) => {
+        const preview = await compressImage(file, 200, 0.5);
+        return {
+          localId: genId(),
+          file,
+          preview,
+          imageDataUrl: '',
+          status: 'pending' as QueueStatus,
+          form: EMPTY_FORM,
+          expanded: false,
+        };
+      })
+    );
+
+    setQueue((q) => [...q, ...newItems]);
+
+    // Process each sequentially
+    for (const qi of newItems) {
+      setQueue((q) => q.map((it) => it.localId === qi.localId ? { ...it, status: 'analyzing' } : it));
+      try {
+        const dataUrl = await compressImage(qi.file);
+        const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+        const mediaType = match ? match[1] : 'image/jpeg';
+        const base64Data = match ? match[2] : dataUrl;
+
+        const tagRes = await fetch('/api/tag', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64Data, mediaType }),
+        });
+        const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
+        const form = tagRes.ok && tagData.tags ? tagData.tags : EMPTY_FORM;
+
+        // Check duplicates against existing items + already-queued ready items
+        setQueue((q) => {
+          const allExisting = [
+            ...items,
+            ...q.filter((x) => x.status === 'ready' || x.status === 'saved').map((x) => ({
+              id: x.localId, name: x.form.name, category: x.form.category,
+              primaryColor: x.form.primaryColor, secondaryColor: x.form.secondaryColor,
+              pattern: x.form.pattern, formality: x.form.formality, season: x.form.season,
+              imageFilename: null, imageUrl: x.preview, addedAt: 0,
+            } as WardrobeItem)),
+          ];
+          const dupes = findDuplicates(form, allExisting);
+          return q.map((it) => it.localId === qi.localId ? {
+            ...it,
+            imageDataUrl: dataUrl,
+            form,
+            status: dupes.length > 0 ? 'duplicate' : 'ready',
+            duplicateOf: dupes,
+            expanded: false,
+          } : it);
+        });
+      } catch {
+        setQueue((q) => q.map((it) => it.localId === qi.localId ? {
+          ...it, status: 'error', error: 'Tagging failed — edit manually or remove.',
+        } : it));
+      }
+    }
+  };
+
+  const handleSaveAll = async () => {
+    const toSave = queue.filter((it) =>
+      (it.status === 'ready' || it.status === 'error') && it.form.name?.trim()
+    );
+    if (toSave.length === 0) return;
+    setSaving(true);
+    let count = 0;
+    for (const qi of toSave) {
+      try {
+        const id = genId();
+        const res = await fetch('/api/items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...qi.form }),
+        });
+        const data = await res.json() as WardrobeItem & { error?: string };
+        if (!res.ok) throw new Error(data.error ?? 'Save failed');
+        onAdd(data);
+        update(qi.localId, { status: 'saved' });
+        count++;
+      } catch {
+        update(qi.localId, { status: 'error', error: 'Save failed — try again.' });
+      }
+    }
+    setSavedCount((n) => n + count);
+    setSaving(false);
+    // Remove saved items after a moment
+    setTimeout(() => {
+      setQueue((q) => q.filter((it) => it.status !== 'saved'));
+    }, 1500);
+  };
+
+  const readyCount = queue.filter((it) => it.status === 'ready' && it.form.name?.trim()).length;
+  const pendingCount = queue.filter((it) => it.status === 'pending' || it.status === 'analyzing').length;
+  const dupeCount = queue.filter((it) => it.status === 'duplicate' && !it.confirmedDuplicate).length;
+
+  return (
+    <div className="space-y-4">
+      {savedCount > 0 && (
+        <div className="flex items-center gap-2 border border-green-200 bg-green-50 text-green-800 text-xs px-3 py-2.5 font-light">
+          <Check size={13} /> {savedCount} {savedCount === 1 ? 'piece' : 'pieces'} added to your closet.
+        </div>
+      )}
+
+      <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="hidden" />
+
+      <button
+        onClick={() => fileRef.current?.click()}
+        className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors"
+      >
+        <Camera size={24} />
+        <div className="text-center">
+          <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
+          <p className="text-[10px] text-[#C4BAB0] mt-1 font-light">Select as many as you like — they'll be tagged automatically</p>
+        </div>
+      </button>
+
+      {queue.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">
+              {queue.length} {queue.length === 1 ? 'piece' : 'pieces'}
+              {pendingCount > 0 && ` · ${pendingCount} processing`}
+              {dupeCount > 0 && ` · ${dupeCount} to review`}
+            </p>
+            <button
+              onClick={() => setQueue([])}
+              className="text-[10px] text-[#A89F96] hover:text-red-600 font-light transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {queue.map((item) => (
+              <QueueCard
+                key={item.localId}
+                item={item}
+                onUpdate={update}
+                onRemove={remove}
+                existingItems={items}
+              />
+            ))}
+          </div>
+
+          {readyCount > 0 && (
+            <button
+              onClick={handleSaveAll}
+              disabled={saving || dupeCount > 0}
+              className="w-full bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+            >
+              {saving
+                ? <><Loader2 className="animate-spin" size={13} /> Saving...</>
+                : `Add ${readyCount} ${readyCount === 1 ? 'piece' : 'pieces'} to closet`
+              }
+            </button>
+          )}
+          {dupeCount > 0 && (
+            <p className="text-[10px] text-[#A89F96] text-center font-light">Resolve the duplicate warnings above before saving.</p>
           )}
         </div>
       )}
