@@ -5,6 +5,7 @@ import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
 import { OCCASIONS } from './constants';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 type Weather = {
   locationName: string;
@@ -153,12 +154,13 @@ function OutfitCard({ outfit, items, onLearnMore }: { outfit: Outfit; items: War
 }
 
 export default function OutfitTab({
-  items, profileImageUrl, profileImageFilename, onProfileChange,
+  items, profileImageUrl, profileImageFilename, onProfileChange, bodyProfile,
 }: {
   items: WardrobeItem[];
   profileImageUrl: string | null;
   profileImageFilename: string | null;
   onProfileChange: (url: string | null, filename: string | null) => void;
+  bodyProfile?: BodyProfile;
 }) {
   const selfieRef = useRef<HTMLInputElement>(null);
   const [locating, setLocating] = useState(false);
@@ -231,7 +233,7 @@ export default function OutfitTab({
       const res = await fetch('/api/outfit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename }),
+        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename, bodyProfile }),
       });
       const data = await res.json() as { outfits?: Outfit[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');

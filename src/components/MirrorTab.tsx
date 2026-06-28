@@ -4,6 +4,7 @@ import { Loader2, BarChart3, TrendingUp, TrendingDown, RefreshCw, ShoppingBag, C
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 type Ranked = { item: WardrobeItem; score: number; verdict: string };
 type Highlighted = { item: WardrobeItem; reason: string };
@@ -28,7 +29,7 @@ function ItemRow({ item, reason, tone }: { item: WardrobeItem; reason: string; t
 
 const STORAGE_KEY = 'mirror_last_result';
 
-export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
+export default function MirrorTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [err, setErr] = useState('');
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
@@ -46,7 +47,7 @@ export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
       const res = await fetch('/api/mirror', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items) }),
+        body: JSON.stringify({ items: slim(items), bodyProfile }),
       });
       const data = await res.json() as {
         rankings?: { i: number; score: number; verdict: string }[];

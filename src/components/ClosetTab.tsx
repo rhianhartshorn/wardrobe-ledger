@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Shirt, Trash2, X, Loader2, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Shirt, Trash2, X, Loader2, ArrowLeft } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { colorDot, slim } from './utils';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 type Look = {
   title: string;
@@ -22,28 +23,9 @@ function LookCard({ look, allItems }: { look: Look; allItems: WardrobeItem[] }) 
 
   return (
     <div className="border border-[#E5DDD0] bg-white overflow-hidden">
-      {look.inspirationImageUrl && (
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F5F2EC]">
-          <img
-            src={look.inspirationImageUrl}
-            alt={look.title}
-            className="w-full h-full object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).parentElement!.style.display = 'none'; }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <div className="absolute bottom-0 left-0 p-3">
-            <p className="text-[9px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">{look.aesthetic}</p>
-            <h3 className="font-serif text-lg text-white leading-snug">{look.title}</h3>
-          </div>
-        </div>
-      )}
       <div className="p-4 space-y-3">
-        {!look.inspirationImageUrl && (
-          <>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">{look.aesthetic}</p>
-            <h3 className="font-serif text-lg text-[#1A1714]">{look.title}</h3>
-          </>
-        )}
+        <p className="text-[9px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">{look.aesthetic}</p>
+        <h3 className="font-serif text-lg text-[#1A1714]">{look.title}</h3>
         <p className="text-sm text-[#1A1714] font-light leading-relaxed">{look.howToWear}</p>
 
         {pieces.length > 0 && (
@@ -75,23 +57,12 @@ function LookCard({ look, allItems }: { look: Look; allItems: WardrobeItem[] }) 
           </div>
         )}
 
-        {look.inspirationLink && (
-          <a
-            href={look.inspirationLink.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs text-[#9B7B3A] hover:text-[#1A1714] transition-colors group"
-          >
-            <ExternalLink size={10} className="shrink-0" />
-            <span className="group-hover:underline underline-offset-2 truncate">{look.inspirationLink.label}</span>
-          </a>
-        )}
       </div>
     </div>
   );
 }
 
-function ItemDetailView({ item, allItems, onClose }: { item: WardrobeItem; allItems: WardrobeItem[]; onClose: () => void }) {
+function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: WardrobeItem; allItems: WardrobeItem[]; bodyProfile?: BodyProfile; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [looks, setLooks] = useState<Look[] | null>(null);
   const [err, setErr] = useState('');
@@ -102,7 +73,7 @@ function ItemDetailView({ item, allItems, onClose }: { item: WardrobeItem; allIt
       const res = await fetch('/api/item-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item: slim([item])[0], wardrobe: slim(allItems) }),
+        body: JSON.stringify({ item: slim([item])[0], wardrobe: slim(allItems), bodyProfile }),
       });
       const data = await res.json() as { looks?: Look[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
@@ -169,14 +140,14 @@ function ItemDetailView({ item, allItems, onClose }: { item: WardrobeItem; allIt
   );
 }
 
-function ItemCard({ item, allItems, onRemove }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void }) {
+function ItemCard({ item, allItems, onRemove, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; bodyProfile?: BodyProfile }) {
   const [confirming, setConfirming] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
 
   return (
     <>
       {showDetail && (
-        <ItemDetailView item={item} allItems={allItems} onClose={() => setShowDetail(false)} />
+        <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} />
       )}
       <div className="bg-white border border-[#E5DDD0] group relative cursor-pointer" onClick={() => !confirming && setShowDetail(true)}>
         <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC]">
@@ -214,7 +185,7 @@ function ItemCard({ item, allItems, onRemove }: { item: WardrobeItem; allItems: 
   );
 }
 
-export default function ClosetTab({ items, onRemove }: { items: WardrobeItem[]; onRemove: (id: string) => void }) {
+export default function ClosetTab({ items, onRemove, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; bodyProfile?: BodyProfile }) {
   const [filter, setFilter] = useState('All');
   const cats = ['All', ...Array.from(new Set(items.map((i) => i.category)))];
   const visible = filter === 'All' ? items : items.filter((i) => i.category === filter);
@@ -249,7 +220,7 @@ export default function ClosetTab({ items, onRemove }: { items: WardrobeItem[]; 
       <p className="text-[10px] text-[#A89F96] font-light mb-3">Tap any piece to see how to style it</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
         {visible.map((item) => (
-          <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} />
+          <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} bodyProfile={bodyProfile} />
         ))}
       </div>
     </div>

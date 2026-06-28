@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
+import { profileToContext } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -28,8 +30,9 @@ export async function POST(req: NextRequest) {
       occasion: string;
       note?: string;
       profileImageFilename?: string;
+      bodyProfile?: BodyProfile;
     };
-    const { items, weather, occasion, note, profileImageFilename } = body;
+    const { items, weather, occasion, note, profileImageFilename, bodyProfile } = body;
 
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
     if (!weather) return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
@@ -50,20 +53,40 @@ export async function POST(req: NextRequest) {
       ? "The attached photo is of the client. In each rationale, weave in one brief, respectful, flattering observation about their colouring — never comment on body shape, weight, or size. "
       : '';
 
+    const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
+
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}
+    const bodyGuidance = bodyProfile?.bodyShape ? `
+IMPORTANT — apply these body-fit principles to every outfit:
+${profileCtx}
+Silhouette rules for their shape:
+${bodyProfile.bodyShape === 'hourglass' ? '- Celebrate the waist — wrap dresses, belted pieces, fitted cuts work beautifully. Avoid shapeless sacks or very boxy oversized fits.' : ''}
+${bodyProfile.bodyShape === 'pear' ? '- Balance with volume on top (statement sleeves, interesting necklines, bold colours above the waist). Dark, streamlined bottoms elongate the lower half. A-line skirts and wide-leg trousers are ideal. Avoid clingy skirts or tapered trousers that emphasise hips.' : ''}
+${bodyProfile.bodyShape === 'apple' ? '- Elongate the torso with V-necks, open necklines, and vertical lines. Empire waist or fit-and-flare silhouettes create shape. Avoid high-waisted bottoms that cut across the widest point. Monochrome dressing slims.' : ''}
+${bodyProfile.bodyShape === 'rectangle' ? '- Create curves with peplums, wrap styles, ruffles, or belted pieces. Cropped tops with high-waisted bottoms define a waist. Fitted and draped fabrics work better than very stiff structures.' : ''}
+${bodyProfile.bodyShape === 'athletic' ? '- Soften the shoulder line with off-shoulder, scoop necks, and fluid fabrics. High-waisted wide-leg trousers add hip curve. Avoid strong shoulder pads or very structured blazers.' : ''}
+${bodyProfile.height === 'petite' ? '- Petite frame: avoid overwhelming proportions. Midi lengths should hit at the knee or just below. Monochrome or tonal dressing adds height. Cropped jackets work better than long coats. Avoid ankle straps.' : ''}
+${bodyProfile.height === 'tall' ? '- Tall frame: can carry bold proportions, maxi lengths, wide-leg trousers, and oversized pieces beautifully. Midi skirts can hit mid-calf.' : ''}
+${bodyProfile.features?.includes('Minimise my bust') ? '- Avoid deep V-necks or very fitted tops. Structured, supportive necklines (boat neck, high scoop, square neck) are more flattering.' : ''}
+${bodyProfile.features?.includes('Create waist definition') ? '- Always suggest a way to define the waist — a belt, a tucked-in hem, or a fitted layer.' : ''}
+${bodyProfile.features?.includes('Elongate my silhouette') ? '- Prioritise vertical lines, monochrome dressing, and long layering pieces.' : ''}
+Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones, camel, olive, rust, warm white, terracotta, gold jewellery all work beautifully. Avoid icy pastels or stark white.' : profileCtx.includes('cool') ? 'cool undertone — navy, burgundy, grey, jewel tones, true white and silver all flatter. Avoid orange-based tones and yellows.' : 'neutral undertone — can wear both warm and cool tones well.'}
+${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
+` : '';
 
+    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}
+${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}
 
 Wardrobe (id :: details):
 ${itemListText}
 
-Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each, name the current 2026 style aesthetic and provide 1–2 real inspiration links from well-known fashion sources you know (Vogue, Net-a-Porter, Matches, Mr Porter, Who What Wear, Refinery29, The Outnet, SSENSE, editorials etc.) — use URLs you are confident exist.
+Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each, name the current 2026 style aesthetic. Apply the body and colour guidance above to every outfit choice.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationLinks":[{"label":"source name + what it shows max 8 words","url":"real URL you know exists"}]}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — must mention why this works for their frame/colouring","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
 
     const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };

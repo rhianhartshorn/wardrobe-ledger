@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
+import { profileToContext } from '@/app/api/body-profile/route';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 type WardrobeItem = {
   id: string;
@@ -14,7 +16,7 @@ type WardrobeItem = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items } = await req.json() as { items: WardrobeItem[] };
+    const { items, bodyProfile } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Need at least 3 items for a meaningful analysis' }, { status: 400 });
@@ -27,8 +29,11 @@ export async function POST(req: NextRequest) {
       )
       .join('\n');
 
-    const prompt = `You are a sophisticated personal stylist evaluating a real wardrobe. Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear.
+    const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
+    const profileLine = profileCtx ? `\nClient profile: ${profileCtx}\nFactor this into purchase recommendations — suggest pieces that work for their body shape and colouring, not generic filler pieces.\n` : '';
 
+    const prompt = `You are a sophisticated personal stylist evaluating a real wardrobe. Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear.
+${profileLine}
 SCORING RUBRIC (0–10):
 - Versatility within THIS wardrobe: how many outfits it unlocks with other items here (0–4 pts)
 - Occasion necessity: even rarely-worn items score high if they fill an irreplaceable role (e.g. a wedding guest dress, a black-tie blazer, a smart interview suit = high necessity). Don't penalise occasion-specific pieces for being specialised. (0–3 pts)
@@ -38,7 +43,7 @@ SCORING RUBRIC (0–10):
 Wardrobe (number :: details):
 ${itemListText}
 
-Also recommend exactly 3 items to purchase that would make this wardrobe work significantly harder — focusing on unlocking combinations that aren't currently possible, filling formality or season gaps, or acting as a versatile "bridge" piece.
+Also recommend exactly 3 items to purchase that would make this wardrobe work significantly harder — focusing on unlocking combinations that aren't currently possible, filling formality or season gaps, or acting as a versatile "bridge" piece.${profileCtx ? ' Each recommendation must specifically suit the client\'s body shape and colouring described above.' : ''}
 
 Respond with ONLY valid JSON, no markdown fences, no other text:
 {"rankings":[{"i":1,"score":7,"verdict":"one sentence, max 12 words, on why it earned this score"}],"mostValuable":[{"i":1,"reason":"max 12 words"}],"worthReconsidering":[{"i":1,"reason":"max 12 words"}],"purchases":[{"item":"specific item name e.g. Ivory silk slip dress","why":"max 15 words on what combinations it unlocks","pairsWith":[1,3]}]}

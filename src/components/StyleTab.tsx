@@ -4,6 +4,7 @@ import { Loader2, Gem, RefreshCw, Target, User, ChevronRight } from 'lucide-reac
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
+import type { BodyProfile } from '@/app/api/body-profile/route';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -59,7 +60,7 @@ function MatchStrengthBar({ strength }: { strength: string }) {
   return <div className="h-px bg-[#E5DDD0] overflow-hidden mt-1"><div className={`h-full ${color}`} style={{ width: w }} /></div>;
 }
 
-export default function StyleTab({ items }: { items: WardrobeItem[] }) {
+export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
@@ -81,7 +82,7 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
       const res = await fetch('/api/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items) }),
+        body: JSON.stringify({ items: slim(items), bodyProfile }),
       });
       const data = await res.json() as StyleResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
