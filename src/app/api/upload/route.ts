@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import { UPLOADS_DIR } from '@/lib/db';
+import { saveImage } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,15 +10,15 @@ export async function POST(req: NextRequest) {
     }
 
     const match = /^data:([^;]+);base64,(.*)$/.exec(imageBase64);
-    const mediaType = match ? match[1] : 'image/jpeg';
+    const mimeType = match ? match[1] : 'image/jpeg';
     const base64Data = match ? match[2] : imageBase64;
-    const ext = mediaType.includes('png') ? 'png' : 'jpg';
+    const ext = mimeType.includes('png') ? 'png' : 'jpg';
     const safeId = imageId.replace(/[^a-zA-Z0-9-]/g, '');
     const imageFilename = `${safeId}.${ext}`;
 
-    await writeFile(path.join(UPLOADS_DIR, imageFilename), Buffer.from(base64Data, 'base64'));
+    saveImage(imageFilename, base64Data, mimeType);
 
-    return NextResponse.json({ imageFilename, mediaType, base64Data });
+    return NextResponse.json({ imageFilename, base64Data, mediaType: mimeType });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Upload failed';
     return NextResponse.json({ error: message }, { status: 500 });
