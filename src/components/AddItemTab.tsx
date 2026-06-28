@@ -196,7 +196,7 @@ function QueueCard({
 }
 
 export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeItem) => void; items: WardrobeItem[] }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null); // kept for reset only
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -322,18 +322,14 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         </div>
       )}
 
-      <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }} />
-
-      <button
-        onClick={() => fileRef.current?.click()}
-        className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors"
-      >
+      <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
         <Camera size={24} />
         <div className="text-center">
           <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
           <p className="text-[10px] text-[#C4BAB0] mt-1 font-light">Select as many as you like — they'll be tagged automatically</p>
         </div>
-      </button>
+      </label>
 
       {queue.length > 0 && (
         <div className="space-y-2">
