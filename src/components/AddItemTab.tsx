@@ -126,7 +126,6 @@ export default function AddItemTab({ onAdd }: { onAdd: (item: WardrobeItem) => v
         ref={fileRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFile}
         className="hidden"
       />
