@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
-import { Loader2, BarChart3, TrendingUp, TrendingDown, RefreshCw, ShoppingBag } from 'lucide-react';
+import { Loader2, BarChart3, TrendingUp, TrendingDown, RefreshCw, ShoppingBag, ChevronRight } from 'lucide-react';
+import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
 
@@ -30,6 +31,7 @@ const STORAGE_KEY = 'mirror_last_result';
 export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [err, setErr] = useState('');
+  const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
   const [result, setResult] = useState<Result | null>(() => {
     try {
       const raw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
@@ -86,6 +88,8 @@ export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
       </div>
     );
   }
+
+  if (learnMore) return <LearnMorePage {...learnMore} onClose={() => setLearnMore(null)} />;
 
   return (
     <div className="space-y-4">
@@ -177,8 +181,11 @@ export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
               <div className="space-y-4">
                 {result.purchases.map((p, i) => (
                   <div key={i} className="border-t border-white/10 pt-4 first:border-0 first:pt-0">
-                    <p className="font-serif text-lg text-white">{p.item}</p>
-                    <p className="text-xs text-white/60 font-light mt-1">{p.why}</p>
+                    <button className="text-left group w-full" onClick={() => setLearnMore({ type: 'purchase', title: p.item, context: p.why, onClose: () => setLearnMore(null) })}>
+                      <p className="font-serif text-lg text-white group-hover:text-white/80 transition-colors">{p.item}</p>
+                      <p className="text-xs text-white/60 font-light mt-0.5">{p.why}</p>
+                      <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mt-1 flex items-center gap-0.5">What to look for <ChevronRight size={10} /></p>
+                    </button>
                     {p.pairsWith?.length > 0 && (
                       <div className="flex gap-2 mt-2 overflow-x-auto">
                         {p.pairsWith.map((idx) => {

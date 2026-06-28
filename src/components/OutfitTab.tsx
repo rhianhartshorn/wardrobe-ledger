@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ExternalLink } from 'lucide-react';
+import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight } from 'lucide-react';
+import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
 import { OCCASIONS } from './constants';
@@ -68,7 +69,7 @@ type Outfit = {
   inspirationLinks?: InspirationLink[];
 };
 
-function OutfitCard({ outfit, items }: { outfit: Outfit; items: WardrobeItem[] }) {
+function OutfitCard({ outfit, items, onLearnMore }: { outfit: Outfit; items: WardrobeItem[]; onLearnMore: () => void }) {
   const pieces = outfit.itemIds
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
@@ -143,25 +144,9 @@ function OutfitCard({ outfit, items }: { outfit: Outfit; items: WardrobeItem[] }
             <Cloud size={11} />{outfit.weatherNote}
           </p>
         )}
-        {outfit.inspirationLinks && outfit.inspirationLinks.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light mb-2">Style references</p>
-            <div className="space-y-1.5">
-              {outfit.inspirationLinks.map((link, i) => (
-                <a
-                  key={i}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-[#9B7B3A] hover:text-[#1A1714] transition-colors group"
-                >
-                  <ExternalLink size={10} className="shrink-0" />
-                  <span className="truncate group-hover:underline underline-offset-2">{link.label}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
+        <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors">
+          Deep dive into this look <ChevronRight size={11} />
+        </button>
       </div>
     </div>
   );
@@ -186,6 +171,7 @@ export default function OutfitTab({
   const [generating, setGenerating] = useState(false);
   const [genErr, setGenErr] = useState('');
   const [outfits, setOutfits] = useState<Outfit[] | null>(null);
+  const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
   const triedAuto = useRef(false);
 
   const loadWeather = async (qs: string) => {
@@ -253,6 +239,8 @@ export default function OutfitTab({
     } catch (e) { setGenErr(e instanceof Error ? e.message : "Couldn't generate outfits. Try again."); }
     finally { setGenerating(false); }
   };
+
+  if (learnMore) return <LearnMorePage {...learnMore} onClose={() => setLearnMore(null)} />;
 
   return (
     <div className="space-y-4">
@@ -360,7 +348,12 @@ export default function OutfitTab({
 
       {outfits && (
         <div className="space-y-4 pt-1">
-          {outfits.map((o, idx) => <OutfitCard key={idx} outfit={o} items={items} />)}
+          {outfits.map((o, idx) => (
+            <OutfitCard key={idx} outfit={o} items={items} onLearnMore={() => {
+              const pieces = o.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+              setLearnMore({ type: 'outfit', title: o.title, context: `Aesthetic: ${o.styleReference ?? ''}. ${o.rationale ?? ''}. Pieces: ${pieces.map((p) => p.name).join(', ')}`, relevantItems: pieces, onClose: () => setLearnMore(null) });
+            }} />
+          ))}
         </div>
       )}
     </div>
