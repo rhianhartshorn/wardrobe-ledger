@@ -1,4 +1,10 @@
+import type { WardrobeItem } from '@/app/page';
 import { COLOR_HEX } from './constants';
+
+// Strip imageUrl (base64) before sending items to analysis APIs — saves megabytes per request
+export function slim(items: WardrobeItem[]) {
+  return items.map(({ imageUrl: _, imageFilename: __, ...rest }) => rest);
+}
 
 export function colorDot(name: string | null | undefined): string {
   if (!name) return '#a8a29e';

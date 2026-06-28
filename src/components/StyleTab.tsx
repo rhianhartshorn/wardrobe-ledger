@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Loader2, Gem, RefreshCw, Target, User } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
+import { slim } from './utils';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -35,7 +36,7 @@ function StyleAspirations({ items }: { items: WardrobeItem[] }) {
       const res = await fetch('/api/style-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, goal: g || undefined }),
+        body: JSON.stringify({ items: slim(items), goal: g || undefined }),
       });
       const data = await res.json() as MatchResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
@@ -217,7 +218,7 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
       const res = await fetch('/api/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: slim(items) }),
       });
       const data = await res.json() as StyleResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');

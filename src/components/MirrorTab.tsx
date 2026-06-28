@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { Loader2, BarChart3, TrendingUp, TrendingDown, RefreshCw, ShoppingBag } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
+import { slim } from './utils';
 
 type Ranked = { item: WardrobeItem; score: number; verdict: string };
 type Highlighted = { item: WardrobeItem; reason: string };
@@ -43,7 +44,7 @@ export default function MirrorTab({ items }: { items: WardrobeItem[] }) {
       const res = await fetch('/api/mirror', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: slim(items) }),
       });
       const data = await res.json() as {
         rankings?: { i: number; score: number; verdict: string }[];

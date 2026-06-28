@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Shirt, Trash2, X, Loader2, ExternalLink, ArrowLeft } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
-import { colorDot } from './utils';
+import { colorDot, slim } from './utils';
 
 type Look = {
   title: string;
@@ -102,7 +102,7 @@ function ItemDetailView({ item, allItems, onClose }: { item: WardrobeItem; allIt
       const res = await fetch('/api/item-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item, wardrobe: allItems }),
+        body: JSON.stringify({ item: slim([item])[0], wardrobe: slim(allItems) }),
       });
       const data = await res.json() as { looks?: Look[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');

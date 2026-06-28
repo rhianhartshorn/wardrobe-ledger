@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ExternalLink } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
-import { compressImage, colorDot } from './utils';
+import { compressImage, colorDot, slim } from './utils';
 import { OCCASIONS } from './constants';
 
 type Weather = {
@@ -245,7 +245,7 @@ export default function OutfitTab({
       const res = await fetch('/api/outfit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items, weather, occasion, note, profileImageFilename }),
+        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename }),
       });
       const data = await res.json() as { outfits?: Outfit[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');
