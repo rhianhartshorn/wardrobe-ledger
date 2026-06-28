@@ -1,7 +1,170 @@
 'use client';
 import { useState } from 'react';
-import { Loader2, Gem, RefreshCw } from 'lucide-react';
+import { Loader2, Gem, RefreshCw, Target, User } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
+
+const GOAL_SUGGESTIONS = [
+  'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
+  'Hailey Bieber', 'Rosie Huntington-Whiteley', 'Street Style', 'Parisian Chic',
+  'Margot Robbie', 'Coastal Grandmother', 'Clean Girl', 'Timothée Chalamet',
+];
+
+type StyleMatch = { name: string; why: string; matchStrength: 'high' | 'medium' | 'low' };
+type GoalAnalysis = {
+  goal: string; howClose: string;
+  workingPieces: string[]; missingPieces: string[]; bridgeTips: string[];
+};
+type MatchResult = { closestMatches: StyleMatch[]; goalAnalysis?: GoalAnalysis };
+
+function MatchStrengthBar({ strength }: { strength: string }) {
+  const w = strength === 'high' ? '100%' : strength === 'medium' ? '60%' : '30%';
+  const color = strength === 'high' ? 'bg-[#9B7B3A]' : strength === 'medium' ? 'bg-[#C4B08A]' : 'bg-[#E5DDD0]';
+  return <div className="h-px bg-[#E5DDD0] overflow-hidden mt-1"><div className={`h-full ${color}`} style={{ width: w }} /></div>;
+}
+
+function StyleAspirations({ items }: { items: WardrobeItem[] }) {
+  const [goal, setGoal] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+  const [result, setResult] = useState<MatchResult | null>(null);
+
+  const run = async (overrideGoal?: string) => {
+    const g = overrideGoal ?? goal;
+    setLoading(true); setErr(''); setResult(null);
+    try {
+      const res = await fetch('/api/style-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, goal: g || undefined }),
+      });
+      const data = await res.json() as MatchResult & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setResult(data);
+    } catch (e) { setErr(e instanceof Error ? e.message : 'Could not run analysis.'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="border border-[#E5DDD0] bg-white p-5">
+        <div className="flex items-center gap-2 mb-1">
+          <Target size={13} className="text-[#9B7B3A]" />
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Style aspirations</p>
+        </div>
+        <p className="text-sm text-[#6B6058] font-light mb-3">
+          Who do you want to dress like, or what style are you aiming for?
+        </p>
+        <input
+          value={goal}
+          onChange={(e) => setGoal(e.target.value)}
+          placeholder="e.g. Zoe Kravitz, Old Money, Quiet Luxury..."
+          className="w-full border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A] mb-3"
+        />
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {GOAL_SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              onClick={() => { setGoal(s); run(s); }}
+              className="text-[10px] border border-[#E5DDD0] px-2.5 py-1 text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={() => run()}
+          disabled={loading}
+          className="w-full bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+        >
+          {loading ? <><Loader2 className="animate-spin" size={13} /> Analysing...</> : goal ? 'How do I achieve this?' : 'Who do I currently dress like?'}
+        </button>
+        {err && <p className="text-xs text-red-700 mt-3 font-light">{err}</p>}
+      </div>
+
+      {result && (
+        <>
+          {/* Closest matches */}
+          <div className="border border-[#E5DDD0] bg-white p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <User size={13} className="text-[#9B7B3A]" />
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">You currently dress closest to</p>
+            </div>
+            <div className="space-y-4">
+              {result.closestMatches?.map((m, i) => (
+                <div key={i}>
+                  <div className="flex items-baseline justify-between">
+                    <p className="font-serif text-lg text-[#1A1714]">{m.name}</p>
+                    <span className="text-[10px] text-[#A89F96] font-light capitalize">{m.matchStrength} match</span>
+                  </div>
+                  <MatchStrengthBar strength={m.matchStrength} />
+                  <p className="text-xs text-[#6B6058] font-light mt-1.5 leading-snug">{m.why}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Goal analysis */}
+          {result.goalAnalysis && (
+            <div className="border border-[#E5DDD0] bg-[#1A1714] text-white p-5 space-y-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Your goal</p>
+                <p className="font-serif text-2xl italic mt-1">{result.goalAnalysis.goal}</p>
+                <p className="text-sm text-white/60 font-light mt-2 leading-relaxed">{result.goalAnalysis.howClose}</p>
+              </div>
+
+              {result.goalAnalysis.workingPieces?.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">Pieces you already have that work</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {result.goalAnalysis.workingPieces.map((id) => {
+                      const item = items.find((i) => i.id === id);
+                      return item ? (
+                        <div key={id} className="shrink-0 w-12">
+                          <div className="w-12 h-12 overflow-hidden bg-white/10 border border-white/20">
+                            {item.imageUrl
+                              ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full" />}
+                          </div>
+                          <p className="text-[9px] text-white/40 truncate mt-0.5 font-light">{item.name}</p>
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {result.goalAnalysis.bridgeTips?.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">How to get there with what you own</p>
+                  <ul className="space-y-2">
+                    {result.goalAnalysis.bridgeTips.map((tip, i) => (
+                      <li key={i} className="text-xs text-white/70 font-light flex gap-2 leading-snug">
+                        <span className="text-[#9B7B3A] shrink-0">—</span>{tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {result.goalAnalysis.missingPieces?.length > 0 && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#A89F96] font-light mb-2">Key pieces to buy to complete the look</p>
+                  <ul className="space-y-1">
+                    {result.goalAnalysis.missingPieces.map((p, i) => (
+                      <li key={i} className="text-xs text-white/50 font-light flex gap-2">
+                        <span className="text-[#9B7B3A] shrink-0">+</span>{p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 type StyleGroup = { groupName: string; mood: string; itemIds: string[] };
 type FashionCurrency = { itemId: string; era: string; status: 'timeless' | 'current' | 'dated' | 'coming-back'; how2026: string | null };
@@ -78,6 +241,8 @@ export default function StyleTab({ items }: { items: WardrobeItem[] }) {
 
   return (
     <div className="space-y-5">
+      <StyleAspirations items={items} />
+
       <div className="border border-[#E5DDD0] bg-white p-5">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Style Intelligence</p>
         <h2 className="font-serif text-2xl mt-1 text-[#1A1714]">Your Style DNA</h2>
