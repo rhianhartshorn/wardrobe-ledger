@@ -1,13 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import {
-  Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, Check,
-} from 'lucide-react';
+import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ExternalLink } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot } from './utils';
 import { OCCASIONS } from './constants';
-
-// ---- Weather ---------------------------------------------------------------
 
 type Weather = {
   locationName: string;
@@ -24,10 +20,8 @@ function WeatherIcon({ condition }: { condition: string }) {
     : c.includes('cloud') || c.includes('overcast') ? Cloud
     : c.includes('wind') ? Wind
     : Sun;
-  return <Icon className="text-amber-600" size={28} />;
+  return <Icon className="text-[#9B7B3A]" size={24} />;
 }
-
-// ---- Silhouette sketch ------------------------------------------------------
 
 function LookSketch({ pieces }: { pieces: WardrobeItem[] }) {
   const colorFor = (cat: string) => {
@@ -42,32 +36,27 @@ function LookSketch({ pieces }: { pieces: WardrobeItem[] }) {
   const accColor = colorFor('Accessory');
 
   return (
-    <svg viewBox="0 0 80 160" width="56" height="112" className="shrink-0">
-      <circle cx="40" cy="14" r="10" fill="#e7e2d6" stroke="#d6cfc0" strokeWidth="1" />
+    <svg viewBox="0 0 80 160" width="48" height="96" className="shrink-0 opacity-90">
+      <circle cx="40" cy="14" r="10" fill="#E8E2D9" stroke="#D6CFC0" strokeWidth="1" />
       {dressColor ? (
         <path d="M26 26 L54 26 L60 118 L20 118 Z" fill={dressColor} />
       ) : (
         <>
-          <rect x="22" y="26" width="36" height="46" rx="9" fill={topColor ?? '#e7e3d8'} />
-          <rect x="24" y="72" width="32" height="48" rx="6" fill={bottomColor ?? '#e7e3d8'} />
+          <rect x="22" y="26" width="36" height="46" rx="6" fill={topColor ?? '#E8E2D9'} />
+          <rect x="24" y="72" width="32" height="48" rx="4" fill={bottomColor ?? '#E8E2D9'} />
         </>
       )}
       {outerColor && (
-        <path
-          d="M18 30 L30 26 L30 70 L18 74 Z M62 30 L50 26 L50 70 L62 74 Z"
-          fill={outerColor}
-          opacity="0.85"
-        />
+        <path d="M18 30 L30 26 L30 70 L18 74 Z M62 30 L50 26 L50 70 L62 74 Z" fill={outerColor} opacity="0.85" />
       )}
-      <ellipse cx="30" cy="124" rx="8" ry="5" fill={shoeColor ?? '#a8a29e'} />
-      <ellipse cx="50" cy="124" rx="8" ry="5" fill={shoeColor ?? '#a8a29e'} />
+      <ellipse cx="30" cy="124" rx="8" ry="4" fill={shoeColor ?? '#A89F96'} />
+      <ellipse cx="50" cy="124" rx="8" ry="4" fill={shoeColor ?? '#A89F96'} />
       {accColor && <circle cx="40" cy="24" r="3" fill={accColor} />}
     </svg>
   );
 }
 
-// ---- Outfit card ------------------------------------------------------------
-
+type InspirationLink = { label: string; url: string };
 type Outfit = {
   title: string;
   itemIds: string[];
@@ -75,6 +64,7 @@ type Outfit = {
   rationale?: string;
   accessorizing?: string[];
   weatherNote?: string;
+  inspirationLinks?: InspirationLink[];
 };
 
 function OutfitCard({ outfit, items }: { outfit: Outfit; items: WardrobeItem[] }) {
@@ -83,62 +73,81 @@ function OutfitCard({ outfit, items }: { outfit: Outfit; items: WardrobeItem[] }
     .filter((x): x is WardrobeItem => Boolean(x));
 
   return (
-    <div className="bg-white border border-stone-200 rounded-lg p-4 relative">
-      <span className="absolute -top-2 left-4 bg-amber-700 text-white text-xs px-2 py-0.5 rounded-full">
-        Look
-      </span>
-      <div className="flex gap-3 mt-1">
-        <LookSketch pieces={pieces} />
-        <div className="flex-1 min-w-0">
-          <h3 className="font-serif text-lg leading-snug">{outfit.title}</h3>
-          {outfit.styleReference && (
-            <p className="text-xs text-amber-700 mt-0.5">Inspired by: {outfit.styleReference}</p>
-          )}
+    <div className="border border-[#E5DDD0] bg-white">
+      <div className="p-4">
+        <p className="text-[9px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Look</p>
+        <div className="flex gap-3 mt-2">
+          <LookSketch pieces={pieces} />
+          <div className="flex-1 min-w-0">
+            <h3 className="font-serif text-xl leading-snug text-[#1A1714]">{outfit.title}</h3>
+            {outfit.styleReference && (
+              <p className="text-[10px] uppercase tracking-widest text-[#9B7B3A] mt-1 font-light">{outfit.styleReference}</p>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2 mt-3 overflow-x-auto">
+      {/* Piece thumbnails */}
+      <div className="flex gap-px border-t border-[#E5DDD0]">
         {pieces.map((p) => (
-          <div key={p.id} className="shrink-0 w-16">
-            <div className="aspect-square w-16 rounded overflow-hidden bg-stone-100 border border-stone-200">
-              {p.imageUrl && (
-                <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-              )}
+          <div key={p.id} className="flex-1 min-w-0">
+            <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC]">
+              {p.imageUrl
+                ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-end p-1"><p className="text-[9px] text-[#A89F96] leading-tight truncate">{p.name}</p></div>
+              }
             </div>
-            <p className="text-xs text-stone-500 truncate mt-1 w-16">{p.name}</p>
           </div>
         ))}
       </div>
 
-      {outfit.rationale && (
-        <p className="text-sm text-stone-700 mt-3">{outfit.rationale}</p>
-      )}
-      {outfit.accessorizing && outfit.accessorizing.length > 0 && (
-        <ul className="mt-2 space-y-1">
-          {outfit.accessorizing.map((tip, i) => (
-            <li key={i} className="text-sm text-stone-600 flex gap-1.5">
-              <Check size={14} className="text-amber-600 mt-0.5 shrink-0" />
-              {tip}
-            </li>
-          ))}
-        </ul>
-      )}
-      {outfit.weatherNote && (
-        <p className="text-xs text-stone-400 mt-2 flex items-center gap-1">
-          <Cloud size={12} /> {outfit.weatherNote}
-        </p>
-      )}
+      <div className="p-4 space-y-3">
+        {outfit.rationale && (
+          <p className="text-sm text-[#1A1714] font-light leading-relaxed">{outfit.rationale}</p>
+        )}
+        {outfit.accessorizing && outfit.accessorizing.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light mb-1.5">Styling notes</p>
+            <ul className="space-y-1">
+              {outfit.accessorizing.map((tip, i) => (
+                <li key={i} className="text-xs text-[#6B6058] font-light flex gap-2">
+                  <span className="text-[#9B7B3A] shrink-0">—</span>{tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {outfit.weatherNote && (
+          <p className="text-[11px] text-[#A89F96] font-light flex items-center gap-1.5">
+            <Cloud size={11} />{outfit.weatherNote}
+          </p>
+        )}
+        {outfit.inspirationLinks && outfit.inspirationLinks.length > 0 && (
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light mb-2">Style references</p>
+            <div className="space-y-1.5">
+              {outfit.inspirationLinks.map((link, i) => (
+                <a
+                  key={i}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-[#9B7B3A] hover:text-[#1A1714] transition-colors group"
+                >
+                  <ExternalLink size={10} className="shrink-0" />
+                  <span className="truncate group-hover:underline underline-offset-2">{link.label}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// ---- Tab -------------------------------------------------------------------
-
 export default function OutfitTab({
-  items,
-  profileImageUrl,
-  profileImageFilename,
-  onProfileChange,
+  items, profileImageUrl, profileImageFilename, onProfileChange,
 }: {
   items: WardrobeItem[];
   profileImageUrl: string | null;
@@ -164,10 +173,9 @@ export default function OutfitTab({
       const res = await fetch(`/api/weather?${qs}`);
       const data = await res.json() as Weather & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Weather fetch failed');
-      setWeather(data);
-      setNeedsCity(false);
-    } catch (e) {
-      setWeatherErr("Couldn't fetch live weather. Enter your city below.");
+      setWeather(data); setNeedsCity(false);
+    } catch {
+      setWeatherErr("Couldn't get live weather — enter your city below.");
       setNeedsCity(true);
     } finally {
       setLocating(false);
@@ -177,22 +185,17 @@ export default function OutfitTab({
   const detectLocation = () => {
     setLocating(true); setWeatherErr('');
     if (!navigator.geolocation) {
-      setWeatherErr('Location unavailable. Enter your city below.');
+      setWeatherErr('Location not available — enter your city below.');
       setNeedsCity(true); setLocating(false); return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => loadWeather(`lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`),
-      () => {
-        setWeatherErr('Location access denied. Enter your city below.');
-        setNeedsCity(true); setLocating(false);
-      },
-      { timeout: 6000 }
+      () => { setWeatherErr('Location access denied — enter your city below.'); setNeedsCity(true); setLocating(false); },
+      { timeout: 8000 }
     );
   };
 
-  useEffect(() => {
-    if (!triedAuto.current) { triedAuto.current = true; detectLocation(); }
-  }, []);
+  useEffect(() => { if (!triedAuto.current) { triedAuto.current = true; detectLocation(); } }, []);
 
   const handleSelfie = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -207,16 +210,11 @@ export default function OutfitTab({
       const data = await res.json() as { imageUrl: string; imageFilename: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Save failed');
       onProfileChange(data.imageUrl, data.imageFilename);
-    } catch {
-      setGenErr("Couldn't save that photo — try another.");
-    }
+    } catch { setGenErr("Couldn't save that photo — try another."); }
     if (selfieRef.current) selfieRef.current.value = '';
   };
 
-  const removeProfile = async () => {
-    await fetch('/api/profile', { method: 'DELETE' });
-    onProfileChange(null, null);
-  };
+  const removeProfile = async () => { await fetch('/api/profile', { method: 'DELETE' }); onProfileChange(null, null); };
 
   const handleGenerate = async () => {
     if (items.length === 0) { setGenErr('Add a few wardrobe items first.'); return; }
@@ -231,117 +229,85 @@ export default function OutfitTab({
       const data = await res.json() as { outfits?: Outfit[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');
       setOutfits(data.outfits ?? []);
-    } catch (e) {
-      setGenErr(
-        e instanceof Error ? e.message : "Couldn't put outfits together just now. Try again."
-      );
-    } finally {
-      setGenerating(false);
-    }
+    } catch (e) { setGenErr(e instanceof Error ? e.message : "Couldn't generate outfits. Try again."); }
+    finally { setGenerating(false); }
   };
 
   return (
-    <div className="space-y-5">
-      {/* Profile photo */}
-      <section className="bg-white border border-stone-200 rounded-lg p-4">
-        <h2 className="text-xs uppercase tracking-wide text-stone-500 mb-1">Your photo</h2>
-        <p className="text-xs text-stone-400 mb-2">
-          Optional. Lets the stylist tailor notes to your coloring — stored only on this device.
-        </p>
-        <input
-          ref={selfieRef}
-          type="file"
-          accept="image/*"
-          capture="user"
-          onChange={handleSelfie}
-          className="hidden"
-        />
+    <div className="space-y-4">
+      {/* Profile */}
+      <div className="border border-[#E5DDD0] bg-white p-4">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Your photo <span className="text-[#A89F96]">— optional</span></p>
+        <input ref={selfieRef} type="file" accept="image/*" capture="user" onChange={handleSelfie} className="hidden" />
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full overflow-hidden bg-stone-100 border border-stone-200 shrink-0">
-            {profileImageUrl && (
-              <img src={profileImageUrl} alt="you" className="w-full h-full object-cover" />
-            )}
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0] shrink-0">
+            {profileImageUrl && <img src={profileImageUrl} alt="you" className="w-full h-full object-cover" />}
           </div>
-          <button
-            onClick={() => selfieRef.current?.click()}
-            className="text-sm border border-stone-300 rounded px-3 py-1.5 hover:border-amber-600 hover:text-amber-700"
-          >
-            {profileImageUrl ? 'Replace photo' : 'Add a photo'}
+          <button onClick={() => selfieRef.current?.click()} className="text-xs border border-[#E5DDD0] px-3 py-1.5 text-[#6B6058] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors font-light tracking-wide">
+            {profileImageUrl ? 'Replace' : 'Add photo'}
           </button>
-          {profileImageUrl && (
-            <button onClick={removeProfile} className="text-sm text-stone-400 hover:text-red-700">
-              Remove
-            </button>
-          )}
+          {profileImageUrl && <button onClick={removeProfile} className="text-xs text-[#A89F96] hover:text-red-600 transition-colors font-light">Remove</button>}
         </div>
-      </section>
+      </div>
 
       {/* Weather */}
-      <section className="bg-white border border-stone-200 rounded-lg p-4">
-        <h2 className="text-xs uppercase tracking-wide text-stone-500 mb-2">Today's weather</h2>
+      <div className="border border-[#E5DDD0] bg-white p-4">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Today's weather</p>
         {locating ? (
-          <div className="flex items-center gap-2 text-sm text-stone-500">
-            <Loader2 className="animate-spin" size={16} /> Checking live weather...
+          <div className="flex items-center gap-2 text-sm text-[#A89F96] font-light">
+            <Loader2 className="animate-spin" size={14} /> Detecting location...
           </div>
         ) : weather ? (
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <WeatherIcon condition={weather.condition} />
               <div>
-                <p className="font-serif text-xl">{Math.round(weather.tempF)}°F</p>
-                <p className="text-xs text-stone-500">
-                  {weather.locationName} · {weather.condition}
-                </p>
+                <p className="font-serif text-2xl text-[#1A1714]">{Math.round(weather.tempF)}°F</p>
+                <p className="text-xs text-[#A89F96] font-light">{weather.locationName} · {weather.condition}</p>
               </div>
             </div>
-            <button
-              onClick={() =>
-                needsCity
-                  ? loadWeather(`city=${encodeURIComponent(city)}`)
-                  : detectLocation()
-              }
-              className="text-stone-400 hover:text-amber-700"
-              aria-label="Refresh weather"
-            >
-              <RefreshCw size={16} />
+            <button onClick={() => needsCity ? loadWeather(`city=${encodeURIComponent(city)}`) : detectLocation()} className="text-[#A89F96] hover:text-[#9B7B3A] transition-colors">
+              <RefreshCw size={14} />
             </button>
           </div>
         ) : (
-          <p className="text-sm text-stone-400">No reading yet.</p>
+          <button onClick={detectLocation} className="text-xs text-[#9B7B3A] font-light tracking-wide hover:underline underline-offset-2">
+            Detect my location
+          </button>
         )}
-        {weatherErr && <p className="text-xs text-red-700 mt-2">{weatherErr}</p>}
+        {weatherErr && <p className="text-xs text-[#A89F96] mt-2 font-light">{weatherErr}</p>}
         {needsCity && (
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-3">
             <input
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="City, State or City, Country"
-              className="flex-1 border border-stone-300 rounded px-2 py-1.5 text-sm"
+              placeholder="City, Country"
+              className="flex-1 border border-[#E5DDD0] px-3 py-1.5 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
               onKeyDown={(e) => e.key === 'Enter' && city && loadWeather(`city=${encodeURIComponent(city)}`)}
             />
             <button
               onClick={() => loadWeather(`city=${encodeURIComponent(city)}`)}
               disabled={!city || locating}
-              className="px-3 py-1.5 text-sm bg-stone-900 text-stone-50 rounded disabled:opacity-50"
+              className="px-3 py-1.5 text-xs bg-[#1A1714] text-white font-light tracking-wide disabled:opacity-40"
             >
               Get weather
             </button>
           </div>
         )}
-      </section>
+      </div>
 
       {/* Occasion */}
-      <section>
-        <h2 className="text-xs uppercase tracking-wide text-stone-500 mb-2">Occasion</h2>
+      <div>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Occasion</p>
         <div className="flex flex-wrap gap-2">
           {OCCASIONS.map((o) => (
             <button
               key={o}
               onClick={() => setOccasion(o)}
-              className={`px-3 py-1.5 text-sm rounded-full border ${
+              className={`px-3 py-1.5 text-xs font-light tracking-wide border transition-colors ${
                 occasion === o
-                  ? 'bg-amber-700 text-white border-amber-700'
-                  : 'border-stone-300 text-stone-600'
+                  ? 'bg-[#1A1714] text-white border-[#1A1714]'
+                  : 'border-[#E5DDD0] text-[#6B6058] hover:border-[#9B7B3A]'
               }`}
             >
               {o}
@@ -351,33 +317,29 @@ export default function OutfitTab({
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Add context (dress code, venue, vibe)..."
-          className="w-full mt-2 border border-stone-300 rounded px-2 py-1.5 text-sm"
+          placeholder="Add context — dress code, venue, vibe..."
+          className="w-full mt-2 border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
         />
-      </section>
+      </div>
 
       <button
         onClick={handleGenerate}
         disabled={generating || items.length === 0}
-        className="w-full flex items-center justify-center gap-2 bg-stone-900 text-stone-50 rounded py-3 text-sm font-medium hover:bg-stone-800 disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 bg-[#1A1714] text-white py-3.5 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors"
       >
         {generating ? (
-          <><Loader2 className="animate-spin" size={16} /> Styling your looks...</>
+          <><Loader2 className="animate-spin" size={14} /> Styling your looks...</>
         ) : (
-          <><Sparkles size={16} /> Generate outfits</>
+          <><Sparkles size={14} /> Generate outfits</>
         )}
       </button>
 
-      {genErr && <p className="text-sm text-red-700">{genErr}</p>}
-      {items.length === 0 && (
-        <p className="text-xs text-stone-400 text-center">Add a few pieces to your closet first.</p>
-      )}
+      {genErr && <p className="text-sm text-red-700 font-light">{genErr}</p>}
+      {items.length === 0 && <p className="text-xs text-[#A89F96] text-center font-light">Add a few pieces to your closet first.</p>}
 
       {outfits && (
-        <div className="space-y-4 pt-2">
-          {outfits.map((o, idx) => (
-            <OutfitCard key={idx} outfit={o} items={items} />
-          ))}
+        <div className="space-y-4 pt-1">
+          {outfits.map((o, idx) => <OutfitCard key={idx} outfit={o} items={items} />)}
         </div>
       )}
     </div>

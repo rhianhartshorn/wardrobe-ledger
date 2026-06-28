@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 
 type WardrobeItem = {
+  id: string;
   category: string;
   name: string;
   primaryColor: string;
@@ -19,8 +20,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Need at least 3 items for a meaningful analysis' }, { status: 400 });
     }
 
-    // Items are referenced by 1-based position number — far cheaper token-wise
-    // than sending full UUIDs, and we map back on the client.
     const itemListText = items
       .map(
         (it, idx) =>
@@ -28,16 +27,25 @@ export async function POST(req: NextRequest) {
       )
       .join('\n');
 
-    const prompt = `You are assessing a real wardrobe's overall versatility — not for one occasion, but across casual, business, and going-out contexts in general. For each item, judge roughly how many genuinely tasteful outfit combinations it could form within this same wardrobe, weighing color/pattern compatibility, formality matching, and how reusable a piece like this tends to be across different looks. Score every single item from 0 (clashes with nearly everything here, or wrong formality for the rest) to 10 (pairs with almost anything here).
+    const prompt = `You are a sophisticated personal stylist evaluating a real wardrobe. Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear.
 
-Wardrobe, numbered (number :: details):
+SCORING RUBRIC (0–10):
+- Versatility within THIS wardrobe: how many outfits it unlocks with other items here (0–4 pts)
+- Occasion necessity: even rarely-worn items score high if they fill an irreplaceable role (e.g. a wedding guest dress, a black-tie blazer, a smart interview suit = high necessity). Don't penalise occasion-specific pieces for being specialised. (0–3 pts)
+- Wardrobe gaps filled: does this item cover a season, formality level, or color that would otherwise be missing? (0–2 pts)
+- Condition/trend relevance: is this a timeless piece or something that dates quickly? (0–1 pt)
+
+Wardrobe (number :: details):
 ${itemListText}
 
-Respond with ONLY valid JSON, no markdown fences, no other text, in exactly this shape, using the item numbers above (not names):
-{"rankings":[{"i":1,"score":7}],"mostVersatile":[{"i":1,"reason":"max 10 words"}],"leastVersatile":[{"i":1,"reason":"max 10 words"}]}
-Include exactly one ranking entry per item number. mostVersatile and leastVersatile should each list the 3 most extreme items.`;
+Also recommend exactly 3 items to purchase that would make this wardrobe work significantly harder — focusing on unlocking combinations that aren't currently possible, filling formality or season gaps, or acting as a versatile "bridge" piece.
 
-    const raw = await callClaude({ prompt, maxTokens: 1000 });
+Respond with ONLY valid JSON, no markdown fences, no other text:
+{"rankings":[{"i":1,"score":7,"verdict":"one sentence, max 12 words, on why it earned this score"}],"mostValuable":[{"i":1,"reason":"max 12 words"}],"worthReconsidering":[{"i":1,"reason":"max 12 words"}],"purchases":[{"item":"specific item name e.g. Ivory silk slip dress","why":"max 15 words on what combinations it unlocks","pairsWith":[1,3]}]}
+
+Include exactly one ranking entry per item. mostValuable and worthReconsidering: 3 items each. purchases: exactly 3.`;
+
+    const raw = await callClaude({ prompt, maxTokens: 1500 });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {

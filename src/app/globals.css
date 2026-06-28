@@ -1,3 +1,23 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --ivory: #FAFAF7;
+  --border: #E5DDD0;
+  --ink: #1A1714;
+  --ink-mid: #6B6058;
+  --ink-light: #A89F96;
+  --gold: #9B7B3A;
+  --gold-pale: #F5EDD8;
+}
+
+body {
+  background: var(--ivory);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }

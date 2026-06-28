@@ -38,7 +38,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
     }
 
-    // Load profile photo from DB if one is saved
     let profileImageBase64: string | undefined;
     let profileMediaType = 'image/jpeg';
     if (profileImageFilename) {
@@ -58,14 +57,14 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? "The attached photo is of the client who will wear these outfits. In each rationale, weave in one brief, respectful, flattering coloring or contrast observation tied to the photo (e.g. how a color reads against their skin tone or hair) — never comment on body shape, weight, or size. Skip it if there's nothing useful to say. "
+      ? "The attached photo is of the client who will wear these outfits. In each rationale, weave in one brief, respectful, flattering coloring or contrast observation tied to the photo — never comment on body shape, weight, or size. "
       : '';
 
     const today = new Date().toLocaleDateString('en-US', {
       year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}You may do ONE brief web search to confirm what's currently fashionable for this kind of occasion if helpful, then stop searching.
+    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}Use web search to find 1–2 real, specific, currently-shoppable pages (editorial lookbooks, brand pages, or style guides) that show the aesthetic of each outfit — return real URLs you found via search, not invented ones.
 
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}
@@ -73,15 +72,15 @@ Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.conditi
 Wardrobe (id :: details):
 ${itemListText}
 
-Using ONLY items from this wardrobe list (reference them by their exact id), assemble exactly 3 distinct, polished outfit combinations suited to the occasion and weather. For each, name the current style aesthetic or trend it most resembles — be specific, not generic (something a real style search would surface). Respond with ONLY valid JSON, no markdown fences, no other text, in exactly this shape:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"max 6 words naming the specific current aesthetic/trend","rationale":"max 20 words on why it works for the occasion, current style, and weather","accessorizing":["tip 1 max 8 words","tip 2 max 8 words"],"weatherNote":"max 15 words"}]}`;
+Using ONLY items from this wardrobe list (reference them by their exact id), assemble exactly 3 distinct, polished outfit combinations. For each, name the current style aesthetic (be specific — something a real style search would surface). Find real inspiration links via web search. Respond with ONLY valid JSON, no markdown fences:
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific current aesthetic max 6 words","rationale":"max 20 words on why it works","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words","inspirationLinks":[{"label":"Source name + what it shows, max 8 words","url":"real URL you found"}]}]}`;
 
     const raw = await callClaude({
       prompt,
       imageBase64: profileImageBase64,
       mediaType: profileMediaType,
       useWebSearch: true,
-      maxTokens: 1500,
+      maxTokens: 2000,
     });
 
     const parsed = parseJSON(raw) as { outfits?: unknown[] };

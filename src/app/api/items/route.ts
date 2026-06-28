@@ -24,7 +24,6 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as Record<string, string>;
-    console.log('[items POST] keys:', Object.keys(body).join(','), 'imageDataUrl length:', (body.imageDataUrl ?? '').length);
     const {
       id, name, category,
       primaryColor = '', secondaryColor = '',
