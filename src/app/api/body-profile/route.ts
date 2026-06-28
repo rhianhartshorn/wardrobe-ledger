@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSetting, setSetting } from '@/lib/db';
 import { type BodyProfile, EMPTY_PROFILE } from '@/lib/body-profile';
 
-export type { BodyProfile };
-export { EMPTY_PROFILE };
-
 export async function GET() {
   try {
     const raw = await getSetting('body_profile');
