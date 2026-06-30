@@ -349,7 +349,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
 
       {queue.length === 0 && (
         <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-          <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
           <Camera size={24} />
           <div className="text-center">
             <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
@@ -388,7 +388,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
 
           {/* Add more */}
           <label className="w-full border border-dashed border-[#D6CFC0] py-3 flex items-center justify-center gap-2 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-            <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+            <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
             <Camera size={13} />
             <span className="text-[10px] uppercase tracking-[0.15em] font-light">Add more photos</span>
           </label>
