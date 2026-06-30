@@ -8,6 +8,7 @@ import OutfitTab from '@/components/OutfitTab';
 import StyleTab from '@/components/StyleTab';
 import MirrorTab from '@/components/MirrorTab';
 import LooksTab from '@/components/LooksTab';
+import CombinationsTab from '@/components/CombinationsTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
 import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -27,7 +28,7 @@ export type WardrobeItem = {
   addedAt: number;
 };
 
-type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror' | 'looks';
+type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror' | 'looks' | 'combos';
 
 export default function WardrobeApp() {
   const [tab, setTab] = useState<Tab>('closet');
@@ -127,6 +128,8 @@ export default function WardrobeApp() {
           <StyleTab items={items} bodyProfile={bodyProfile} />
         ) : tab === 'looks' ? (
           <LooksTab items={items} />
+        ) : tab === 'combos' ? (
+          <CombinationsTab items={items} />
         ) : (
           <MirrorTab items={items} bodyProfile={bodyProfile} />
         )}

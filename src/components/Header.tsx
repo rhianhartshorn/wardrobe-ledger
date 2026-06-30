@@ -1,11 +1,12 @@
-import { Shirt, ImagePlus, Sparkles, BarChart3, Gem, UserCircle, Heart } from 'lucide-react';
+import { Shirt, ImagePlus, Sparkles, BarChart3, Gem, UserCircle, Heart, Layers } from 'lucide-react';
 
-type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror' | 'looks';
+type Tab = 'closet' | 'add' | 'outfit' | 'combos' | 'style' | 'mirror' | 'looks';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'closet', label: 'Closet', icon: Shirt },
   { id: 'add', label: 'Add', icon: ImagePlus },
   { id: 'outfit', label: 'Outfit', icon: Sparkles },
+  { id: 'combos', label: 'Combinations', icon: Layers },
   { id: 'looks', label: 'Looks', icon: Heart },
   { id: 'style', label: 'Style DNA', icon: Gem },
   { id: 'mirror', label: 'Mirror', icon: BarChart3 },
