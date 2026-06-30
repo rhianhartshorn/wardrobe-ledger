@@ -200,6 +200,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [uploadErr, setUploadErr] = useState('');
 
   const update = (localId: string, patch: Partial<QueueItem>) => {
     setQueue((q) => q.map((it) => it.localId === localId ? { ...it, ...patch } : it));
@@ -214,8 +215,9 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     if (!files.length) return;
     if (fileRef.current) fileRef.current.value = '';
 
-    // Add all to queue as pending first
-    const newItems: QueueItem[] = await Promise.all(
+    // Add all to queue as pending first — isolate failures per file so one bad
+    // photo (unsupported format, corrupt file) doesn't silently drop the whole batch
+    const results = await Promise.allSettled(
       files.map(async (file) => {
         const preview = await compressImage(file, 200, 0.5);
         return {
@@ -230,6 +232,23 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
       })
     );
 
+    const newItems: QueueItem[] = [];
+    const failures: string[] = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') newItems.push(r.value);
+      else {
+        console.error('Failed to process photo', files[i]?.name, r.reason);
+        failures.push(files[i]?.name ?? 'a photo');
+      }
+    });
+
+    if (failures.length) {
+      setUploadErr(`Couldn't read ${failures.join(', ')} — try a JPEG or PNG.`);
+    } else {
+      setUploadErr('');
+    }
+
+    if (newItems.length === 0) return;
     setQueue((q) => [...q, ...newItems]);
 
     // Process each sequentially
@@ -319,6 +338,12 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
       {savedCount > 0 && (
         <div className="flex items-center gap-2 border border-green-200 bg-green-50 text-green-800 text-xs px-3 py-2.5 font-light">
           <Check size={13} /> {savedCount} {savedCount === 1 ? 'piece' : 'pieces'} added to your closet.
+        </div>
+      )}
+
+      {uploadErr && (
+        <div className="flex items-center gap-2 border border-red-200 bg-red-50 text-red-800 text-xs px-3 py-2.5 font-light">
+          <AlertTriangle size={13} className="shrink-0" /> {uploadErr}
         </div>
       )}
 
