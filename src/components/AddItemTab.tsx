@@ -212,7 +212,6 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
-    setUploadErr(`Debug: input fired, ${files.length} file(s) received.`);
     if (!files.length) return;
     if (fileRef.current) fileRef.current.value = '';
 
