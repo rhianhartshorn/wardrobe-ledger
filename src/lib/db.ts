@@ -2,7 +2,12 @@ import 'server-only';
 
 const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL!;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!;
-const KEY = 'wardrobe';
+const KEY = 'wardrobe'; // legacy blob — settings/images only now, see migration note below
+
+const ITEMS_KEY = 'wardrobe:items';
+const LOOKS_KEY = 'wardrobe:looks';
+const JOURNAL_KEY = 'wardrobe:journal';
+const MIGRATION_FLAG_KEY = 'wardrobe:migrated_v2';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,8 +79,36 @@ async function redisSet(key: string, value: string): Promise<void> {
   });
 }
 
+// Generic single-command call (atomic on Upstash's side — no read-modify-write
+// race like the old whole-blob pattern had). Body is a JSON array: ["HSET", key, field, value]
+async function redisCmd<T = unknown>(...args: (string | number)[]): Promise<T> {
+  const res = await fetch(REDIS_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+    cache: 'no-store',
+  });
+  const json = await res.json() as { result: T };
+  return json.result;
+}
+
+function parseHashValues<T>(raw: unknown): T[] {
+  const out: T[] = [];
+  if (Array.isArray(raw)) {
+    for (let i = 1; i < raw.length; i += 2) {
+      try { out.push(JSON.parse(raw[i] as string) as T); } catch { /* skip corrupt entry */ }
+    }
+  } else if (raw && typeof raw === 'object') {
+    for (const v of Object.values(raw as Record<string, string>)) {
+      try { out.push(JSON.parse(v) as T); } catch { /* skip corrupt entry */ }
+    }
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
-// Read / write
+// Legacy blob read/write — settings + images only (low write frequency,
+// read-modify-write race risk is acceptable here for now)
 // ---------------------------------------------------------------------------
 
 async function read(): Promise<Store> {
@@ -100,30 +133,53 @@ async function write(store: Store): Promise<void> {
   await redisSet(KEY, JSON.stringify(store));
 }
 
+// One-time migration of items/savedLooks/journalEntries out of the old blob
+// into atomic hashes, guarded by a flag so deleted data never reappears.
+let migrationChecked = false;
+async function migrateToHashesIfNeeded(): Promise<void> {
+  if (migrationChecked) return;
+  const done = await redisCmd<string | null>('GET', MIGRATION_FLAG_KEY);
+  if (done) { migrationChecked = true; return; }
+
+  const store = await read();
+  for (const item of store.items) {
+    await redisCmd('HSET', ITEMS_KEY, item.id, JSON.stringify(item));
+  }
+  for (const look of store.savedLooks) {
+    await redisCmd('HSET', LOOKS_KEY, look.id, JSON.stringify(look));
+  }
+  for (const entry of store.journalEntries) {
+    await redisCmd('HSET', JOURNAL_KEY, entry.id, JSON.stringify(entry));
+  }
+  await redisCmd('SET', MIGRATION_FLAG_KEY, '1');
+  migrationChecked = true;
+}
+
 // ---------------------------------------------------------------------------
-// Item helpers
+// Item helpers — atomic hash operations, no lost-update risk
 // ---------------------------------------------------------------------------
 
 export async function getAllItems(): Promise<ItemRow[]> {
-  const store = await read();
-  return store.items.sort((a, b) => b.added_at - a.added_at);
+  await migrateToHashesIfNeeded();
+  const raw = await redisCmd('HGETALL', ITEMS_KEY);
+  return parseHashValues<ItemRow>(raw).sort((a, b) => b.added_at - a.added_at);
 }
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
-  const store = await read();
-  return store.items.find((i) => i.id === id);
+  await migrateToHashesIfNeeded();
+  const raw = await redisCmd<string | null>('HGET', ITEMS_KEY, id);
+  if (!raw) return undefined;
+  try { return JSON.parse(raw) as ItemRow; } catch { return undefined; }
 }
 
 export async function insertItem(item: ItemRow): Promise<void> {
-  const store = await read();
-  store.items.push(item);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HSET', ITEMS_KEY, item.id, JSON.stringify(item));
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const store = await read();
-  store.items = store.items.filter((i) => i.id !== id);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HDEL', ITEMS_KEY, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -173,43 +229,41 @@ export async function deleteSetting(key: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Saved looks
+// Saved looks — atomic hash operations
 // ---------------------------------------------------------------------------
 
 export async function getSavedLooks(): Promise<SavedLook[]> {
-  const store = await read();
-  return store.savedLooks.sort((a, b) => b.savedAt - a.savedAt);
+  await migrateToHashesIfNeeded();
+  const raw = await redisCmd('HGETALL', LOOKS_KEY);
+  return parseHashValues<SavedLook>(raw).sort((a, b) => b.savedAt - a.savedAt);
 }
 
 export async function addSavedLook(look: SavedLook): Promise<void> {
-  const store = await read();
-  store.savedLooks.push(look);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HSET', LOOKS_KEY, look.id, JSON.stringify(look));
 }
 
 export async function deleteSavedLook(id: string): Promise<void> {
-  const store = await read();
-  store.savedLooks = store.savedLooks.filter((l) => l.id !== id);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HDEL', LOOKS_KEY, id);
 }
 
 // ---------------------------------------------------------------------------
-// Outfit journal
+// Outfit journal — atomic hash operations
 // ---------------------------------------------------------------------------
 
 export async function getJournalEntries(): Promise<JournalEntry[]> {
-  const store = await read();
-  return store.journalEntries.sort((a, b) => b.loggedAt - a.loggedAt);
+  await migrateToHashesIfNeeded();
+  const raw = await redisCmd('HGETALL', JOURNAL_KEY);
+  return parseHashValues<JournalEntry>(raw).sort((a, b) => b.loggedAt - a.loggedAt);
 }
 
 export async function addJournalEntry(entry: JournalEntry): Promise<void> {
-  const store = await read();
-  store.journalEntries.push(entry);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HSET', JOURNAL_KEY, entry.id, JSON.stringify(entry));
 }
 
 export async function deleteJournalEntry(id: string): Promise<void> {
-  const store = await read();
-  store.journalEntries = store.journalEntries.filter((e) => e.id !== id);
-  await write(store);
+  await migrateToHashesIfNeeded();
+  await redisCmd('HDEL', JOURNAL_KEY, id);
 }
