@@ -129,7 +129,7 @@ export default function WardrobeApp() {
         ) : tab === 'looks' ? (
           <LooksTab items={items} />
         ) : tab === 'combos' ? (
-          <CombinationsTab items={items} />
+          <CombinationsTab items={items} bodyProfile={bodyProfile} />
         ) : (
           <MirrorTab items={items} bodyProfile={bodyProfile} />
         )}
