@@ -350,9 +350,13 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         </div>
       )}
 
+      {/* Single persistent input — never unmounted between renders, so the
+          browser's file-picker association can't get lost on repeat uploads.
+          Both trigger labels below point at it via htmlFor instead of wrapping it. */}
+      <input id="photo-upload-input" type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+
       {queue.length === 0 && (
-        <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-          <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+        <label htmlFor="photo-upload-input" className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
           <Camera size={24} />
           <div className="text-center">
             <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
@@ -390,8 +394,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
           </div>
 
           {/* Add more */}
-          <label className="w-full border border-dashed border-[#D6CFC0] py-3 flex items-center justify-center gap-2 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-            <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+          <label htmlFor="photo-upload-input" className="w-full border border-dashed border-[#D6CFC0] py-3 flex items-center justify-center gap-2 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
             <Camera size={13} />
             <span className="text-[10px] uppercase tracking-[0.15em] font-light">Add more photos</span>
           </label>
