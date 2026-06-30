@@ -22,14 +22,36 @@ export type ItemRow = {
   added_at: number;
 };
 
+export type SavedLook = {
+  id: string;
+  title: string;
+  itemIds: string[];
+  styleReference?: string;
+  rationale?: string;
+  accessorizing?: string[];
+  savedAt: number;
+};
+
+export type JournalEntry = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  itemIds: string[];
+  occasion?: string;
+  weatherNote?: string;
+  savedLookId?: string;
+  loggedAt: number;
+};
+
 type Store = {
   items: ItemRow[];
   settings: Record<string, string>;
   images: Record<string, string>;
   imageTypes: Record<string, string>;
+  savedLooks: SavedLook[];
+  journalEntries: JournalEntry[];
 };
 
-const EMPTY: Store = { items: [], settings: {}, images: {}, imageTypes: {} };
+const EMPTY: Store = { items: [], settings: {}, images: {}, imageTypes: {}, savedLooks: [], journalEntries: [] };
 
 // ---------------------------------------------------------------------------
 // Redis REST helpers
@@ -66,6 +88,8 @@ async function read(): Promise<Store> {
       settings: parsed.settings ?? {},
       images: parsed.images ?? {},
       imageTypes: parsed.imageTypes ?? {},
+      savedLooks: parsed.savedLooks ?? [],
+      journalEntries: parsed.journalEntries ?? [],
     };
   } catch {
     return { ...EMPTY };
@@ -145,5 +169,47 @@ export async function setSetting(key: string, value: string): Promise<void> {
 export async function deleteSetting(key: string): Promise<void> {
   const store = await read();
   delete store.settings[key];
+  await write(store);
+}
+
+// ---------------------------------------------------------------------------
+// Saved looks
+// ---------------------------------------------------------------------------
+
+export async function getSavedLooks(): Promise<SavedLook[]> {
+  const store = await read();
+  return store.savedLooks.sort((a, b) => b.savedAt - a.savedAt);
+}
+
+export async function addSavedLook(look: SavedLook): Promise<void> {
+  const store = await read();
+  store.savedLooks.push(look);
+  await write(store);
+}
+
+export async function deleteSavedLook(id: string): Promise<void> {
+  const store = await read();
+  store.savedLooks = store.savedLooks.filter((l) => l.id !== id);
+  await write(store);
+}
+
+// ---------------------------------------------------------------------------
+// Outfit journal
+// ---------------------------------------------------------------------------
+
+export async function getJournalEntries(): Promise<JournalEntry[]> {
+  const store = await read();
+  return store.journalEntries.sort((a, b) => b.loggedAt - a.loggedAt);
+}
+
+export async function addJournalEntry(entry: JournalEntry): Promise<void> {
+  const store = await read();
+  store.journalEntries.push(entry);
+  await write(store);
+}
+
+export async function deleteJournalEntry(id: string): Promise<void> {
+  const store = await read();
+  store.journalEntries = store.journalEntries.filter((e) => e.id !== id);
   await write(store);
 }

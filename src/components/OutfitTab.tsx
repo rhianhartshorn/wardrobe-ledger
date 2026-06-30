@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight } from 'lucide-react';
+import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
@@ -70,13 +70,23 @@ type Outfit = {
   inspirationLinks?: InspirationLink[];
 };
 
-function OutfitCard({ outfit, items, onLearnMore }: { outfit: Outfit; items: WardrobeItem[]; onLearnMore: () => void }) {
+function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving }: { outfit: Outfit; items: WardrobeItem[]; onLearnMore: () => void; onSave: () => void; saved: boolean; saving: boolean }) {
   const pieces = outfit.itemIds
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
 
   return (
-    <div className="border border-[#E5DDD0] bg-white">
+    <div className="border border-[#E5DDD0] bg-white relative">
+      <button
+        onClick={onSave}
+        disabled={saving || saved}
+        title={saved ? 'Saved to your looks' : 'Save this look'}
+        className={`absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+          outfit.inspirationImageUrl ? 'bg-black/30 hover:bg-black/50' : 'bg-white/90 border border-[#E5DDD0] hover:border-[#9B7B3A]'
+        }`}
+      >
+        <Heart size={14} className={saved ? 'fill-[#9B7B3A] text-[#9B7B3A]' : outfit.inspirationImageUrl ? 'text-white' : 'text-[#A89F96]'} />
+      </button>
       {outfit.inspirationImageUrl && (
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#F5F2EC]">
           <img
@@ -174,7 +184,28 @@ export default function OutfitTab({
   const [genErr, setGenErr] = useState('');
   const [outfits, setOutfits] = useState<Outfit[] | null>(null);
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
+  const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
   const triedAuto = useRef(false);
+
+  const saveLook = async (idx: number, o: Outfit) => {
+    setSavingIdx(idx);
+    try {
+      await fetch('/api/looks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: o.title,
+          itemIds: o.itemIds,
+          styleReference: o.styleReference,
+          rationale: o.rationale,
+          accessorizing: o.accessorizing,
+        }),
+      });
+      setSavedIdx((prev) => new Set(prev).add(idx));
+    } catch { /* ignore */ }
+    finally { setSavingIdx(null); }
+  };
 
   const loadWeather = async (qs: string) => {
     setLocating(true); setWeatherErr('');
@@ -228,7 +259,7 @@ export default function OutfitTab({
   const handleGenerate = async () => {
     if (items.length === 0) { setGenErr('Add a few wardrobe items first.'); return; }
     if (!weather) { setGenErr('Get a weather reading first.'); return; }
-    setGenerating(true); setGenErr(''); setOutfits(null);
+    setGenerating(true); setGenErr(''); setOutfits(null); setSavedIdx(new Set());
     try {
       const res = await fetch('/api/outfit', {
         method: 'POST',
@@ -351,10 +382,15 @@ export default function OutfitTab({
       {outfits && (
         <div className="space-y-4 pt-1">
           {outfits.map((o, idx) => (
-            <OutfitCard key={idx} outfit={o} items={items} onLearnMore={() => {
-              const pieces = o.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
-              setLearnMore({ type: 'outfit', title: o.title, context: `Aesthetic: ${o.styleReference ?? ''}. ${o.rationale ?? ''}. Pieces: ${pieces.map((p) => p.name).join(', ')}`, relevantItems: pieces, onClose: () => setLearnMore(null) });
-            }} />
+            <OutfitCard
+              key={idx} outfit={o} items={items}
+              saved={savedIdx.has(idx)} saving={savingIdx === idx}
+              onSave={() => saveLook(idx, o)}
+              onLearnMore={() => {
+                const pieces = o.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+                setLearnMore({ type: 'outfit', title: o.title, context: `Aesthetic: ${o.styleReference ?? ''}. ${o.rationale ?? ''}. Pieces: ${pieces.map((p) => p.name).join(', ')}`, relevantItems: pieces, onClose: () => setLearnMore(null) });
+              }}
+            />
           ))}
         </div>
       )}
