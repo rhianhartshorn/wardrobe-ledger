@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Camera, Loader2, Check, AlertTriangle, X, ChevronDown, ChevronUp } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage } from './utils';
@@ -196,7 +196,6 @@ function QueueCard({
 }
 
 export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeItem) => void; items: WardrobeItem[] }) {
-  const fileRef = useRef<HTMLInputElement>(null); // kept for reset only
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
@@ -211,9 +210,9 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
   };
 
   const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
+    const inputEl = e.target;
+    const files = Array.from(inputEl.files ?? []);
     if (!files.length) return;
-    if (fileRef.current) fileRef.current.value = '';
 
     // Add all to queue as pending first — isolate failures per file so one bad
     // photo (unsupported format, corrupt file) doesn't silently drop the whole batch
@@ -295,6 +294,10 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         } : it));
       }
     }
+
+    // Reset after everything is done processing — not synchronously during the
+    // change event, which some mobile WebKit versions handle unreliably.
+    inputEl.value = '';
   };
 
   const handleSaveAll = async () => {
@@ -349,7 +352,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
 
       {queue.length === 0 && (
         <label className="w-full border border-dashed border-[#D6CFC0] py-10 flex flex-col items-center gap-3 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+          <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
           <Camera size={24} />
           <div className="text-center">
             <p className="text-xs tracking-[0.12em] uppercase font-light">Select photos</p>
@@ -388,7 +391,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
 
           {/* Add more */}
           <label className="w-full border border-dashed border-[#D6CFC0] py-3 flex items-center justify-center gap-2 text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors cursor-pointer">
-            <input ref={fileRef} type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
+            <input type="file" accept="image/*" multiple onChange={handleFiles} className="sr-only" />
             <Camera size={13} />
             <span className="text-[10px] uppercase tracking-[0.15em] font-light">Add more photos</span>
           </label>
