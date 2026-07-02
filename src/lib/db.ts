@@ -88,7 +88,8 @@ async function redisCmd<T = unknown>(...args: (string | number)[]): Promise<T> {
     body: JSON.stringify(args),
     cache: 'no-store',
   });
-  const json = await res.json() as { result: T };
+  const json = await res.json() as { result: T; error?: string };
+  if (json.error) throw new Error(`Redis error: ${json.error}`);
   return json.result;
 }
 

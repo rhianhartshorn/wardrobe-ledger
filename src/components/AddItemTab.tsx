@@ -126,6 +126,13 @@ function QueueCard({
         </div>
       </div>
 
+      {/* Error detail */}
+      {status === 'error' && item.error && (
+        <div className="border-t border-red-100 bg-red-50 px-3 py-2">
+          <p className="text-[10px] text-red-700 font-light">{item.error}</p>
+        </div>
+      )}
+
       {/* Duplicate warning */}
       {status === 'duplicate' && !confirmedDuplicate && duplicateOf && duplicateOf.length > 0 && (
         <div className="border-t border-amber-100 bg-amber-50 px-3 py-2 space-y-2">
@@ -320,8 +327,9 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         onAdd(data);
         update(qi.localId, { status: 'saved' });
         count++;
-      } catch {
-        update(qi.localId, { status: 'error', error: 'Save failed — try again.' });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Save failed — try again.';
+        update(qi.localId, { status: 'error', error: msg });
       }
     }
     setSavedCount((n) => n + count);

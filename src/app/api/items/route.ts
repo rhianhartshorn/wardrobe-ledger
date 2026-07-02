@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllItems, getItem, insertItem, type ItemRow } from '@/lib/db';
+import { getAllItems, insertItem, type ItemRow } from '@/lib/db';
 
 function toClient(row: ItemRow) {
   return {
@@ -47,8 +47,7 @@ export async function POST(req: NextRequest) {
     };
 
     await insertItem(row);
-    const saved = await getItem(id);
-    return NextResponse.json(toClient(saved!), { status: 201 });
+    return NextResponse.json(toClient(row), { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
