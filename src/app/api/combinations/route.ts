@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const profileLine = profileCtx ? `\n${profileCtx} Every combination you choose and rank must genuinely flatter this body shape and colouring — don't just check logical compatibility, judge whether it's actually a good look for THIS person.\n` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const maxCombos = Math.min(30, Math.max(8, Math.round(items.length * 1.2)));
+    const maxCombos = Math.min(20, Math.max(6, Math.round(items.length * 0.8)));
 
     const prompt = `You are a working fashion editor and personal stylist with sharp, current taste. Today is ${today}.${profileLine}
 
@@ -38,16 +38,12 @@ A client has given you their full real wardrobe. Your job is NOT to list every l
 Wardrobe (id :: details):
 ${itemListText}
 
-Create up to ${maxCombos} of the BEST outfit combinations possible from this wardrobe — using ONLY items from the list above, referenced by their exact id. Every combination must use at least 2 items and should feel like a complete, intentional outfit (not just a random pairing). You may include an optional outerwear or accessory item if it elevates the look.
+Create up to ${maxCombos} of the BEST outfit combinations from this wardrobe — using ONLY the exact ids above. Each combination needs at least 2 items. Order best to good. Be selective: only include combinations you'd genuinely recommend.
 
-Order them from best to good — rank #1 should be the single most stylish, wearable, true-to-2026 combination this wardrobe can produce. Be genuinely selective: a smaller list of excellent combinations beats a long list of mediocre ones. Skip combinations that are merely "fine" — only include ones you'd actually recommend.
+Respond with ONLY valid JSON, no markdown, no trailing commas:
+{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"max 12 words","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall"}]}`;
 
-For each combination, give it a short editorial category (e.g. "Quiet Luxury Office", "Effortless Weekend", "Date Night Edge", "Elevated Basics") — vary the categories naturally based on what the wardrobe actually supports, don't force variety.
-
-Respond with ONLY valid JSON, no markdown:
-{"combinations":[{"itemIds":["id1","id2"],"title":"max 6 words","category":"editorial category max 4 words","rationale":"max 18 words on specifically why this combination works and looks current","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall"}]}`;
-
-    const raw = await callClaude({ prompt, maxTokens: 4000 });
+    const raw = await callClaude({ prompt, maxTokens: 6000 });
     const parsed = parseJSON(raw) as { combinations?: unknown[] };
     return NextResponse.json({ combinations: parsed.combinations ?? [] });
   } catch (err) {
