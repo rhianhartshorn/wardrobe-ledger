@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const profileLine = profileCtx ? `\n${profileCtx} Every combination you choose and rank must genuinely flatter this body shape and colouring — don't just check logical compatibility, judge whether it's actually a good look for THIS person.\n` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const maxCombos = Math.min(20, Math.max(6, Math.round(items.length * 0.8)));
+    const maxCombos = 20;
 
     const prompt = `You are a working fashion editor and personal stylist with sharp, current taste. Today is ${today}.${profileLine}
 
