@@ -26,22 +26,32 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
-    const profileLine = profileCtx ? `\n${profileCtx} Every combination you choose and rank must genuinely flatter this body shape and colouring — don't just check logical compatibility, judge whether it's actually a good look for THIS person.\n` : '';
+    const profileBlock = profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\nEvery combination must be assessed against this profile — think in terms of silhouette proportion, what elongates or balances this specific body shape, and which colours work with this undertone and hair tone. A combination that doesn't genuinely flatter this person does not make the list.\n` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const maxCombos = 20;
 
-    const prompt = `You are a working fashion editor and personal stylist with sharp, current taste. Today is ${today}.${profileLine}
+    const prompt = `You are a senior fashion stylist with the editorial eye of someone who works across Vogue, The Row, and Net-a-Porter. You have dressed clients at the level of a Parisian personal shopper — your taste is precise, current, and uncompromising. Today is ${today}.
+${profileBlock}
+Your client has shared their wardrobe with you. You are not here to list compatible pairings — you are here to do what a great stylist does: edit ruthlessly, think in full outfits, and identify the combinations that would make someone look genuinely well-dressed in 2026.
 
-A client has given you their full real wardrobe. Your job is NOT to list every logically-compatible pairing — it's to use genuine fashion judgement to identify the combinations that actually look good, feel current for 2026, and flatter this specific person.
+REJECT any combination that:
+- A department store mannequin would wear (safe, predictable, forgettable)
+- Is only compatible but not interesting — colours don't clashing is not enough
+- Doesn't feel intentional — every piece must earn its place
+- Is timeless in a boring way — "classic" is not a justification
+
+ONLY include combinations where you can point to something specific: a proportion that works, a texture contrast that elevates, a colour story that feels current, a silhouette choice that flatters.
+
+Think in terms of 2026 sensibility: relaxed tailoring, tonal dressing, unexpected texture mixing, quiet confidence over logo or trend dressing. What would a well-dressed person in London, Paris, or Copenhagen actually wear?
 
 Wardrobe (id :: details):
 ${itemListText}
 
-Create up to ${maxCombos} of the BEST outfit combinations from this wardrobe — using ONLY the exact ids above. Each combination needs at least 2 items. Order best to good. Be selective: only include combinations you'd genuinely recommend.
+Select up to ${maxCombos} combinations, ranked from the single best outfit this wardrobe can produce down to still-excellent. Use ONLY the exact ids above. Minimum 2 items per combination. A shorter list of genuinely great outfits is far better than padding it out.
 
 Respond with ONLY valid JSON, no markdown, no trailing commas:
-{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"max 12 words","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall"}]}`;
+{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall"}]}`;
 
     const raw = await callClaude({ prompt, maxTokens: 6000 });
     const parsed = parseJSON(raw) as { combinations?: unknown[] };
