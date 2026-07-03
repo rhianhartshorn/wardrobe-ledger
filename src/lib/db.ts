@@ -79,20 +79,52 @@ async function redisSet(key: string, value: string): Promise<void> {
   });
 }
 
-// Single atomic command via Upstash pipeline endpoint.
-// Pipeline format: POST /pipeline with [[cmd, arg1, arg2, ...]]
-// Returns array of {result} — we take index 0.
-async function redisCmd<T = unknown>(...args: (string | number)[]): Promise<T> {
-  const res = await fetch(`${REDIS_URL}/pipeline`, {
+// Hash helpers using the same URL-path format as redisGet/redisSet (proven to work).
+// Value is stored as a raw JSON string; callers pass JSON.stringify(obj) as value.
+
+function enc(s: string) { return encodeURIComponent(s); }
+
+async function checkErr(res: Response): Promise<{ result: unknown; error?: string }> {
+  const json = await res.json() as { result: unknown; error?: string };
+  if (json.error) throw new Error(`Redis error: ${json.error}`);
+  return json;
+}
+
+async function redisHSet(key: string, field: string, value: string): Promise<void> {
+  const res = await fetch(`${REDIS_URL}/hset/${enc(key)}/${enc(field)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify([args]),
+    body: JSON.stringify(value),
     cache: 'no-store',
   });
-  const json = await res.json() as [{ result: T; error?: string }];
-  const item = Array.isArray(json) ? json[0] : (json as { result: T; error?: string });
-  if (item?.error) throw new Error(`Redis error: ${item.error}`);
-  return item?.result;
+  await checkErr(res);
+}
+
+async function redisHDel(key: string, field: string): Promise<void> {
+  const res = await fetch(`${REDIS_URL}/hdel/${enc(key)}/${enc(field)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  await checkErr(res);
+}
+
+async function redisHGetAll(key: string): Promise<unknown> {
+  const res = await fetch(`${REDIS_URL}/hgetall/${enc(key)}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  const json = await checkErr(res);
+  return json.result;
+}
+
+async function redisHGet(key: string, field: string): Promise<string | null> {
+  const res = await fetch(`${REDIS_URL}/hget/${enc(key)}/${enc(field)}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  const json = await checkErr(res);
+  return json.result as string | null;
 }
 
 function parseHashValues<T>(raw: unknown): T[] {
@@ -141,20 +173,20 @@ async function write(store: Store): Promise<void> {
 let migrationChecked = false;
 async function migrateToHashesIfNeeded(): Promise<void> {
   if (migrationChecked) return;
-  const done = await redisCmd<string | null>('GET', MIGRATION_FLAG_KEY);
+  const done = await redisGet(MIGRATION_FLAG_KEY);
   if (done) { migrationChecked = true; return; }
 
   const store = await read();
   for (const item of store.items) {
-    await redisCmd('HSET', ITEMS_KEY, item.id, JSON.stringify(item));
+    await redisHSet(ITEMS_KEY, item.id, JSON.stringify(item));
   }
   for (const look of store.savedLooks) {
-    await redisCmd('HSET', LOOKS_KEY, look.id, JSON.stringify(look));
+    await redisHSet(LOOKS_KEY, look.id, JSON.stringify(look));
   }
   for (const entry of store.journalEntries) {
-    await redisCmd('HSET', JOURNAL_KEY, entry.id, JSON.stringify(entry));
+    await redisHSet(JOURNAL_KEY, entry.id, JSON.stringify(entry));
   }
-  await redisCmd('SET', MIGRATION_FLAG_KEY, '1');
+  await redisSet(MIGRATION_FLAG_KEY, '1');
   migrationChecked = true;
 }
 
@@ -164,25 +196,25 @@ async function migrateToHashesIfNeeded(): Promise<void> {
 
 export async function getAllItems(): Promise<ItemRow[]> {
   await migrateToHashesIfNeeded();
-  const raw = await redisCmd('HGETALL', ITEMS_KEY);
+  const raw = await redisHGetAll(ITEMS_KEY);
   return parseHashValues<ItemRow>(raw).sort((a, b) => b.added_at - a.added_at);
 }
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
   await migrateToHashesIfNeeded();
-  const raw = await redisCmd<string | null>('HGET', ITEMS_KEY, id);
+  const raw = await redisHGet(ITEMS_KEY, id);
   if (!raw) return undefined;
   try { return JSON.parse(raw) as ItemRow; } catch { return undefined; }
 }
 
 export async function insertItem(item: ItemRow): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HSET', ITEMS_KEY, item.id, JSON.stringify(item));
+  await redisHSet(ITEMS_KEY, item.id, JSON.stringify(item));
 }
 
 export async function deleteItem(id: string): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HDEL', ITEMS_KEY, id);
+  await redisHDel(ITEMS_KEY, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -237,18 +269,18 @@ export async function deleteSetting(key: string): Promise<void> {
 
 export async function getSavedLooks(): Promise<SavedLook[]> {
   await migrateToHashesIfNeeded();
-  const raw = await redisCmd('HGETALL', LOOKS_KEY);
+  const raw = await redisHGetAll(LOOKS_KEY);
   return parseHashValues<SavedLook>(raw).sort((a, b) => b.savedAt - a.savedAt);
 }
 
 export async function addSavedLook(look: SavedLook): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HSET', LOOKS_KEY, look.id, JSON.stringify(look));
+  await redisHSet(LOOKS_KEY, look.id, JSON.stringify(look));
 }
 
 export async function deleteSavedLook(id: string): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HDEL', LOOKS_KEY, id);
+  await redisHDel(LOOKS_KEY, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -257,16 +289,16 @@ export async function deleteSavedLook(id: string): Promise<void> {
 
 export async function getJournalEntries(): Promise<JournalEntry[]> {
   await migrateToHashesIfNeeded();
-  const raw = await redisCmd('HGETALL', JOURNAL_KEY);
+  const raw = await redisHGetAll(JOURNAL_KEY);
   return parseHashValues<JournalEntry>(raw).sort((a, b) => b.loggedAt - a.loggedAt);
 }
 
 export async function addJournalEntry(entry: JournalEntry): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HSET', JOURNAL_KEY, entry.id, JSON.stringify(entry));
+  await redisHSet(JOURNAL_KEY, entry.id, JSON.stringify(entry));
 }
 
 export async function deleteJournalEntry(id: string): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisCmd('HDEL', JOURNAL_KEY, id);
+  await redisHDel(JOURNAL_KEY, id);
 }
