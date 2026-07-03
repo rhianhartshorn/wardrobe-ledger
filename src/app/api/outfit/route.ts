@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -74,7 +75,7 @@ Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones
 ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
 ` : '';
 
-    const prompt = `You are a current, tasteful personal stylist working from a client's real wardrobe. Today is ${today}. ${photoLine}
+    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
 ${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}

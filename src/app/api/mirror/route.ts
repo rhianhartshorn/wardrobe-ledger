@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string;
@@ -31,7 +32,7 @@ export async function POST(req: NextRequest) {
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
     const profileLine = profileCtx ? `\nClient profile: ${profileCtx}\nFactor this into purchase recommendations — suggest pieces that work for their body shape and colouring, not generic filler pieces.\n` : '';
 
-    const prompt = `You are a sophisticated personal stylist evaluating a real wardrobe. Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear.
+    const prompt = `${STYLIST_PERSONA} ${STYLIST_2026_LENS} Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear. Be honest: a great stylist tells the truth about what is and isn't working.
 ${profileLine}
 SCORING RUBRIC (0–10):
 - Versatility within THIS wardrobe: how many outfits it unlocks with other items here (0–4 pts)

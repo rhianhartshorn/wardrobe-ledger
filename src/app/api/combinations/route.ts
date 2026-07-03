@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string;
@@ -31,19 +32,15 @@ export async function POST(req: NextRequest) {
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const maxCombos = 20;
 
-    const prompt = `You are a senior fashion stylist with the editorial eye of someone who works across Vogue, The Row, and Net-a-Porter. You have dressed clients at the level of a Parisian personal shopper — your taste is precise, current, and uncompromising. Today is ${today}.
+    const prompt = `${STYLIST_PERSONA} Today is ${today}.
 ${profileBlock}
-Your client has shared their wardrobe with you. You are not here to list compatible pairings — you are here to do what a great stylist does: edit ruthlessly, think in full outfits, and identify the combinations that would make someone look genuinely well-dressed in 2026.
+${STYLIST_2026_LENS}
 
-REJECT any combination that:
-- A department store mannequin would wear (safe, predictable, forgettable)
-- Is only compatible but not interesting — colours don't clashing is not enough
-- Doesn't feel intentional — every piece must earn its place
-- Is timeless in a boring way — "classic" is not a justification
+Your client has shared their wardrobe. Edit ruthlessly — only identify combinations that would make someone look genuinely well-dressed.
 
-ONLY include combinations where you can point to something specific: a proportion that works, a texture contrast that elevates, a colour story that feels current, a silhouette choice that flatters.
+${STYLIST_REJECTION_CRITERIA}
 
-Think in terms of 2026 sensibility: relaxed tailoring, tonal dressing, unexpected texture mixing, quiet confidence over logo or trend dressing. What would a well-dressed person in London, Paris, or Copenhagen actually wear?
+ONLY include combinations where you can point to something specific: a proportion that works, a texture contrast that elevates, a colour story that feels current, a silhouette that flatters this person.
 
 Wardrobe (id :: details):
 ${itemListText}

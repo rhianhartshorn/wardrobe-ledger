@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
@@ -37,7 +38,7 @@ ${bodyProfile.features?.includes('Minimise my bust') ? '- Avoid deep V-necks or 
 ${bodyProfile.features?.includes('Create waist definition') ? '- Always find a way to define the waist in each look.' : ''}
 ` : '';
 
-    const prompt = `You are a current, tasteful personal stylist. Today is ${today}.${profileLine}${bodyRules}
+    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS}${profileLine}${bodyRules}
 
 The hero piece is: ${item.category}, "${item.name}", color ${item.primaryColor}${item.secondaryColor ? '/' + item.secondaryColor : ''}, ${item.pattern || 'solid'}, ${item.formality}, ${item.season}.
 

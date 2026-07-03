@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; category: string; name: string;
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `You are a perceptive fashion editor. Today is ${today}. Analyze this real wardrobe to identify the person's genuine style identity.${profileLine}
+    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes.${profileLine}
 
 Wardrobe:
 ${itemListText}
