@@ -79,18 +79,20 @@ async function redisSet(key: string, value: string): Promise<void> {
   });
 }
 
-// Generic single-command call (atomic on Upstash's side — no read-modify-write
-// race like the old whole-blob pattern had). Body is a JSON array: ["HSET", key, field, value]
+// Single atomic command via Upstash pipeline endpoint.
+// Pipeline format: POST /pipeline with [[cmd, arg1, arg2, ...]]
+// Returns array of {result} — we take index 0.
 async function redisCmd<T = unknown>(...args: (string | number)[]): Promise<T> {
-  const res = await fetch(REDIS_URL, {
+  const res = await fetch(`${REDIS_URL}/pipeline`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(args),
+    body: JSON.stringify([args]),
     cache: 'no-store',
   });
-  const json = await res.json() as { result: T; error?: string };
-  if (json.error) throw new Error(`Redis error: ${json.error}`);
-  return json.result;
+  const json = await res.json() as [{ result: T; error?: string }];
+  const item = Array.isArray(json) ? json[0] : (json as { result: T; error?: string });
+  if (item?.error) throw new Error(`Redis error: ${item.error}`);
+  return item?.result;
 }
 
 function parseHashValues<T>(raw: unknown): T[] {
