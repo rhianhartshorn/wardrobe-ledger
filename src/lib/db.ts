@@ -102,7 +102,6 @@ async function redisHSet(key: string, field: string, value: string): Promise<voi
 
 async function redisHDel(key: string, field: string): Promise<void> {
   const res = await fetch(`${REDIS_URL}/hdel/${enc(key)}/${enc(field)}`, {
-    method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
     cache: 'no-store',
   });
@@ -120,7 +119,6 @@ async function redisHGetAll(key: string): Promise<unknown> {
 
 async function redisDel(key: string): Promise<void> {
   const res = await fetch(`${REDIS_URL}/del/${enc(key)}`, {
-    method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
     cache: 'no-store',
   });
