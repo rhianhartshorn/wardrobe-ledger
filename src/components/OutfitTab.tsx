@@ -277,7 +277,7 @@ export default function OutfitTab({
       {/* Profile */}
       <div className="border border-[#E5DDD0] bg-white p-4">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Your photo <span className="text-[#A89F96]">— optional</span></p>
-        <input ref={selfieRef} type="file" accept="image/*" capture="user" onChange={handleSelfie} className="hidden" />
+        <input ref={selfieRef} type="file" accept="image/*" onChange={handleSelfie} className="hidden" />
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-full overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0] shrink-0">
             {profileImageUrl && <img src={profileImageUrl} alt="you" className="w-full h-full object-cover" />}
