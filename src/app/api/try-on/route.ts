@@ -69,11 +69,13 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const fashnData = await fashnRes.json() as { id?: string; error?: string; detail?: string };
+    const rawText = await fashnRes.text();
+    console.error('[try-on] Fashn.ai raw response:', fashnRes.status, rawText.slice(0, 500));
+    let fashnData: { id?: string; error?: string; detail?: string } = {};
+    try { fashnData = JSON.parse(rawText); } catch { /* non-JSON */ }
 
     if (!fashnRes.ok || !fashnData.id) {
-      const errMsg = fashnData.error ?? fashnData.detail ?? `HTTP ${fashnRes.status}`;
-      console.error('[try-on] Fashn.ai error:', fashnRes.status, JSON.stringify(fashnData));
+      const errMsg = fashnData.detail ?? fashnData.error ?? `HTTP ${fashnRes.status}: ${rawText.slice(0, 200)}`;
       return NextResponse.json({ error: errMsg }, { status: 502 });
     }
 
