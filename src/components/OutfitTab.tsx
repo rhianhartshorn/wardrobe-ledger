@@ -383,7 +383,7 @@ export default function OutfitTab({
       </button>
 
       {genErr && <p className="text-sm text-red-700 font-light">{genErr}</p>}
-      {items.length === 0 && <p className="text-xs text-[#A89F96] text-center font-light">Add a few pieces to your closet first.</p>}
+      {items.length === 0 && <p className="text-xs text-[#A89F96] text-center font-light">Head to the Closet tab and add a few pieces first — this tab builds outfits from your actual wardrobe.</p>}
 
       {outfits && (
         <div className="space-y-4 pt-1">

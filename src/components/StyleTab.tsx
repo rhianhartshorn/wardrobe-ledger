@@ -139,8 +139,8 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
     return (
       <div className="text-center py-20">
         <Gem className="mx-auto text-[#E5DDD0]" size={36} />
-        <p className="mt-4 text-[#6B6058] font-serif text-lg">Nothing to read yet.</p>
-        <p className="text-sm text-[#A89F96] font-light mt-1">Add a few pieces to discover your style DNA.</p>
+        <p className="mt-4 text-[#6B6058] font-serif text-lg">Nothing to analyse yet.</p>
+        <p className="text-sm text-[#A89F96] font-light mt-1">Add at least 3 pieces to the Closet tab — then come back here for your style archetype, colour story, and wardrobe gaps.</p>
       </div>
     );
   }

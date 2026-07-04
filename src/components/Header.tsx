@@ -38,9 +38,9 @@ export default function Header({
             size={24}
             className={`transition-colors ${profileComplete ? 'text-[#9B7B3A]' : 'text-white/30 group-hover:text-white/60'}`}
           />
-          {!profileComplete && (
-            <span className="text-[8px] uppercase tracking-widest text-white/30 group-hover:text-white/50 transition-colors">Set up</span>
-          )}
+          <span className={`text-[8px] uppercase tracking-widest transition-colors ${profileComplete ? 'text-[#9B7B3A]/70' : 'text-white/30 group-hover:text-white/50'}`}>
+            {profileComplete ? 'Blueprint' : 'Set up'}
+          </span>
         </button>
       </div>
       <nav className="max-w-3xl mx-auto px-2 flex border-t border-white/10 overflow-x-auto">

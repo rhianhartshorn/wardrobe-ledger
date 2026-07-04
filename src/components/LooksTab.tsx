@@ -194,7 +194,7 @@ export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]
               view === v ? 'bg-[#1A1714] text-white' : 'bg-white text-[#6B6058] hover:bg-[#F5F2EC]'
             }`}
           >
-            {v === 'looks' ? 'Looks & Journal' : 'Combinations'}
+            {v === 'looks' ? 'Looks & Journal' : 'AI Combinations'}
           </button>
         ))}
       </div>

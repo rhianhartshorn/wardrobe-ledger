@@ -274,10 +274,29 @@ export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20">
-        <Shirt className="mx-auto text-[#E5DDD0]" size={36} />
-        <p className="mt-4 text-[#6B6058] font-serif text-lg">Your closet is empty.</p>
-        <p className="text-sm text-[#A89F96] font-light mt-1">Add your first piece from the Add tab.</p>
+      <div className="py-12 space-y-6">
+        <div className="border border-[#E5DDD0] bg-white p-6 text-center">
+          <Shirt className="mx-auto text-[#D6CFC0] mb-4" size={32} />
+          <h2 className="font-serif text-xl text-[#1A1714] mb-2">Your digital wardrobe</h2>
+          <p className="text-sm text-[#6B6058] font-light leading-relaxed max-w-xs mx-auto">
+            Photograph your clothes — AI tags every piece instantly. Then get outfit ideas, track what you actually wear, and discover your style identity.
+          </p>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          {[
+            { label: 'AI auto-tagging', sub: 'Name, colour, formality' },
+            { label: 'Outfit builder', sub: 'Weather-matched daily looks' },
+            { label: 'Style DNA', sub: 'Your wardrobe archetype' },
+          ].map(({ label, sub }) => (
+            <div key={label} className="border border-[#E5DDD0] bg-white p-3">
+              <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light leading-tight">{label}</p>
+              <p className="text-[9px] text-[#A89F96] font-light mt-1 leading-tight">{sub}</p>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs text-[#A89F96] font-light">
+          Tap <span className="text-[#1A1714]">Add</span> above to photograph your first piece →
+        </p>
       </div>
     );
   }
