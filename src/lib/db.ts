@@ -200,30 +200,54 @@ async function migrateToHashesIfNeeded(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Item helpers — atomic hash operations, no lost-update risk
+// Item helpers — metadata in hash, image stored as separate string key
+// so large base64 values don't bloat hash fields or HGETALL responses.
 // ---------------------------------------------------------------------------
+
+function imgKey(id: string) { return `wardrobe:img:${id}`; }
 
 export async function getAllItems(): Promise<ItemRow[]> {
   await migrateToHashesIfNeeded();
   const raw = await redisHGetAll(ITEMS_KEY);
-  return parseHashValues<ItemRow>(raw).sort((a, b) => b.added_at - a.added_at);
+  const items = parseHashValues<ItemRow>(raw);
+  // Fetch images in parallel — stored separately so hash stays small
+  await Promise.all(items.map(async (item) => {
+    if (!item.image_data_url) {
+      const img = await redisGet(imgKey(item.id));
+      if (img) item.image_data_url = img;
+    }
+  }));
+  return items.sort((a, b) => b.added_at - a.added_at);
 }
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
   await migrateToHashesIfNeeded();
   const raw = await redisHGet(ITEMS_KEY, id);
   if (!raw) return undefined;
-  try { return JSON.parse(raw) as ItemRow; } catch { return undefined; }
+  try {
+    const item = JSON.parse(raw) as ItemRow;
+    if (!item.image_data_url) {
+      const img = await redisGet(imgKey(id));
+      if (img) item.image_data_url = img;
+    }
+    return item;
+  } catch { return undefined; }
 }
 
 export async function insertItem(item: ItemRow): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisHSet(ITEMS_KEY, item.id, JSON.stringify(item));
+  const { image_data_url, ...meta } = item;
+  // Store image separately so the hash field stays small and HGETALL is fast
+  if (image_data_url) await redisSet(imgKey(item.id), image_data_url);
+  await redisHSet(ITEMS_KEY, item.id, JSON.stringify({ ...meta, image_data_url: '' }));
 }
 
 export async function deleteItem(id: string): Promise<void> {
   await migrateToHashesIfNeeded();
-  await redisHDel(ITEMS_KEY, id);
+  await Promise.all([
+    redisHDel(ITEMS_KEY, id),
+    redisDel(imgKey(id)).catch(() => {}),
+  ]);
 }
 
 export async function clearAllItems(): Promise<void> {
