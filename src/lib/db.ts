@@ -118,6 +118,15 @@ async function redisHGetAll(key: string): Promise<unknown> {
   return json.result;
 }
 
+async function redisDel(key: string): Promise<void> {
+  const res = await fetch(`${REDIS_URL}/del/${enc(key)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  await checkErr(res);
+}
+
 async function redisHGet(key: string, field: string): Promise<string | null> {
   const res = await fetch(`${REDIS_URL}/hget/${enc(key)}/${enc(field)}`, {
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
@@ -215,6 +224,12 @@ export async function insertItem(item: ItemRow): Promise<void> {
 export async function deleteItem(id: string): Promise<void> {
   await migrateToHashesIfNeeded();
   await redisHDel(ITEMS_KEY, id);
+}
+
+export async function clearAllItems(): Promise<void> {
+  await redisDel(ITEMS_KEY);
+  await redisDel(MIGRATION_FLAG_KEY);
+  migrationChecked = false;
 }
 
 // ---------------------------------------------------------------------------

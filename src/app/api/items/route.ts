@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllItems, insertItem, type ItemRow } from '@/lib/db';
+import { getAllItems, insertItem, clearAllItems, type ItemRow } from '@/lib/db';
 
 function toClient(row: ItemRow) {
   return {
@@ -20,6 +20,11 @@ function toClient(row: ItemRow) {
 export async function GET() {
   const items = await getAllItems();
   return NextResponse.json(items.map(toClient));
+}
+
+export async function DELETE() {
+  await clearAllItems();
+  return NextResponse.json({ ok: true });
 }
 
 export async function POST(req: NextRequest) {
