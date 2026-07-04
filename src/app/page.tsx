@@ -137,7 +137,7 @@ export default function WardrobeApp() {
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
         ) : tab === 'closet' ? (
-          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} bodyProfile={bodyProfile} />
+          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} profileImageUrl={profileImageUrl} onAddPhoto={() => setTab('outfit')} bodyProfile={bodyProfile} />
         ) : tab === 'add' ? (
           <AddItemTab onAdd={addItem} items={items} />
         ) : tab === 'outfit' ? (
