@@ -219,7 +219,7 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, profileImageUrl, onA
               <button onClick={() => setConfirming(false)} className="flex-1 text-[10px] border border-[#E5DDD0] text-[#6B6058] py-1 font-light">Cancel</button>
             </div>
           ) : (
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-2 flex gap-1 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               {canTryOn && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowTryOn(true); }}
