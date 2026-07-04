@@ -177,26 +177,10 @@ async function write(store: Store): Promise<void> {
   await redisSet(KEY, JSON.stringify(store));
 }
 
-// One-time migration of items/savedLooks/journalEntries out of the old blob
-// into atomic hashes, guarded by a flag so deleted data never reappears.
-let migrationChecked = false;
+// Migration disabled — legacy blob contained data from a different Railway
+// project sharing the same Upstash instance, causing ghost items on every load.
 async function migrateToHashesIfNeeded(): Promise<void> {
-  if (migrationChecked) return;
-  const done = await redisGet(MIGRATION_FLAG_KEY);
-  if (done) { migrationChecked = true; return; }
-
-  const store = await read();
-  for (const item of store.items) {
-    await redisHSet(ITEMS_KEY, item.id, JSON.stringify(item));
-  }
-  for (const look of store.savedLooks) {
-    await redisHSet(LOOKS_KEY, look.id, JSON.stringify(look));
-  }
-  for (const entry of store.journalEntries) {
-    await redisHSet(JOURNAL_KEY, entry.id, JSON.stringify(entry));
-  }
-  await redisSet(MIGRATION_FLAG_KEY, '1');
-  migrationChecked = true;
+  // no-op: hashes are the only storage now, nothing to migrate
 }
 
 // ---------------------------------------------------------------------------
