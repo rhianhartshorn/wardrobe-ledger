@@ -47,12 +47,16 @@ export type JournalEntry = {
 // ---------------------------------------------------------------------------
 
 async function redisGet(key: string): Promise<string | null> {
-  const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-    cache: 'no-store',
-  });
-  const json = await res.json() as { result: string | null };
-  return json.result;
+  try {
+    const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+      cache: 'no-store',
+    });
+    const json = await res.json() as { result: string | null };
+    return json.result ?? null;
+  } catch {
+    return null;
+  }
 }
 
 async function redisSet(key: string, value: string): Promise<void> {
@@ -103,13 +107,13 @@ export async function getAllItems(): Promise<ItemRow[]> {
   if (!ids.length) return [];
 
   const items = await Promise.all(
-    ids.map(async (id) => {
-      const [metaRaw, imgRaw] = await Promise.all([
-        redisGet(itemKey(id)),
-        redisGet(imgKey(id)),
-      ]);
-      if (!metaRaw) return null;
+    ids.map(async (id): Promise<ItemRow | null> => {
       try {
+        const [metaRaw, imgRaw] = await Promise.all([
+          redisGet(itemKey(id)),
+          redisGet(imgKey(id)),
+        ]);
+        if (!metaRaw) return null;
         const item = JSON.parse(metaRaw) as ItemRow;
         if (imgRaw) item.image_data_url = imgRaw;
         return item;

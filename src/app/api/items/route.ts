@@ -18,8 +18,13 @@ function toClient(row: ItemRow) {
 }
 
 export async function GET() {
-  const items = await getAllItems();
-  return NextResponse.json(items.map(toClient));
+  try {
+    const items = await getAllItems();
+    return NextResponse.json(items.map(toClient));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function DELETE() {
