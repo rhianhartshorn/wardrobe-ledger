@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getItem, deleteItem, deleteImage, updateItem } from '@/lib/db';
+import { getItem, deleteItem, deleteImage, incrementWear } from '@/lib/db';
 
 export async function DELETE(
   _req: NextRequest,
@@ -21,8 +21,7 @@ export async function PATCH(
     if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     if (body.action === 'log-wear') {
-      const newCount = (item.wear_count ?? 0) + 1;
-      await updateItem(params.id, { wear_count: newCount });
+      const newCount = await incrementWear(params.id);
       return NextResponse.json({ wear_count: newCount });
     }
 

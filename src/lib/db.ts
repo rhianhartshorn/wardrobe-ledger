@@ -65,6 +65,17 @@ async function redisGet(key: string): Promise<string | null> {
   }
 }
 
+// Atomically increment an integer key and return the new value.
+async function redisIncr(key: string): Promise<number> {
+  const res = await fetch(`${REDIS_URL}/incr/${encodeURIComponent(key)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  const json = await res.json() as { result: number };
+  return json.result ?? 0;
+}
+
 // Accepts any JSON-serializable value and stores it with ONE level of encoding.
 async function redisSet(key: string, value: unknown): Promise<void> {
   await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
@@ -121,6 +132,7 @@ const SETTINGS_KEY    = 'wardrobe:settings';
 
 const itemKey    = (id: string) => `wardrobe:item:${id}`;
 const imgKey     = (id: string) => `wardrobe:img:${id}`;
+const wearKey    = (id: string) => `wardrobe:wear:${id}`;
 const lookKey    = (id: string) => `wardrobe:look:${id}`;
 const journalKey = (id: string) => `wardrobe:journal:${id}`;
 
@@ -135,14 +147,18 @@ export async function getAllItems(): Promise<ItemRow[]> {
   const items = await Promise.all(
     ids.map(async (id): Promise<ItemRow | null> => {
       try {
-        const [metaRaw, imgRaw] = await Promise.all([
+        const [metaRaw, imgRaw, wearRaw] = await Promise.all([
           redisGet(itemKey(id)),
           redisGet(imgKey(id)),
+          redisGet(wearKey(id)),
         ]);
         const item = parseVal<ItemRow>(metaRaw);
         if (!item || typeof item !== 'object') return null;
         const img = parseVal<string>(imgRaw);
         if (img && typeof img === 'string') item.image_data_url = img;
+        // Prefer the dedicated wear key (atomic INCR); fall back to legacy wear_count in meta
+        const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
+        item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
         return item;
       } catch { return null; }
     })
@@ -154,12 +170,17 @@ export async function getAllItems(): Promise<ItemRow[]> {
 }
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
-  const metaRaw = await redisGet(itemKey(id));
+  const [metaRaw, imgRaw, wearRaw] = await Promise.all([
+    redisGet(itemKey(id)),
+    redisGet(imgKey(id)),
+    redisGet(wearKey(id)),
+  ]);
   const item = parseVal<ItemRow>(metaRaw);
   if (!item || typeof item !== 'object') return undefined;
-  const imgRaw = await redisGet(imgKey(id));
   const img = parseVal<string>(imgRaw);
   if (img && typeof img === 'string') item.image_data_url = img;
+  const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
+  item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
   return item;
 }
 
@@ -178,6 +199,10 @@ export async function insertItem(item: ItemRow): Promise<void> {
   }
 }
 
+export async function incrementWear(id: string): Promise<number> {
+  return redisIncr(wearKey(id));
+}
+
 export async function updateItem(id: string, patch: Partial<ItemRow>): Promise<void> {
   const existing = await getItem(id);
   if (!existing) return;
@@ -191,10 +216,10 @@ export async function updateItem(id: string, patch: Partial<ItemRow>): Promise<v
 export async function deleteItem(id: string): Promise<void> {
   const ids = await getIds(ITEM_IDS_KEY);
   await setIds(ITEM_IDS_KEY, ids.filter((i) => i !== id));
-  // Blank out the data so orphaned keys don't waste space
   await Promise.all([
     redisSet(itemKey(id), ''),
     redisSet(imgKey(id), ''),
+    redisSet(wearKey(id), '0'),
   ]);
 }
 

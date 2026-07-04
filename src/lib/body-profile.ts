@@ -29,7 +29,7 @@ export function profileToContext(p: BodyProfile): string {
     }[p.bodyShape];
     parts.push(s);
   }
-  if (p.features.length) parts.push(`styling priorities: ${p.features.join(', ')}`);
+  if (p.features?.length) parts.push(`styling priorities: ${p.features.join(', ')}`);
   if (p.fitPreference) {
     const f = {
       relaxed: 'prefers relaxed, easy-fitting clothes',
