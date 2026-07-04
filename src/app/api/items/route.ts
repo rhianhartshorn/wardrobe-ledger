@@ -14,6 +14,8 @@ function toClient(row: ItemRow) {
     imageFilename: row.image_filename || null,
     imageUrl: row.image_data_url || null,
     addedAt: row.added_at,
+    price: row.price,
+    wearCount: row.wear_count ?? 0,
   };
 }
 
@@ -34,26 +36,31 @@ export async function DELETE() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as Record<string, string>;
+    const body = await req.json() as Record<string, unknown>;
     const {
       id, name, category,
       primaryColor = '', secondaryColor = '',
       pattern = '', formality = '', season = '',
       imageDataUrl = '',
-    } = body;
+      price,
+    } = body as Record<string, string | number | undefined>;
 
     if (!id || !name || !category) {
       return NextResponse.json({ error: 'id, name, and category are required' }, { status: 400 });
     }
 
     const row: ItemRow = {
-      id, name, category,
-      primary_color: primaryColor,
-      secondary_color: secondaryColor,
-      pattern, formality, season,
+      id: id as string, name: name as string, category: category as string,
+      primary_color: primaryColor as string,
+      secondary_color: secondaryColor as string,
+      pattern: pattern as string,
+      formality: formality as string,
+      season: season as string,
       image_filename: '',
-      image_data_url: imageDataUrl,
+      image_data_url: imageDataUrl as string,
       added_at: Date.now(),
+      price: price != null ? Number(price) : undefined,
+      wear_count: 0,
     };
 
     await insertItem(row);

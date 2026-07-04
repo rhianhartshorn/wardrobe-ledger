@@ -19,6 +19,8 @@ export type ItemRow = {
   image_filename: string;
   image_data_url: string;
   added_at: number;
+  price?: number;
+  wear_count?: number;
 };
 
 export type SavedLook = {
@@ -173,6 +175,16 @@ export async function insertItem(item: ItemRow): Promise<void> {
   const ids = await getIds(ITEM_IDS_KEY);
   if (!ids.includes(item.id)) {
     await setIds(ITEM_IDS_KEY, [item.id, ...ids]);
+  }
+}
+
+export async function updateItem(id: string, patch: Partial<ItemRow>): Promise<void> {
+  const existing = await getItem(id);
+  if (!existing) return;
+  const { image_data_url, ...meta } = { ...existing, ...patch };
+  await redisSet(itemKey(id), { ...meta, image_data_url: '' });
+  if (image_data_url !== undefined && image_data_url !== existing.image_data_url) {
+    await redisSet(imgKey(id), image_data_url);
   }
 }
 

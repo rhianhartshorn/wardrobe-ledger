@@ -26,6 +26,8 @@ export type WardrobeItem = {
   imageFilename: string | null;
   imageUrl: string | null;
   addedAt: number;
+  price?: number;
+  wearCount?: number;
 };
 
 type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror' | 'looks' | 'combos';
@@ -74,6 +76,10 @@ export default function WardrobeApp() {
     else setError('Failed to remove item — try again.');
   };
 
+  const updateWearCount = (id: string, wearCount: number) => {
+    setItems((prev) => prev.map((i) => i.id === id ? { ...i, wearCount } : i));
+  };
+
   const profileComplete = Boolean(bodyProfile.height && bodyProfile.bodyShape && bodyProfile.undertone);
 
   if (showBodyProfile) {
@@ -117,7 +123,7 @@ export default function WardrobeApp() {
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
         ) : tab === 'closet' ? (
-          <ClosetTab items={items} onRemove={removeItem} bodyProfile={bodyProfile} />
+          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} bodyProfile={bodyProfile} />
         ) : tab === 'add' ? (
           <AddItemTab onAdd={addItem} items={items} />
         ) : tab === 'outfit' ? (

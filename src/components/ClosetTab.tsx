@@ -140,9 +140,30 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
   );
 }
 
-function ItemCard({ item, allItems, onRemove, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; bodyProfile?: BodyProfile }) {
+function ItemCard({ item, allItems, onRemove, onWearLogged, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
   const [confirming, setConfirming] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [loggingWear, setLoggingWear] = useState(false);
+
+  const logWear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (loggingWear) return;
+    setLoggingWear(true);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'log-wear' }),
+      });
+      const data = await res.json() as { wear_count?: number };
+      if (res.ok && data.wear_count != null) onWearLogged(item.id, data.wear_count);
+    } finally {
+      setLoggingWear(false);
+    }
+  };
+
+  const wears = item.wearCount ?? 0;
+  const cpw = item.price && wears > 0 ? (item.price / wears).toFixed(2) : null;
 
   return (
     <>
@@ -164,6 +185,20 @@ function ItemCard({ item, allItems, onRemove, bodyProfile }: { item: WardrobeIte
           <div className="flex items-center gap-1.5 mt-1">
             <span className="w-2 h-2 rounded-full border border-[#E5DDD0] shrink-0" style={{ backgroundColor: colorDot(item.primaryColor) }} />
             <span className="text-[10px] text-[#A89F96] truncate font-light">{item.category}</span>
+          </div>
+          {/* Wear counter + CPW */}
+          <div className="flex items-center justify-between mt-1.5" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={logWear}
+              disabled={loggingWear}
+              className="text-[9px] text-[#A89F96] font-light hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+              title="Log a wear"
+            >
+              {loggingWear ? '…' : `${wears} wear${wears !== 1 ? 's' : ''} +`}
+            </button>
+            {cpw && (
+              <span className="text-[9px] text-[#9B7B3A] font-light">${cpw}/wear</span>
+            )}
           </div>
           {confirming ? (
             <div className="flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
@@ -204,7 +239,7 @@ function FilterChips({ label, options, value, onChange }: { label: string; optio
   );
 }
 
-export default function ClosetTab({ items, onRemove, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; bodyProfile?: BodyProfile }) {
+export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('All');
   const [formality, setFormality] = useState('All');
@@ -288,7 +323,7 @@ export default function ClosetTab({ items, onRemove, bodyProfile }: { items: War
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
           {visible.map((item) => (
-            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} bodyProfile={bodyProfile} />
+            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} bodyProfile={bodyProfile} />
           ))}
         </div>
       )}

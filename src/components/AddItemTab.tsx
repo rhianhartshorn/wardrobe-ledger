@@ -20,11 +20,12 @@ type TagForm = {
   pattern: string;
   formality: string;
   season: string;
+  price: string;
 };
 
 const EMPTY_FORM: TagForm = {
   name: '', category: 'Top', primaryColor: '', secondaryColor: '',
-  pattern: '', formality: 'Casual', season: 'All-season',
+  pattern: '', formality: 'Casual', season: 'All-season', price: '',
 };
 
 type QueueStatus = 'pending' | 'analyzing' | 'ready' | 'duplicate' | 'saved' | 'error';
@@ -195,6 +196,20 @@ function QueueCard({
                 {SEASONS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Price paid (optional)">
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#A89F96] font-light">$</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.price}
+                  onChange={(e) => updateForm({ price: e.target.value })}
+                  placeholder="0.00"
+                  className="w-full border border-[#E5DDD0] pl-5 pr-2 py-1.5 text-xs font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]"
+                />
+              </div>
+            </Field>
           </div>
         </div>
       )}
@@ -317,10 +332,12 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     for (const qi of toSave) {
       try {
         const id = genId();
+        const { price: priceStr, ...formRest } = qi.form;
+        const price = priceStr && parseFloat(priceStr) > 0 ? parseFloat(priceStr) : undefined;
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...qi.form }),
+          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, price }),
         });
         const data = await res.json() as WardrobeItem & { error?: string };
         if (!res.ok) throw new Error(data.error ?? 'Save failed');
