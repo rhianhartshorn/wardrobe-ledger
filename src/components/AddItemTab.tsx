@@ -276,7 +276,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     for (const qi of newItems) {
       setQueue((q) => q.map((it) => it.localId === qi.localId ? { ...it, status: 'analyzing' } : it));
       try {
-        const dataUrl = await compressImage(qi.file);
+        const dataUrl = await compressImage(qi.file, 768, 0.75, 700_000);
         const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
         const mediaType = match ? match[1] : 'image/jpeg';
         const base64Data = match ? match[2] : dataUrl;

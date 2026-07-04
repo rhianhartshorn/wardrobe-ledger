@@ -238,7 +238,7 @@ export default function OutfitTab({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const dataUrl = await compressImage(file, 400, 0.65);
+      const dataUrl = await compressImage(file, 1024, 0.82, 900_000);
       const res = await fetch('/api/profile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

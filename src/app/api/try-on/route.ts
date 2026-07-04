@@ -66,7 +66,6 @@ export async function POST(req: NextRequest) {
         model_image: personImage,
         garment_image: garmentImage,
         category: fashnCategory,
-        nsfw_filter: true,
       }),
     });
 

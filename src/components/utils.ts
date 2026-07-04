@@ -15,13 +15,12 @@ export function colorDot(name: string | null | undefined): string {
   return '#a8a29e';
 }
 
-export function compressImage(file: File, maxDim = 340, quality = 0.62): Promise<string> {
+export function compressImage(file: File, maxDim = 340, quality = 0.62, sizeCap = 220_000): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const rawDataUrl = e.target!.result as string;
       const img = new Image();
-      const sizeCap = 220_000;
 
       img.onload = () => {
         const draw = (dim: number, q: number): string | null => {
@@ -56,7 +55,7 @@ export function compressImage(file: File, maxDim = 340, quality = 0.62): Promise
         }
 
         if (out) resolve(out);
-        else if (rawDataUrl.length < sizeCap * 2) resolve(rawDataUrl);
+        else if (rawDataUrl.length < sizeCap * 4) resolve(rawDataUrl);
         else reject(new Error('That photo is too large. Try a different, smaller photo.'));
       };
 
