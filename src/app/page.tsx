@@ -8,6 +8,7 @@ import OutfitTab from '@/components/OutfitTab';
 import StyleTab from '@/components/StyleTab';
 import LooksTab from '@/components/LooksTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
+import OnboardingCarousel from '@/components/OnboardingCarousel';
 import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
 import { EMPTY_PROFILE } from '@/lib/body-profile';
@@ -39,6 +40,10 @@ export default function WardrobeApp() {
   const [showBodyProfile, setShowBodyProfile] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('wl_onboarded');
+  });
 
   useEffect(() => {
     Promise.all([
@@ -80,6 +85,11 @@ export default function WardrobeApp() {
 
   const profileComplete = Boolean(bodyProfile.height && bodyProfile.bodyShape && bodyProfile.undertone);
 
+  const dismissOnboarding = () => {
+    localStorage.setItem('wl_onboarded', '1');
+    setShowOnboarding(false);
+  };
+
   if (showBodyProfile) {
     return (
       <BodyProfilePage
@@ -92,6 +102,12 @@ export default function WardrobeApp() {
 
   return (
     <div className="min-h-screen text-[#1A1714]" style={{ background: 'var(--ivory)' }}>
+      {showOnboarding && (
+        <OnboardingCarousel
+          onDone={dismissOnboarding}
+          onSetupBlueprint={() => { dismissOnboarding(); setShowBodyProfile(true); }}
+        />
+      )}
       <Header
         tab={tab}
         setTab={setTab}
