@@ -44,6 +44,10 @@ export type JournalEntry = {
 // ---------------------------------------------------------------------------
 // Redis REST helpers — GET and SET only (proven to work with Upstash REST).
 // All hash-based operations have been replaced with GET/SET + an ID-list pattern.
+//
+// ENCODING NOTE: Upstash REST stores the raw POST body bytes. So we call
+// JSON.stringify ONCE on the value inside redisSet — callers must NOT
+// pre-stringify before passing a value here, or values end up double-encoded.
 // ---------------------------------------------------------------------------
 
 async function redisGet(key: string): Promise<string | null> {
@@ -59,13 +63,30 @@ async function redisGet(key: string): Promise<string | null> {
   }
 }
 
-async function redisSet(key: string, value: string): Promise<void> {
+// Accepts any JSON-serializable value and stores it with ONE level of encoding.
+async function redisSet(key: string, value: unknown): Promise<void> {
   await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(value),
     cache: 'no-store',
   });
+}
+
+// Parse a raw Redis GET result back to its original value.
+// Handles both correctly-encoded values AND legacy double-encoded values
+// (stored before the encoding fix) so old items are still readable.
+function parseVal<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    const once = JSON.parse(raw) as unknown;
+    // If the first parse gives a string, it was double-encoded (legacy storage).
+    // Try a second parse to unwrap the original value.
+    if (typeof once === 'string') {
+      try { return JSON.parse(once) as T; } catch { return once as T; }
+    }
+    return once as T;
+  } catch { return null; }
 }
 
 // ---------------------------------------------------------------------------
@@ -76,15 +97,15 @@ async function redisSet(key: string, value: string): Promise<void> {
 
 async function getIds(listKey: string): Promise<string[]> {
   const raw = await redisGet(listKey);
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch { return []; }
+  const parsed = parseVal<unknown>(raw);
+  if (!Array.isArray(parsed)) return [];
+  // Filter out corrupt single-character entries (caused by legacy spread-of-string bug)
+  return (parsed as string[]).filter((id) => typeof id === 'string' && id.length > 10);
 }
 
 async function setIds(listKey: string, ids: string[]): Promise<void> {
-  await redisSet(listKey, JSON.stringify(ids));
+  // Pass the array directly — redisSet will JSON.stringify once
+  await redisSet(listKey, ids);
 }
 
 // ---------------------------------------------------------------------------
@@ -116,9 +137,10 @@ export async function getAllItems(): Promise<ItemRow[]> {
           redisGet(itemKey(id)),
           redisGet(imgKey(id)),
         ]);
-        if (!metaRaw) return null;
-        const item = JSON.parse(metaRaw) as ItemRow;
-        if (imgRaw) item.image_data_url = imgRaw;
+        const item = parseVal<ItemRow>(metaRaw);
+        if (!item || typeof item !== 'object') return null;
+        const img = parseVal<string>(imgRaw);
+        if (img && typeof img === 'string') item.image_data_url = img;
         return item;
       } catch { return null; }
     })
@@ -131,20 +153,20 @@ export async function getAllItems(): Promise<ItemRow[]> {
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
   const metaRaw = await redisGet(itemKey(id));
-  if (!metaRaw) return undefined;
-  try {
-    const item = JSON.parse(metaRaw) as ItemRow;
-    const imgRaw = await redisGet(imgKey(id));
-    if (imgRaw) item.image_data_url = imgRaw;
-    return item;
-  } catch { return undefined; }
+  const item = parseVal<ItemRow>(metaRaw);
+  if (!item || typeof item !== 'object') return undefined;
+  const imgRaw = await redisGet(imgKey(id));
+  const img = parseVal<string>(imgRaw);
+  if (img && typeof img === 'string') item.image_data_url = img;
+  return item;
 }
 
 export async function insertItem(item: ItemRow): Promise<void> {
   const { image_data_url, ...meta } = item;
 
+  // Pass values directly — redisSet does ONE JSON.stringify
   await Promise.all([
-    redisSet(itemKey(item.id), JSON.stringify({ ...meta, image_data_url: '' })),
+    redisSet(itemKey(item.id), { ...meta, image_data_url: '' }),
     image_data_url ? redisSet(imgKey(item.id), image_data_url) : Promise.resolve(),
   ]);
 
@@ -177,12 +199,11 @@ export async function nukeLegacyBlob(): Promise<void> {}
 
 export async function getImage(filename: string): Promise<{ data: string; mimeType: string } | null> {
   const raw = await redisGet(`wardrobe:img-file:${filename}`);
-  if (!raw) return null;
-  try { return JSON.parse(raw) as { data: string; mimeType: string }; } catch { return null; }
+  return parseVal<{ data: string; mimeType: string }>(raw);
 }
 
 export async function saveImage(filename: string, base64Data: string, mimeType: string): Promise<void> {
-  await redisSet(`wardrobe:img-file:${filename}`, JSON.stringify({ data: base64Data, mimeType }));
+  await redisSet(`wardrobe:img-file:${filename}`, { data: base64Data, mimeType });
 }
 
 export async function deleteImage(filename: string): Promise<void> {
@@ -195,12 +216,12 @@ export async function deleteImage(filename: string): Promise<void> {
 
 async function readSettings(): Promise<Record<string, string>> {
   const raw = await redisGet(SETTINGS_KEY);
-  if (!raw) return {};
-  try { return JSON.parse(raw) as Record<string, string>; } catch { return {}; }
+  const parsed = parseVal<Record<string, string>>(raw);
+  return (parsed && typeof parsed === 'object') ? parsed : {};
 }
 
 async function writeSettings(settings: Record<string, string>): Promise<void> {
-  await redisSet(SETTINGS_KEY, JSON.stringify(settings));
+  await redisSet(SETTINGS_KEY, settings);
 }
 
 export async function getSetting(key: string): Promise<string | undefined> {
@@ -231,8 +252,7 @@ export async function getSavedLooks(): Promise<SavedLook[]> {
   const looks = await Promise.all(
     ids.map(async (id) => {
       const raw = await redisGet(lookKey(id));
-      if (!raw) return null;
-      try { return JSON.parse(raw) as SavedLook; } catch { return null; }
+      return parseVal<SavedLook>(raw);
     })
   );
 
@@ -242,7 +262,7 @@ export async function getSavedLooks(): Promise<SavedLook[]> {
 }
 
 export async function addSavedLook(look: SavedLook): Promise<void> {
-  await redisSet(lookKey(look.id), JSON.stringify(look));
+  await redisSet(lookKey(look.id), look);
   const ids = await getIds(LOOK_IDS_KEY);
   if (!ids.includes(look.id)) {
     await setIds(LOOK_IDS_KEY, [look.id, ...ids]);
@@ -266,8 +286,7 @@ export async function getJournalEntries(): Promise<JournalEntry[]> {
   const entries = await Promise.all(
     ids.map(async (id) => {
       const raw = await redisGet(journalKey(id));
-      if (!raw) return null;
-      try { return JSON.parse(raw) as JournalEntry; } catch { return null; }
+      return parseVal<JournalEntry>(raw);
     })
   );
 
@@ -277,7 +296,7 @@ export async function getJournalEntries(): Promise<JournalEntry[]> {
 }
 
 export async function addJournalEntry(entry: JournalEntry): Promise<void> {
-  await redisSet(journalKey(entry.id), JSON.stringify(entry));
+  await redisSet(journalKey(entry.id), entry);
   const ids = await getIds(JOURNAL_IDS_KEY);
   if (!ids.includes(entry.id)) {
     await setIds(JOURNAL_IDS_KEY, [entry.id, ...ids]);
