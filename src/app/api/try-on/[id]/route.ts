@@ -28,6 +28,7 @@ export async function GET(
       return NextResponse.json({ status: 'completed', outputUrl: data.output[0] });
     }
     if (data.status === 'failed') {
+      console.error('[try-on/status] failed:', JSON.stringify(data));
       return NextResponse.json({ status: 'failed', error: data.error ?? 'Generation failed' });
     }
     return NextResponse.json({ status: data.status });

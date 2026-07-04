@@ -70,10 +70,12 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const fashnData = await fashnRes.json() as { id?: string; error?: string };
+    const fashnData = await fashnRes.json() as { id?: string; error?: string; detail?: string };
 
     if (!fashnRes.ok || !fashnData.id) {
-      return NextResponse.json({ error: fashnData.error ?? 'Try-on service error' }, { status: 502 });
+      const errMsg = fashnData.error ?? fashnData.detail ?? `HTTP ${fashnRes.status}`;
+      console.error('[try-on] Fashn.ai error:', fashnRes.status, JSON.stringify(fashnData));
+      return NextResponse.json({ error: errMsg }, { status: 502 });
     }
 
     return NextResponse.json({ id: fashnData.id });
