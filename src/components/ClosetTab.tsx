@@ -185,10 +185,48 @@ function ItemCard({ item, allItems, onRemove, bodyProfile }: { item: WardrobeIte
   );
 }
 
+function FilterChips({ label, options, value, onChange }: { label: string; options: string[]; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1">
+      <span className="shrink-0 text-[9px] uppercase tracking-[0.15em] text-[#A89F96] font-light self-center pr-1">{label}</span>
+      {options.map((o) => (
+        <button
+          key={o}
+          onClick={() => onChange(o === value ? 'All' : o)}
+          className={`shrink-0 px-2.5 py-1 text-[9px] uppercase tracking-[0.12em] font-light border transition-colors ${
+            value === o ? 'bg-[#1A1714] text-white border-[#1A1714]' : 'border-[#E5DDD0] text-[#6B6058] hover:border-[#9B7B3A]'
+          }`}
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function ClosetTab({ items, onRemove, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; bodyProfile?: BodyProfile }) {
-  const [filter, setFilter] = useState('All');
-  const cats = ['All', ...Array.from(new Set(items.map((i) => i.category)))];
-  const visible = filter === 'All' ? items : items.filter((i) => i.category === filter);
+  const [search, setSearch] = useState('');
+  const [cat, setCat] = useState('All');
+  const [formality, setFormality] = useState('All');
+  const [season, setSeason] = useState('All');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const cats      = Array.from(new Set(items.map((i) => i.category))).sort();
+  const formalities = Array.from(new Set(items.map((i) => i.formality).filter(Boolean))).sort();
+  const seasons   = Array.from(new Set(items.map((i) => i.season).filter(Boolean))).sort();
+
+  const q = search.toLowerCase();
+  const visible = items.filter((i) => {
+    if (cat !== 'All' && i.category !== cat) return false;
+    if (formality !== 'All' && i.formality !== formality) return false;
+    if (season !== 'All' && i.season !== season) return false;
+    if (q && !i.name.toLowerCase().includes(q) && !i.category.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  const hasActiveFilter = cat !== 'All' || formality !== 'All' || season !== 'All' || q;
+
+  const clearAll = () => { setSearch(''); setCat('All'); setFormality('All'); setSeason('All'); };
 
   if (items.length === 0) {
     return (
@@ -202,27 +240,58 @@ export default function ClosetTab({ items, onRemove, bodyProfile }: { items: War
 
   return (
     <div>
-      {cats.length > 2 && (
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-3 -mx-4 px-4">
-          {cats.map((c) => (
-            <button
-              key={c}
-              onClick={() => setFilter(c)}
-              className={`shrink-0 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] font-light border transition-colors ${
-                filter === c ? 'bg-[#1A1714] text-white border-[#1A1714]' : 'border-[#E5DDD0] text-[#6B6058] hover:border-[#9B7B3A]'
-              }`}
-            >
-              {c}
-            </button>
+      {/* Search + filter toggle */}
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search..."
+          className="flex-1 border border-[#E5DDD0] bg-white px-3 py-2 text-xs font-light text-[#1A1714] placeholder-[#C5BDB4] outline-none focus:border-[#9B7B3A] transition-colors"
+        />
+        <button
+          onClick={() => setShowFilters((v) => !v)}
+          className={`px-3 py-2 text-[10px] uppercase tracking-[0.12em] font-light border transition-colors ${
+            showFilters || (cat !== 'All' || formality !== 'All' || season !== 'All')
+              ? 'bg-[#1A1714] text-white border-[#1A1714]'
+              : 'border-[#E5DDD0] text-[#6B6058] hover:border-[#9B7B3A]'
+          }`}
+        >
+          Filter
+        </button>
+      </div>
+
+      {/* Expandable filter rows */}
+      {showFilters && (
+        <div className="space-y-2 mb-3 -mx-4 px-4">
+          {cats.length > 1 && <FilterChips label="Type" options={cats} value={cat} onChange={setCat} />}
+          {formalities.length > 1 && <FilterChips label="Wear" options={formalities} value={formality} onChange={setFormality} />}
+          {seasons.length > 1 && <FilterChips label="Season" options={seasons} value={season} onChange={setSeason} />}
+        </div>
+      )}
+
+      {/* Result count + clear */}
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] text-[#A89F96] font-light">
+          {hasActiveFilter ? `${visible.length} of ${items.length}` : `${items.length} pieces`}
+          {!hasActiveFilter && ' · tap to style'}
+        </p>
+        {hasActiveFilter && (
+          <button onClick={clearAll} className="text-[10px] text-[#9B7B3A] font-light hover:underline">
+            Clear
+          </button>
+        )}
+      </div>
+
+      {visible.length === 0 ? (
+        <p className="text-center text-sm text-[#A89F96] font-light py-12">No items match.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
+          {visible.map((item) => (
+            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} bodyProfile={bodyProfile} />
           ))}
         </div>
       )}
-      <p className="text-[10px] text-[#A89F96] font-light mb-3">Tap any piece to see how to style it</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
-        {visible.map((item) => (
-          <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} bodyProfile={bodyProfile} />
-        ))}
-      </div>
     </div>
   );
 }
