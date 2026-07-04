@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
@@ -186,8 +186,6 @@ export default function OutfitTab({
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
   const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
-  const triedAuto = useRef(false);
-
   const saveLook = async (idx: number, o: Outfit) => {
     setSavingIdx(idx);
     try {
@@ -235,7 +233,6 @@ export default function OutfitTab({
     );
   };
 
-  useEffect(() => { if (!triedAuto.current) { triedAuto.current = true; detectLocation(); } }, []);
 
   const handleSelfie = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -308,34 +305,43 @@ export default function OutfitTab({
                 <p className="text-xs text-[#A89F96] font-light">{weather.locationName} · {weather.condition}</p>
               </div>
             </div>
-            <button onClick={() => needsCity ? loadWeather(`city=${encodeURIComponent(city)}`) : detectLocation()} className="text-[#A89F96] hover:text-[#9B7B3A] transition-colors">
+            <button onClick={() => { setWeather(null); setNeedsCity(false); setWeatherErr(''); }} className="text-[#A89F96] hover:text-[#9B7B3A] transition-colors">
               <RefreshCw size={14} />
             </button>
           </div>
         ) : (
-          <button onClick={detectLocation} className="text-xs text-[#9B7B3A] font-light tracking-wide hover:underline underline-offset-2">
-            Detect my location
-          </button>
-        )}
-        {weatherErr && <p className="text-xs text-[#A89F96] mt-2 font-light">{weatherErr}</p>}
-        {needsCity && (
-          <div className="flex gap-2 mt-3">
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="City, Country"
-              className="flex-1 border border-[#E5DDD0] px-3 py-1.5 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
-              onKeyDown={(e) => e.key === 'Enter' && city && loadWeather(`city=${encodeURIComponent(city)}`)}
-            />
+          <div className="space-y-3">
             <button
-              onClick={() => loadWeather(`city=${encodeURIComponent(city)}`)}
-              disabled={!city || locating}
-              className="px-3 py-1.5 text-xs bg-[#1A1714] text-white font-light tracking-wide disabled:opacity-40"
+              onClick={detectLocation}
+              disabled={locating}
+              className="w-full border border-[#9B7B3A] text-[#9B7B3A] py-2 text-xs tracking-[0.12em] uppercase font-light hover:bg-[#9B7B3A] hover:text-white transition-colors"
             >
-              Get weather
+              Use my location
             </button>
+            <div className="flex items-center gap-2">
+              <div className="flex-1 h-px bg-[#E5DDD0]" />
+              <span className="text-[10px] text-[#A89F96] font-light">or</span>
+              <div className="flex-1 h-px bg-[#E5DDD0]" />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Enter city"
+                className="flex-1 border border-[#E5DDD0] px-3 py-2 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A]"
+                onKeyDown={(e) => e.key === 'Enter' && city && loadWeather(`city=${encodeURIComponent(city)}`)}
+              />
+              <button
+                onClick={() => city && loadWeather(`city=${encodeURIComponent(city)}`)}
+                disabled={!city || locating}
+                className="px-3 py-2 text-xs bg-[#1A1714] text-white font-light tracking-wide disabled:opacity-40"
+              >
+                Go
+              </button>
+            </div>
           </div>
         )}
+        {weatherErr && <p className="text-xs text-[#A89F96] mt-2 font-light">{weatherErr}</p>}
       </div>
 
       {/* Occasion */}
