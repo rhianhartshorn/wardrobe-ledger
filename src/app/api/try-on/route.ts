@@ -55,9 +55,6 @@ export async function POST(req: NextRequest) {
     }
     const personImage = `data:${profileImg.mimeType};base64,${profileImg.data}`;
 
-    // Fashn.ai expects raw base64 strings, not data URIs
-    const toBase64 = (dataUrl: string) => dataUrl.replace(/^data:[^;]+;base64,/, '');
-
     // Start the Fashn.ai try-on job
     const fashnRes = await fetch(`${FASHN_BASE}/run`, {
       method: 'POST',
@@ -66,9 +63,12 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model_image: toBase64(personImage),
-        garment_image: toBase64(garmentImage),
-        category: fashnCategory,
+        model_name: 'tryon-v1.6',
+        inputs: {
+          model_image: personImage,
+          garment_image: garmentImage,
+          category: fashnCategory,
+        },
       }),
     });
 
