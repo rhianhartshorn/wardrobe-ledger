@@ -256,6 +256,14 @@ export async function clearAllItems(): Promise<void> {
   migrationChecked = false;
 }
 
+// Wipes the legacy blob and sets the migration flag so the old data
+// can never be re-imported again on next load.
+export async function nukeLegacyBlob(): Promise<void> {
+  await redisDel(KEY);
+  await redisSet(MIGRATION_FLAG_KEY, '1');
+  migrationChecked = true;
+}
+
 // ---------------------------------------------------------------------------
 // Image helpers
 // ---------------------------------------------------------------------------
