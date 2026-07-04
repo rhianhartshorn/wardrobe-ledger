@@ -6,9 +6,7 @@ import ClosetTab from '@/components/ClosetTab';
 import AddItemTab from '@/components/AddItemTab';
 import OutfitTab from '@/components/OutfitTab';
 import StyleTab from '@/components/StyleTab';
-import MirrorTab from '@/components/MirrorTab';
 import LooksTab from '@/components/LooksTab';
-import CombinationsTab from '@/components/CombinationsTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
 import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -30,7 +28,7 @@ export type WardrobeItem = {
   wearCount?: number;
 };
 
-type Tab = 'closet' | 'add' | 'outfit' | 'style' | 'mirror' | 'looks' | 'combos';
+type Tab = 'closet' | 'add' | 'outfit' | 'looks' | 'style';
 
 export default function WardrobeApp() {
   const [tab, setTab] = useState<Tab>('closet');
@@ -139,12 +137,8 @@ export default function WardrobeApp() {
           />
         ) : tab === 'style' ? (
           <StyleTab items={items} bodyProfile={bodyProfile} />
-        ) : tab === 'looks' ? (
-          <LooksTab items={items} />
-        ) : tab === 'combos' ? (
-          <CombinationsTab items={items} bodyProfile={bodyProfile} />
         ) : (
-          <MirrorTab items={items} bodyProfile={bodyProfile} />
+          <LooksTab items={items} bodyProfile={bodyProfile} />
         )}
 
         <p className="text-center text-[11px] text-[#A89F96] mt-12 font-light tracking-wide">

@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Shirt, Trash2, X, Loader2, ArrowLeft } from 'lucide-react';
+import { Shirt, Trash2, X, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { colorDot, slim } from './utils';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -239,19 +239,28 @@ function FilterChips({ label, options, value, onChange }: { label: string; optio
   );
 }
 
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+function isDormant(item: WardrobeItem) {
+  return (item.wearCount ?? 0) === 0 && Date.now() - item.addedAt > NINETY_DAYS_MS;
+}
+
 export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('All');
   const [formality, setFormality] = useState('All');
   const [season, setSeason] = useState('All');
   const [showFilters, setShowFilters] = useState(false);
+  const [reviewMode, setReviewMode] = useState(false);
+
+  const dormantItems = items.filter(isDormant);
 
   const cats      = Array.from(new Set(items.map((i) => i.category))).sort();
   const formalities = Array.from(new Set(items.map((i) => i.formality).filter(Boolean))).sort();
   const seasons   = Array.from(new Set(items.map((i) => i.season).filter(Boolean))).sort();
 
   const q = search.toLowerCase();
-  const visible = items.filter((i) => {
+  const visible = (reviewMode ? dormantItems : items).filter((i) => {
     if (cat !== 'All' && i.category !== cat) return false;
     if (formality !== 'All' && i.formality !== formality) return false;
     if (season !== 'All' && i.season !== season) return false;
@@ -259,9 +268,9 @@ export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }
     return true;
   });
 
-  const hasActiveFilter = cat !== 'All' || formality !== 'All' || season !== 'All' || q;
+  const hasActiveFilter = cat !== 'All' || formality !== 'All' || season !== 'All' || q || reviewMode;
 
-  const clearAll = () => { setSearch(''); setCat('All'); setFormality('All'); setSeason('All'); };
+  const clearAll = () => { setSearch(''); setCat('All'); setFormality('All'); setSeason('All'); setReviewMode(false); };
 
   if (items.length === 0) {
     return (
@@ -275,6 +284,28 @@ export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }
 
   return (
     <div>
+      {/* Seasonal review banner */}
+      {dormantItems.length > 0 && !reviewMode && (
+        <button
+          onClick={() => setReviewMode(true)}
+          className="w-full mb-4 flex items-center gap-3 border border-amber-200 bg-amber-50 px-3 py-2.5 text-left hover:bg-amber-100 transition-colors"
+        >
+          <AlertCircle size={14} className="text-amber-600 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-amber-800 font-light">
+              <span className="font-normal">{dormantItems.length} {dormantItems.length === 1 ? 'piece' : 'pieces'}</span> unworn for 90+ days — time to review
+            </p>
+          </div>
+          <span className="text-amber-600 text-xs font-light shrink-0">Review →</span>
+        </button>
+      )}
+      {reviewMode && (
+        <div className="mb-4 flex items-center justify-between border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-xs text-amber-800 font-light">Showing {dormantItems.length} unworn pieces — keep or remove</p>
+          <button onClick={() => setReviewMode(false)} className="text-amber-600 hover:text-amber-800 transition-colors"><X size={14} /></button>
+        </div>
+      )}
+
       {/* Search + filter toggle */}
       <div className="flex gap-2 mb-3">
         <input

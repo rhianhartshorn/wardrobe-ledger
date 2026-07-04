@@ -5,6 +5,7 @@ import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
+import MirrorTab from './MirrorTab';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -61,6 +62,7 @@ function MatchStrengthBar({ strength }: { strength: string }) {
 }
 
 export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+  const [view, setView] = useState<'dna' | 'insights'>('dna');
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
@@ -145,6 +147,24 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
 
   return (
     <div className="space-y-5">
+      {/* Internal view toggle */}
+      <div className="flex border border-[#E5DDD0] overflow-hidden">
+        {(['dna', 'insights'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setView(v)}
+            className={`flex-1 py-2 text-[10px] uppercase tracking-[0.15em] font-light transition-colors ${
+              view === v ? 'bg-[#1A1714] text-white' : 'bg-white text-[#6B6058] hover:bg-[#F5F2EC]'
+            }`}
+          >
+            {v === 'dna' ? 'Style DNA' : 'Insights'}
+          </button>
+        ))}
+      </div>
+
+      {view === 'insights' ? (
+        <MirrorTab items={items} bodyProfile={bodyProfile} />
+      ) : (<>
 
       {/* ── SECTION 1: YOUR STYLE NOW ── */}
       <div className="border border-[#E5DDD0] bg-white p-5">
@@ -397,6 +417,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
           </div>
         )}
       </div>
+      </>)}
     </div>
   );
 }
