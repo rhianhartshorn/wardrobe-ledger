@@ -77,7 +77,10 @@ async function redisSet(key: string, value: string): Promise<void> {
 async function getIds(listKey: string): Promise<string[]> {
   const raw = await redisGet(listKey);
   if (!raw) return [];
-  try { return JSON.parse(raw) as string[]; } catch { return []; }
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch { return []; }
 }
 
 async function setIds(listKey: string, ids: string[]): Promise<void> {

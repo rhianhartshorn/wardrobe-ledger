@@ -46,12 +46,19 @@ export default function WardrobeApp() {
       fetch('/api/profile').then((r) => r.json()),
       fetch('/api/body-profile').then((r) => r.json()),
     ])
-      .then(([itemsData, profileData, bodyData]: [WardrobeItem[], { imageUrl: string | null; imageFilename: string | null }, BodyProfile]) => {
-        setItems(itemsData);
-        setProfileImageUrl(profileData.imageUrl);
-        setProfileImageFilename(profileData.imageFilename);
-        setBodyProfile(bodyData ?? EMPTY_PROFILE);
+      .then(([itemsData, profileData, bodyData]) => {
+        // Guard: API may return {error: "..."} on 500 — never pass a non-array to setItems
+        setItems(Array.isArray(itemsData) ? itemsData as WardrobeItem[] : []);
+        if (profileData && typeof profileData === 'object' && !Array.isArray(profileData)) {
+          const p = profileData as { imageUrl?: string | null; imageFilename?: string | null };
+          setProfileImageUrl(p.imageUrl ?? null);
+          setProfileImageFilename(p.imageFilename ?? null);
+        }
+        setBodyProfile((bodyData && typeof bodyData === 'object') ? bodyData as BodyProfile : EMPTY_PROFILE);
         setLoaded(true);
+        if (!Array.isArray(itemsData) && itemsData && (itemsData as { error?: string }).error) {
+          setError('Wardrobe failed to load — try refreshing.');
+        }
       })
       .catch(() => {
         setError('Failed to load wardrobe data.');
