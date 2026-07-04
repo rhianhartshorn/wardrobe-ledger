@@ -25,15 +25,15 @@ export async function POST(req: NextRequest) {
 
 Respond with ONLY valid JSON, no markdown:
 {
-  "headline": "editorial headline max 8 words",
-  "overview": "2 sentences capturing the essence",
+  "headline": "max 6 words",
+  "overview": "1 sentence max 20 words",
   "sections": [
-    { "heading": "section title max 4 words", "body": "2-3 sentences of substance" }
+    { "heading": "max 3 words", "body": "1 sentence max 18 words" }
   ],
-  "tips": ["concrete actionable tip max 20 words", "tip 2", "tip 3"]
+  "tips": ["max 12 words", "max 12 words"]
 }
 
-Include 3–4 sections. Make it feel like reading a good magazine.`;
+Include 3 sections only.`;
 
     const raw = await callClaude({ prompt, maxTokens: 1500 });
     const parsed = parseJSON(raw);

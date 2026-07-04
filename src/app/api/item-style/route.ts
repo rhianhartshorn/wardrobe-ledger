@@ -52,7 +52,7 @@ Create 4 ways to style the hero piece:
 For every look, give a specific 2026-relevant aesthetic name and explain briefly why this combination works for their proportions.
 
 Respond ONLY with valid JSON, no markdown:
-{"looks":[{"title":"max 5 words","aesthetic":"specific current 2026 aesthetic","wardrobeItemIds":["id1","id2"],"suggestedPurchases":["item description max 10 words"],"howToWear":"max 30 words — include why it works for their frame"}]}`;
+{"looks":[{"title":"max 5 words","aesthetic":"specific current 2026 aesthetic","wardrobeItemIds":["id1","id2"],"suggestedPurchases":["item description max 10 words"],"howToWear":"max 12 words"}]}`;
 
     const raw = await callClaude({ prompt, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { looks?: unknown[] };
