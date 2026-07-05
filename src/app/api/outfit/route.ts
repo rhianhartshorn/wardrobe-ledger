@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? "The attached photo is of the client. In each rationale, weave in one brief, respectful, flattering observation about their colouring — never comment on body shape, weight, or size. "
+      ? "The attached photo is of the client. Study their skin tone, hair colour, and overall colouring carefully. In each outfit rationale, specifically explain why the colours in that outfit suit their complexion and hair — be concrete (e.g. 'the camel tone echoes your warm undertone', 'the navy creates contrast with your fair complexion'). Never comment on body shape, weight, or size. "
       : '';
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
@@ -86,7 +86,7 @@ ${itemListText}
 Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each, name the current 2026 style aesthetic. Apply the body and colour guidance above to every outfit choice.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — must mention why this works for their frame/colouring","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 30 words — must name the specific colour/colouring reason and any silhouette benefit for their body profile","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
 
     const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };

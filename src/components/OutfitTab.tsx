@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
-import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart, MessageSquare, X, Download } from 'lucide-react';
+import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart, X, Download } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
@@ -75,31 +75,10 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
 
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-  const [feedbackErr, setFeedbackErr] = useState('');
-
   const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [tryOnErr, setTryOnErr] = useState('');
   const [showTryOn, setShowTryOn] = useState(false);
-
-  const getFeedback = async () => {
-    if (feedback) { setFeedback(null); return; }
-    setFeedbackLoading(true); setFeedbackErr('');
-    try {
-      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor, formality: p.formality }));
-      const res = await fetch('/api/outfit-feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slimItems }),
-      });
-      const data = await res.json() as { feedback?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
-      setFeedback(data.feedback ?? '');
-    } catch (e) { setFeedbackErr(e instanceof Error ? e.message : 'Could not get feedback'); }
-    finally { setFeedbackLoading(false); }
-  };
 
   const getTryOn = async () => {
     if (tryOnUrl) { setShowTryOn(true); return; }
@@ -112,7 +91,14 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
         body: JSON.stringify({ items: slimItems }),
       });
       const data = await res.json() as { outputUrl?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      if (!res.ok) {
+        const msg = data.error ?? 'Failed';
+        // Billing / quota errors from Google
+        if (msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('billing')) {
+          throw new Error('Try-on needs Google AI billing enabled — ask your developer to activate it on the API key.');
+        }
+        throw new Error(msg);
+      }
       setTryOnUrl(data.outputUrl ?? null);
       setShowTryOn(true);
     } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
@@ -204,35 +190,18 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
           Deep dive into this look <ChevronRight size={11} />
         </button>
 
-        {/* AI actions — only when profile photo exists */}
+        {/* Try-on — only when profile photo exists */}
         {hasProfilePhoto && (
-          <div className="flex gap-2 pt-1 border-t border-[#E5DDD0] mt-1">
-            <button
-              onClick={getFeedback}
-              disabled={feedbackLoading}
-              className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-2 text-[10px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
-            >
-              {feedbackLoading ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />}
-              {feedback ? 'Hide feedback' : 'Does this work on me?'}
-            </button>
+          <div className="pt-1 border-t border-[#E5DDD0] mt-1">
             <button
               onClick={getTryOn}
               disabled={tryOnLoading}
-              className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-2 text-[10px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+              className="w-full flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-2 text-[10px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
             >
               {tryOnLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
               Try on full look
             </button>
-          </div>
-        )}
-
-        {feedbackErr && <p className="text-xs text-red-600 font-light mt-1">{feedbackErr}</p>}
-        {tryOnErr && <p className="text-xs text-red-600 font-light mt-1">{tryOnErr}</p>}
-
-        {feedback && (
-          <div className="bg-[#F5F2EC] border border-[#E5DDD0] p-3 mt-1">
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mb-1.5">Stylist feedback</p>
-            <p className="text-xs text-[#1A1714] font-light leading-relaxed">{feedback}</p>
+            {tryOnErr && <p className="text-xs text-[#A89F96] font-light mt-2 leading-snug">{tryOnErr}</p>}
           </div>
         )}
       </div>
