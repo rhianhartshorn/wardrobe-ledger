@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, FASHION_EDITOR_VOICE } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
@@ -21,15 +21,15 @@ export async function POST(req: NextRequest) {
       .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}`)
       .join('\n');
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS} Rate the 2026 fashion currency of each wardrobe piece with the honesty of an editor who calls things as they are.
+    const prompt = `${STYLIST_PERSONA} ${FASHION_EDITOR_VOICE} Today is ${today}. ${STYLIST_2026_LENS} Rate the 2026 fashion currency of each wardrobe piece with the honesty of an editor who calls things as they are.
 
 Wardrobe:
 ${itemListText}
 
 For every item, respond with ONLY valid JSON, no markdown:
-{"fashionCurrency":[{"itemId":"exact id","era":"decade this peaked e.g. '2010s'","status":"timeless|current|dated|coming-back","how2026":"max 15 words on how to style it for 2026, or null if timeless/current"}]}
+{"fashionCurrency":[{"itemId":"exact id","era":"decade this peaked e.g. '2010s', or 'timeless'","status":"timeless|current|dated|coming-back","how2026":"REQUIRED — max 12 words, always provide a specific styling tip for 2026 regardless of status. For timeless/current pieces: how to style them in the current moment. For dated: how to rescue or rework them. For coming-back: exactly how to wear them now without looking costume."}]}
 
-Be concise. Every item needs one entry.`;
+Be ruthlessly specific. Every item needs one entry with a concrete how2026 tip — never leave it blank.`;
 
     const raw = await callClaude({ prompt, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { fashionCurrency?: unknown[] };
