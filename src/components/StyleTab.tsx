@@ -80,11 +80,22 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
   const runAnalysis = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to get a style reading.'); return; }
     setAnalyzing(true); setErr(''); setResult(null); setMatchResult(null);
+    const topWorn = [...items]
+      .sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
+      .slice(0, 5)
+      .filter((i) => (i.wearCount ?? 0) > 0)
+      .map((i) => `${i.name} (${i.category}, worn ${i.wearCount}x)`);
+    const savedLookTitles: string[] = [];
+    try {
+      const raw = localStorage.getItem('wl_saved_looks');
+      if (raw) (JSON.parse(raw) as Array<{ title: string }>).slice(0, 5).forEach((l) => savedLookTitles.push(l.title));
+    } catch { /* ignore */ }
+
     try {
       const res = await fetch('/api/style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), bodyProfile }),
+        body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles }),
       });
       const data = await res.json() as StyleResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');

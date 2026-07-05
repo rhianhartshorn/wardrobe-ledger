@@ -11,7 +11,7 @@ type WardrobeItem = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile };
+    const { items, bodyProfile, topWorn, savedLookTitles } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[] };
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to get a style reading.' }, { status: 400 });
     }
@@ -21,13 +21,17 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const styleBriefCtx = await getStyleBriefContext();
+    const tasteSignals = [
+      ...(topWorn?.length ? [`Most-worn pieces (their real go-to items): ${topWorn.join('; ')}`] : []),
+      ...(savedLookTitles?.length ? [`Looks they've saved as favourites: ${savedLookTitles.join('; ')}`] : []),
+    ].join('\n');
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
     const profileLine = profileCtx ? `\nClient profile to factor into your analysis: ${profileCtx}` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes.${profileLine}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${tasteSignals ? 'BEHAVIOURAL SIGNALS — what this person actually wears vs what they own. Weight these heavily when determining the real archetype and style groups:\n' + tasteSignals + '\n' : ''} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes. The behavioural signals above reveal actual style vs aspirational — let worn frequency and saved looks sharpen the archetype and inform which style group feels most alive for this person.${profileLine}
 
 Wardrobe:
 ${itemListText}
