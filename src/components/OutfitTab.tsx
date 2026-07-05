@@ -338,11 +338,27 @@ export default function OutfitTab({
     if (items.length === 0) { setGenErr('Add a few wardrobe items first.'); return; }
     if (!weather) { setGenErr('Get a weather reading first.'); return; }
     setGenerating(true); setGenErr(''); setOutfits(null); setSavedIdx(new Set());
+
+    // Pass taste signals: top worn items and saved look titles
+    const topWorn = [...items]
+      .sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
+      .slice(0, 5)
+      .filter((i) => (i.wearCount ?? 0) > 0)
+      .map((i) => `${i.name} (${i.category}, worn ${i.wearCount}x)`);
+    const savedLookTitles: string[] = [];
+    try {
+      const raw = localStorage.getItem('wl_saved_looks');
+      if (raw) {
+        const looks = JSON.parse(raw) as Array<{ title: string }>;
+        looks.slice(0, 5).forEach((l) => savedLookTitles.push(l.title));
+      }
+    } catch { /* ignore */ }
+
     try {
       const res = await fetch('/api/outfit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename, bodyProfile }),
+        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles }),
       });
       const data = await res.json() as { outfits?: Outfit[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');

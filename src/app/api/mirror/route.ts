@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string;
@@ -12,6 +12,7 @@ type WardrobeItem = {
   pattern: string;
   formality: string;
   season: string;
+  material?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -25,14 +26,16 @@ export async function POST(req: NextRequest) {
     const itemListText = items
       .map(
         (it, idx) =>
-          `${idx + 1} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}, ${it.formality}, ${it.season}`
+          `${idx + 1} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}, ${it.formality}, ${it.season}`
       )
       .join('\n');
 
+    const styleBriefCtx = await getStyleBriefContext();
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
     const profileLine = profileCtx ? `\nClient profile: ${profileCtx}\nFactor this into purchase recommendations — suggest pieces that work for their body shape and colouring, not generic filler pieces.\n` : '';
 
-    const prompt = `${STYLIST_PERSONA} ${STYLIST_2026_LENS} Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear. Be honest: a great stylist tells the truth about what is and isn't working.
+    const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}Score each item's VALUE to this wardrobe using a nuanced rubric — NOT just frequency of wear. Be honest: a great stylist tells the truth about what is and isn't working.
 ${profileLine}
 SCORING RUBRIC (0–10):
 - Versatility within THIS wardrobe: how many outfits it unlocks with other items here (0–4 pts)

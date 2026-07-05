@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
   primaryColor: string; secondaryColor: string;
-  pattern: string; formality: string; season: string;
+  pattern: string; formality: string; season: string; material?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -16,9 +16,10 @@ export async function POST(req: NextRequest) {
 
     const others = wardrobe.filter((i) => i.id !== item.id);
     const wardrobeText = others
-      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.formality}`)
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}${i.material ? ', ' + i.material : ''}, ${i.formality}`)
       .join('\n');
 
+    const styleBriefCtx = await getStyleBriefContext();
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
     const profileLine = profileCtx ? `\nClient profile: ${profileCtx}\nEvery look MUST work for their body type — apply appropriate silhouette and proportion rules.\n` : '';
 
@@ -38,9 +39,10 @@ ${bodyProfile.features?.includes('Minimise my bust') ? '- Avoid deep V-necks or 
 ${bodyProfile.features?.includes('Create waist definition') ? '- Always find a way to define the waist in each look.' : ''}
 ` : '';
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS}${profileLine}${bodyRules}
+    const prompt = `${STYLIST_PERSONA} ${FASHION_EDITOR_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${profileLine}${bodyRules}
 
-The hero piece is: ${item.category}, "${item.name}", color ${item.primaryColor}${item.secondaryColor ? '/' + item.secondaryColor : ''}, ${item.pattern || 'solid'}, ${item.formality}, ${item.season}.
+The hero piece is: ${item.category}, "${item.name}", color ${item.primaryColor}${item.secondaryColor ? '/' + item.secondaryColor : ''}${item.material ? ', ' + item.material : ''}, ${item.pattern || 'solid'}, ${item.formality}, ${item.season}.
 
 Other items in their wardrobe:
 ${wardrobeText || '(none yet)'}

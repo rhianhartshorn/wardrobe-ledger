@@ -11,6 +11,7 @@ function toClient(row: ItemRow) {
     pattern: row.pattern,
     formality: row.formality,
     season: row.season,
+    material: row.material || undefined,
     imageFilename: row.image_filename || null,
     imageUrl: row.image_data_url || null,
     addedAt: row.added_at,
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     const {
       id, name, category,
       primaryColor = '', secondaryColor = '',
-      pattern = '', formality = '', season = '',
+      pattern = '', formality = '', season = '', material = '',
       imageDataUrl = '',
       price,
     } = body as Record<string, string | number | undefined>;
@@ -56,6 +57,7 @@ export async function POST(req: NextRequest) {
       pattern: pattern as string,
       formality: formality as string,
       season: season as string,
+      material: (material as string) || undefined,
       image_filename: '',
       image_data_url: imageDataUrl as string,
       added_at: Date.now(),

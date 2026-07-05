@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; category: string; name: string;
   primaryColor: string; secondaryColor: string;
-  pattern: string; formality: string; season: string;
+  pattern: string; formality: string; season: string; material?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -17,15 +17,17 @@ export async function POST(req: NextRequest) {
     }
 
     const itemListText = items
-      .map((it) => `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}, ${it.formality}, ${it.season}`)
+      .map((it) => `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}, ${it.formality}, ${it.season}`)
       .join('\n');
 
+    const styleBriefCtx = await getStyleBriefContext();
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
     const profileLine = profileCtx ? `\nClient profile to factor into your analysis: ${profileCtx}` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes.${profileLine}
+    const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes.${profileLine}
 
 Wardrobe:
 ${itemListText}

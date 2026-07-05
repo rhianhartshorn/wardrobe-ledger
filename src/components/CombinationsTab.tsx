@@ -67,11 +67,25 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
   const run = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to see outfit combinations.'); return; }
     setLoading(true); setErr('');
+    const topWorn = [...items]
+      .sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
+      .slice(0, 5)
+      .filter((i) => (i.wearCount ?? 0) > 0)
+      .map((i) => `${i.name} (${i.category}, worn ${i.wearCount}x)`);
+    const savedLookTitles: string[] = [];
+    try {
+      const raw = localStorage.getItem('wl_saved_looks');
+      if (raw) {
+        const looks = JSON.parse(raw) as Array<{ title: string }>;
+        looks.slice(0, 5).forEach((l) => savedLookTitles.push(l.title));
+      }
+    } catch { /* ignore */ }
+
     try {
       const res = await fetch('/api/combinations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items).slice(0, 20), bodyProfile }),
+        body: JSON.stringify({ items: slim(items).slice(0, 20), bodyProfile, topWorn, savedLookTitles }),
       });
       const data = await res.json() as { combinations?: Combo[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Could not curate combinations right now.');

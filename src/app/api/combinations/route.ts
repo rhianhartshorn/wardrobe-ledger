@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string;
@@ -12,18 +12,25 @@ type WardrobeItem = {
   pattern: string;
   formality: string;
   season: string;
+  material?: string;
 };
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile };
+    const { items, bodyProfile, topWorn, savedLookTitles } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[] };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to see outfit combinations.' }, { status: 400 });
     }
 
+    const styleBriefCtx = await getStyleBriefContext();
+    const tasteSignals = [
+      ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
+      ...(savedLookTitles?.length ? [`Looks they've saved: ${savedLookTitles.join('; ')}`] : []),
+    ].join('\n');
+
     const itemListText = items
-      .map((it) => `${it.id} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}, ${it.formality}, ${it.season}`)
+      .map((it) => `${it.id} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}, ${it.formality}, ${it.season}`)
       .join('\n');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
@@ -32,7 +39,8 @@ export async function POST(req: NextRequest) {
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const maxCombos = 10;
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}.
+    const prompt = `${STYLIST_PERSONA} ${FASHION_EDITOR_VOICE} Today is ${today}.
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}
 ${profileBlock}
 ${STYLIST_2026_LENS}
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getImage, getSetting } from '@/lib/db';
 import { callClaude } from '@/lib/claude';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, FIT_SPECIALIST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,13 +25,15 @@ export async function POST(req: NextRequest) {
     const bp = body.bodyProfile;
     const bodyDesc = bp?.height ? `Body: ${bp.height}, ${bp.bodyShape ?? ''}, ${bp.undertone ?? ''} undertone.` : '';
 
-    const prompt = `${STYLIST_PERSONA} ${STYLIST_2026_LENS}
+    const styleBriefCtx = await getStyleBriefContext();
 
+    const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} ${FIT_SPECIALIST_VOICE} ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}
 Your client is considering this outfit: ${outfitDesc}
 ${bodyDesc}
 
 Look at their photo and give sharp, specific feedback in 3–4 sentences covering:
-- Exactly how the colour palette interacts with their skin tone and hair (name the specific colours and whether they warm up or drain their complexion)
+- Exactly how the colour palette interacts with their skin tone and hair (reference the colour profile above — name the specific colours and whether they flatter or drain)
 - Whether the silhouette and proportions work for their frame
 - One concrete styling adjustment that would elevate it
 

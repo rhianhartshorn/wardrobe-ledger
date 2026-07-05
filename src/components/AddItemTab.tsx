@@ -4,7 +4,7 @@ import { Camera, Loader2, Check, AlertTriangle, X, ChevronDown, ChevronUp } from
 import type { WardrobeItem } from '@/app/page';
 import { compressImage } from './utils';
 import { Field } from './ui';
-import { CATEGORIES, FORMALITY, SEASONS } from './constants';
+import { CATEGORIES, FORMALITY, SEASONS, MATERIALS } from './constants';
 
 function genId() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -20,12 +20,13 @@ type TagForm = {
   pattern: string;
   formality: string;
   season: string;
+  material: string;
   price: string;
 };
 
 const EMPTY_FORM: TagForm = {
   name: '', category: 'Top', primaryColor: '', secondaryColor: '',
-  pattern: '', formality: 'Casual', season: 'All-season', price: '',
+  pattern: '', formality: 'Casual', season: 'All-season', material: '', price: '',
 };
 
 type QueueStatus = 'pending' | 'analyzing' | 'ready' | 'duplicate' | 'saved' | 'error';
@@ -196,6 +197,13 @@ function QueueCard({
                 {SEASONS.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
+            <Field label="Material">
+              <select value={form.material} onChange={(e) => updateForm({ material: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                <option value="">Unknown</option>
+                {MATERIALS.map((m) => <option key={m}>{m}</option>)}
+              </select>
+            </Field>
             <Field label="Price paid (optional)">
               <div className="relative">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#A89F96] font-light">$</span>
@@ -332,12 +340,12 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     for (const qi of toSave) {
       try {
         const id = genId();
-        const { price: priceStr, ...formRest } = qi.form;
+        const { price: priceStr, material, ...formRest } = qi.form;
         const price = priceStr && parseFloat(priceStr) > 0 ? parseFloat(priceStr) : undefined;
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, price }),
+          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, material: material || undefined, price }),
         });
         const data = await res.json() as WardrobeItem & { error?: string };
         if (!res.ok) throw new Error(data.error ?? 'Save failed');

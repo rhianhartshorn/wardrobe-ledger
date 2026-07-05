@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { STYLIST_PERSONA, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -20,6 +20,7 @@ type WardrobeItem = {
   pattern: string;
   formality: string;
   season: string;
+  material?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -31,11 +32,15 @@ export async function POST(req: NextRequest) {
       note?: string;
       profileImageFilename?: string;
       bodyProfile?: BodyProfile;
+      topWorn?: string[];
+      savedLookTitles?: string[];
     };
-    const { items, weather, occasion, note, profileImageFilename, bodyProfile } = body;
+    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles } = body;
 
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
     if (!weather) return NextResponse.json({ error: 'No weather data provided' }, { status: 400 });
+
+    const styleBriefCtx = await getStyleBriefContext();
 
     let profileImageBase64: string | undefined;
     let profileMediaType = 'image/jpeg';
@@ -46,17 +51,19 @@ export async function POST(req: NextRequest) {
     }
 
     const itemListText = items
-      .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}, ${i.season}`)
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}${i.material ? ', ' + i.material : ''}, ${i.formality}, ${i.season}`)
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? `The attached photo is of the client. Before selecting any outfit, do the following analysis from the photo:
-1. COLOURING: Identify their skin undertone (warm/cool/neutral), hair colour and tone, eye colour. This is your filter — any outfit whose dominant palette clashes with their complexion or hair tone is disqualified before it reaches the list. Warm undertones: camel, olive, rust, terracotta, off-white, gold work; icy pastels, stark white, black-dominant palettes often drain. Cool undertones: navy, burgundy, grey, jewel tones, crisp white work; orange-based tones, yellows, camel often clash.
-2. SILHOUETTE: From the photo, assess their frame and proportions. Apply the body guidance below accordingly.
-In each outfit rationale, name the specific colour reason it works for THEIR colouring — be concrete (e.g. 'the camel picks up the warm gold in your skin tone', 'the navy creates clean contrast against your fair complexion and dark hair'). Never comment on weight or size. `
-      : '';
+      ? `The attached photo is of the client. ${styleBriefCtx ? 'A professional colour analysis has already been performed (see COLOUR PROFILE below) — use those facts directly. Cross-reference the photo to apply the silhouette and proportion assessment.' : 'Analyse their colouring from the photo before selecting outfits — identify undertone, contrast level, and hair tone, then use this as a hard colour filter.'} In each outfit rationale, name the specific colour reason it works for their colouring. Never comment on weight or size. `
+      : (styleBriefCtx ? 'A professional colour analysis is available — use it as a hard filter when selecting outfits. ' : '');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
+
+    const tasteSignals = [
+      ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
+      ...(savedLookTitles?.length ? [`Looks they've saved and loved: ${savedLookTitles.join('; ')}`] : []),
+    ].join('\n');
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -78,8 +85,8 @@ Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones
 ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
 ` : '';
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
-${bodyGuidance}
+    const prompt = `${STYLIST_PERSONA} ${FIT_SPECIALIST_VOICE} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}
 

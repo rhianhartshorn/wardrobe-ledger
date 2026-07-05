@@ -22,6 +22,7 @@ export type WardrobeItem = {
   pattern: string;
   formality: string;
   season: string;
+  material?: string;
   imageFilename: string | null;
   imageUrl: string | null;
   addedAt: number;

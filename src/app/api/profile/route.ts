@@ -28,6 +28,9 @@ export async function POST(req: NextRequest) {
     await saveImage(filename, base64Data, mimeType);
     await setSetting(PROFILE_KEY, filename);
 
+    // Kick off colour analysis in the background — don't block the response
+    fetch(`${req.nextUrl.origin}/api/style-brief`, { method: 'POST' }).catch(() => {});
+
     return NextResponse.json({ imageUrl: `/api/uploads/${filename}`, imageFilename: filename });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Save failed';
