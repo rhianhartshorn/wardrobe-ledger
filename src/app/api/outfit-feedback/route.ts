@@ -44,7 +44,9 @@ Be direct and specific. No generic advice.`;
       model: 'claude-sonnet-4-6',
     });
 
-    return NextResponse.json({ feedback });
+    // Strip markdown headers/bold so text renders cleanly in the UI
+    const clean = feedback.replace(/^#+\s.*\n?/gm, '').replace(/\*\*(.*?)\*\*/g, '$1').trim();
+    return NextResponse.json({ feedback: clean });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });
