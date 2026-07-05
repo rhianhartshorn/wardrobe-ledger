@@ -52,7 +52,7 @@ export type JournalEntry = {
 // pre-stringify before passing a value here, or values end up double-encoded.
 // ---------------------------------------------------------------------------
 
-async function redisGet(key: string): Promise<string | null> {
+export async function redisGet(key: string): Promise<string | null> {
   try {
     const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${REDIS_TOKEN}` },

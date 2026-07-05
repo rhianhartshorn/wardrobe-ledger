@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
-import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart } from 'lucide-react';
+import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart, MessageSquare, X, Download } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
@@ -70,10 +70,54 @@ type Outfit = {
   inspirationLinks?: InspirationLink[];
 };
 
-function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving }: { outfit: Outfit; items: WardrobeItem[]; onLearnMore: () => void; onSave: () => void; saved: boolean; saving: boolean }) {
+function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProfilePhoto }: { outfit: Outfit; items: WardrobeItem[]; onLearnMore: () => void; onSave: () => void; saved: boolean; saving: boolean; hasProfilePhoto: boolean }) {
   const pieces = outfit.itemIds
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
+
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+  const [feedbackErr, setFeedbackErr] = useState('');
+
+  const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnErr, setTryOnErr] = useState('');
+  const [showTryOn, setShowTryOn] = useState(false);
+
+  const getFeedback = async () => {
+    if (feedback) { setFeedback(null); return; }
+    setFeedbackLoading(true); setFeedbackErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor, formality: p.formality }));
+      const res = await fetch('/api/outfit-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slimItems }),
+      });
+      const data = await res.json() as { feedback?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setFeedback(data.feedback ?? '');
+    } catch (e) { setFeedbackErr(e instanceof Error ? e.message : 'Could not get feedback'); }
+    finally { setFeedbackLoading(false); }
+  };
+
+  const getTryOn = async () => {
+    if (tryOnUrl) { setShowTryOn(true); return; }
+    setTryOnLoading(true); setTryOnErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor }));
+      const res = await fetch('/api/outfit-try-on', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slimItems }),
+      });
+      const data = await res.json() as { outputUrl?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setTryOnUrl(data.outputUrl ?? null);
+      setShowTryOn(true);
+    } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
+    finally { setTryOnLoading(false); }
+  };
 
   return (
     <div className="border border-[#E5DDD0] bg-white relative">
@@ -158,8 +202,63 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving }: { out
         <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors">
           Deep dive into this look <ChevronRight size={11} />
         </button>
+
+        {/* AI actions — only when profile photo exists */}
+        {hasProfilePhoto && (
+          <div className="flex gap-2 pt-1 border-t border-[#E5DDD0] mt-1">
+            <button
+              onClick={getFeedback}
+              disabled={feedbackLoading}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-2 text-[10px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+            >
+              {feedbackLoading ? <Loader2 size={11} className="animate-spin" /> : <MessageSquare size={11} />}
+              {feedback ? 'Hide feedback' : 'Does this work on me?'}
+            </button>
+            <button
+              onClick={getTryOn}
+              disabled={tryOnLoading}
+              className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-2 text-[10px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+            >
+              {tryOnLoading ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
+              Try on full look
+            </button>
+          </div>
+        )}
+
+        {feedbackErr && <p className="text-xs text-red-600 font-light mt-1">{feedbackErr}</p>}
+        {tryOnErr && <p className="text-xs text-red-600 font-light mt-1">{tryOnErr}</p>}
+
+        {feedback && (
+          <div className="bg-[#F5F2EC] border border-[#E5DDD0] p-3 mt-1">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mb-1.5">Stylist feedback</p>
+            <p className="text-xs text-[#1A1714] font-light leading-relaxed">{feedback}</p>
+          </div>
+        )}
       </div>
     </div>
+
+    {/* Full-screen try-on modal */}
+    {showTryOn && tryOnUrl && (
+      <div className="fixed inset-0 z-50 bg-[#1A1714] flex flex-col">
+        <div className="flex items-center gap-3 px-4 pt-5 pb-4 border-b border-white/10">
+          <p className="flex-1 text-sm text-white font-light">Full outfit try-on</p>
+          <a
+            href={tryOnUrl}
+            download="outfit-tryon.jpg"
+            className="text-white/40 hover:text-white transition-colors"
+            aria-label="Save"
+          >
+            <Download size={16} />
+          </a>
+          <button onClick={() => setShowTryOn(false)} className="text-white/40 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+          <img src={tryOnUrl} alt="You in this outfit" className="max-w-full max-h-full object-contain" />
+        </div>
+      </div>
+    )}
   );
 }
 
@@ -391,6 +490,7 @@ export default function OutfitTab({
             <OutfitCard
               key={idx} outfit={o} items={items}
               saved={savedIdx.has(idx)} saving={savingIdx === idx}
+              hasProfilePhoto={Boolean(profileImageUrl)}
               onSave={() => saveLook(idx, o)}
               onLearnMore={() => {
                 const pieces = o.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
