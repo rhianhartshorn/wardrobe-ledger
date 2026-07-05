@@ -120,6 +120,7 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
   };
 
   return (
+    <>
     <div className="border border-[#E5DDD0] bg-white relative">
       <button
         onClick={onSave}
@@ -259,6 +260,7 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
         </div>
       </div>
     )}
+    </>
   );
 }
 
