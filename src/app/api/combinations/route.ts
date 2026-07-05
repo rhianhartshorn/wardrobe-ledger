@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const profileBlock = profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\nEvery combination must be assessed against this profile — think in terms of silhouette proportion, what elongates or balances this specific body shape, and which colours work with this undertone and hair tone. A combination that doesn't genuinely flatter this person does not make the list.\n` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const maxCombos = 20;
+    const maxCombos = 10;
 
     const prompt = `${STYLIST_PERSONA} Today is ${today}.
 ${profileBlock}
@@ -50,7 +50,7 @@ Select up to ${maxCombos} combinations, ranked from the single best outfit this 
 Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall"}]}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 6000 });
+    const raw = await callClaude({ prompt, maxTokens: 2000, model: 'claude-haiku-4-5-20251001' });
     const parsed = parseJSON(raw) as { combinations?: unknown[] };
     return NextResponse.json({ combinations: parsed.combinations ?? [] });
   } catch (err) {

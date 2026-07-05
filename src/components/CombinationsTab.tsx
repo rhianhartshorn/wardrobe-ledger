@@ -71,7 +71,7 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
       const res = await fetch('/api/combinations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items).slice(0, 30), bodyProfile }),
+        body: JSON.stringify({ items: slim(items).slice(0, 20), bodyProfile }),
       });
       const data = await res.json() as { combinations?: Combo[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Could not curate combinations right now.');
