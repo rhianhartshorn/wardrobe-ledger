@@ -327,10 +327,21 @@ export default function OutfitTab({
       setWeatherErr('Location not available — enter your city below.');
       setNeedsCity(true); setLocating(false); return;
     }
+    // Safety timeout — iOS can silently hang if device location is off at OS level
+    const fallback = setTimeout(() => {
+      setWeatherErr('Location timed out — enter your city below.');
+      setNeedsCity(true); setLocating(false);
+    }, 10000);
     navigator.geolocation.getCurrentPosition(
-      (pos) => loadWeather(`lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`),
-      () => { setWeatherErr('Location access denied — enter your city below.'); setNeedsCity(true); setLocating(false); },
-      { timeout: 8000 }
+      (pos) => { clearTimeout(fallback); loadWeather(`lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`); },
+      (err) => {
+        clearTimeout(fallback);
+        const msg = err.code === 1
+          ? 'Location access denied — enter your city below.'
+          : 'Could not get location — enter your city below.';
+        setWeatherErr(msg); setNeedsCity(true); setLocating(false);
+      },
+      { timeout: 8000, maximumAge: 300000 }
     );
   };
 
