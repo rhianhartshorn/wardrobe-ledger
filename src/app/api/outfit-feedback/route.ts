@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getImage, getSetting } from '@/lib/db';
 import { callClaude } from '@/lib/claude';
+import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,17 +25,17 @@ export async function POST(req: NextRequest) {
     const bp = body.bodyProfile;
     const bodyDesc = bp?.height ? `Body: ${bp.height}, ${bp.bodyShape ?? ''}, ${bp.undertone ?? ''} undertone.` : '';
 
-    const prompt = `You are a personal stylist giving honest, specific feedback about an outfit for this person.
+    const prompt = `${STYLIST_PERSONA} ${STYLIST_2026_LENS}
 
-The outfit is: ${outfitDesc}
+Your client is considering this outfit: ${outfitDesc}
 ${bodyDesc}
 
-Looking at their photo, give 3–4 sentences of personalised feedback on:
-- How the colour palette works with their complexion and colouring
-- Whether the silhouette/proportions suit their build
-- One specific styling tweak that would elevate the look
+Look at their photo and give sharp, specific feedback in 3–4 sentences covering:
+- Exactly how the colour palette interacts with their skin tone and hair (name the specific colours and whether they warm up or drain their complexion)
+- Whether the silhouette and proportions work for their frame
+- One concrete styling adjustment that would elevate it
 
-Be direct and specific. No generic advice.`;
+Write as a trusted stylist who respects their time. No hollow phrases, no hedging.`;
 
     const feedback = await callClaude({
       prompt,

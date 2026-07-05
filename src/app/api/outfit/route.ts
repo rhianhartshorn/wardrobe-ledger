@@ -50,7 +50,10 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? "The attached photo is of the client. Study their skin tone, hair colour, and overall colouring carefully. In each outfit rationale, specifically explain why the colours in that outfit suit their complexion and hair — be concrete (e.g. 'the camel tone echoes your warm undertone', 'the navy creates contrast with your fair complexion'). Never comment on body shape, weight, or size. "
+      ? `The attached photo is of the client. Before selecting any outfit, do the following analysis from the photo:
+1. COLOURING: Identify their skin undertone (warm/cool/neutral), hair colour and tone, eye colour. This is your filter — any outfit whose dominant palette clashes with their complexion or hair tone is disqualified before it reaches the list. Warm undertones: camel, olive, rust, terracotta, off-white, gold work; icy pastels, stark white, black-dominant palettes often drain. Cool undertones: navy, burgundy, grey, jewel tones, crisp white work; orange-based tones, yellows, camel often clash.
+2. SILHOUETTE: From the photo, assess their frame and proportions. Apply the body guidance below accordingly.
+In each outfit rationale, name the specific colour reason it works for THEIR colouring — be concrete (e.g. 'the camel picks up the warm gold in your skin tone', 'the navy creates clean contrast against your fair complexion and dark hair'). Never comment on weight or size. `
       : '';
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
@@ -83,10 +86,10 @@ Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.conditi
 Wardrobe (id :: details):
 ${itemListText}
 
-Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. For each, name the current 2026 style aesthetic. Apply the body and colour guidance above to every outfit choice.
+Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. Discard any combination where the palette clashes with the client's colouring — only surface outfits that genuinely flatter them. For each, name the current 2026 style aesthetic. Apply the body and colour analysis above to every outfit choice.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 30 words — must name the specific colour/colouring reason and any silhouette benefit for their body profile","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
 
     const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };

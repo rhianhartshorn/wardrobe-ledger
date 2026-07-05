@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getImage, getSetting, getItem } from '@/lib/db';
+import { STYLIST_PERSONA } from '@/lib/stylist';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     const parts: unknown[] = [
       { inline_data: { mime_type: profileImg.mimeType, data: profileImg.data } },
       ...garmentParts.map((g) => ({ inline_data: g })),
-      { text: `The first image is a photo of a person. The following images are clothing items: ${outfitDesc}. Generate a single photorealistic image showing this person wearing all of these clothing items together as a complete outfit. Preserve the person's face, hair, and body proportions exactly. Editorial fashion photography lighting.` },
+      { text: `${STYLIST_PERSONA}\n\nThe first image is a photo of a person. The following images are clothing items curated for them: ${outfitDesc}. Generate a single photorealistic image showing this person wearing all of these items together as a complete, well-styled outfit. Preserve their face, hair colour, and body proportions exactly. Style the outfit with the precision of an editorial fashion shoot — clean composition, flattering natural light, the garments fitting and falling as they would on a real body.` },
     ];
 
     const res = await fetch(
