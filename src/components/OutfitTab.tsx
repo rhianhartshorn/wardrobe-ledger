@@ -337,7 +337,6 @@ export default function OutfitTab({
 
   const handleGenerate = async () => {
     if (items.length === 0) { setGenErr('Add a few wardrobe items first.'); return; }
-    if (!weather) { setGenErr('Get a weather reading first.'); return; }
     setGenerating(true); setGenErr(''); setOutfits(null); setSavedIdx(new Set());
 
     // Pass taste signals: top worn items and saved look titles
@@ -389,7 +388,7 @@ export default function OutfitTab({
 
       {/* Weather */}
       <div className="border border-[#E5DDD0] bg-white p-4">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Today's weather</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Today's weather <span className="text-[#A89F96]">— optional</span></p>
         {locating ? (
           <div className="flex items-center gap-2 text-sm text-[#A89F96] font-light">
             <Loader2 className="animate-spin" size={14} /> Detecting location...
@@ -421,6 +420,7 @@ export default function OutfitTab({
               <span className="text-[10px] text-[#A89F96] font-light">or</span>
               <div className="flex-1 h-px bg-[#E5DDD0]" />
             </div>
+
             <div className="flex gap-2">
               <input
                 value={city}
@@ -438,6 +438,15 @@ export default function OutfitTab({
               </button>
             </div>
           </div>
+        )}
+        {!weather && !locating && (
+          <p className="text-[10px] text-[#A89F96] font-light mt-3 text-center">
+            Planning ahead?{' '}
+            <button onClick={() => setNeedsCity(false)} className="underline hover:text-[#9B7B3A] transition-colors">
+              Skip weather
+            </button>{' '}
+            — outfits will work across conditions.
+          </p>
         )}
         {weatherErr && <p className="text-xs text-[#A89F96] mt-2 font-light">{weatherErr}</p>}
       </div>
