@@ -12,7 +12,7 @@ import type { StyleReadResult } from '@/lib/style-types';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
-  'Hailey Bieber', 'Rosie Huntington-Whiteley', 'Street Style', 'Parisian Chic',
+  'Hailey Bieber', 'Rosie Huntington-Whiteley', 'Street Style', 'Parisian Cool',
   'Margot Robbie', 'Coastal Grandmother', 'Clean Girl', 'Timothée Chalamet',
 ];
 

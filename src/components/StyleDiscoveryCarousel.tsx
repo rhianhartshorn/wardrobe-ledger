@@ -14,7 +14,7 @@ const MOODS = [
   {
     id: 'Quiet Luxury',
     label: 'Quiet Luxury',
-    desc: 'Expensive without logos. Understated, precise, effortless.',
+    desc: 'Expensive without logos. Understated, precise, considered.',
     palette: ['#C4B08A', '#E5DDD0', '#1A1714'],
   },
   {
@@ -50,10 +50,10 @@ const MOODS = [
 ];
 
 const DINNER_OPTIONS = [
-  { id: 'effortless', label: 'Effortlessly put-together', desc: "Like I didn't try too hard" },
+  { id: 'effortless', label: 'Put-together without trying', desc: "Like I didn't try too hard" },
   { id: 'glamorous', label: 'A bit glamorous', desc: 'I want to make an entrance' },
   { id: 'relaxed', label: 'Relaxed but pulled together', desc: 'Comfortable and clearly stylish' },
-  { id: 'polished', label: 'Polished and confident', desc: 'Like I mean it' },
+  { id: 'polished', label: 'Sharp and confident', desc: 'Like I mean it' },
 ];
 
 const VALUE_OPTIONS = [
@@ -119,7 +119,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       if (!res.ok) throw new Error('Generation failed');
       onDone();
     } catch {
-      setError('Something went wrong — your preferences have been noted and we\'ll use them going forward.');
+      setError('Something went wrong — your preferences have been noted and your stylist will use them going forward.');
       setTimeout(onDone, 2000);
     }
   };
