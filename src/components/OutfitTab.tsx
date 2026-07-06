@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart, X, Download } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
+import CombinationsTab from './CombinationsTab';
 import type { WardrobeItem } from '@/app/page';
 import { compressImage, colorDot, slim } from './utils';
 import { OCCASIONS } from './constants';
@@ -498,6 +499,12 @@ export default function OutfitTab({
           ))}
         </div>
       )}
+
+      {/* Combinations section — always visible below outfit results */}
+      <div className="pt-4 border-t border-[#E5DDD0]">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-4">AI Combinations</p>
+        <CombinationsTab items={items} bodyProfile={bodyProfile} />
+      </div>
     </div>
   );
 }

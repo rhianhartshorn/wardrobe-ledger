@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -85,8 +85,9 @@ Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones
 ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
 ` : '';
 
-    const prompt = `${STYLIST_PERSONA} ${FIT_SPECIALIST_VOICE} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
+    const [personaCtx, styleDirectives] = await Promise.all([getPersonaContext(), getStyleDirectives()]);
+    const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}
 
@@ -96,7 +97,7 @@ ${itemListText}
 Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. Discard any combination where the palette clashes with the client's colouring — only surface outfits that genuinely flatter them. For each, name the current 2026 style aesthetic. Apply the body and colour analysis above to every outfit choice.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["tip max 8 words","tip max 8 words"],"weatherNote":"max 15 words"}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["specific accessory direction max 10 words — name the type, finish, and why (e.g. 'a slim tan leather belt — anchors the waist, adds warmth')","second accessory tip max 10 words"],"weatherNote":"max 15 words"}]}`;
 
     const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: unknown[] };

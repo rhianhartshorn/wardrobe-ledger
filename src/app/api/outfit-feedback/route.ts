@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getImage, getSetting } from '@/lib/db';
 import { callClaude } from '@/lib/claude';
-import { STYLIST_PERSONA, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, FIT_SPECIALIST_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, FIT_SPECIALIST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
     const bp = body.bodyProfile;
     const bodyDesc = bp?.height ? `Body: ${bp.height}, ${bp.bodyShape ?? ''}, ${bp.undertone ?? ''} undertone.` : '';
 
-    const styleBriefCtx = await getStyleBriefContext();
+    const [styleBriefCtx, personaCtx, styleDirectives] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives()]);
 
-    const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} ${FIT_SPECIALIST_VOICE} ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}
+    const prompt = `${personaCtx} ${COLOUR_ANALYST_VOICE} ${FIT_SPECIALIST_VOICE} ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}
 Your client is considering this outfit: ${outfitDesc}
 ${bodyDesc}
 

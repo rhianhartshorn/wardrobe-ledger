@@ -1,10 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { Shirt, Trash2, X, Loader2, ArrowLeft, AlertCircle, Sparkles } from 'lucide-react';
+import { Shirt, Trash2, X, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { colorDot, slim } from './utils';
 import type { BodyProfile } from '@/lib/body-profile';
-import TryOnModal from './TryOnModal';
 
 type Look = {
   title: string;
@@ -141,14 +140,10 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
   );
 }
 
-const TRY_ON_CATEGORIES = new Set(['top', 'bottom', 'outerwear', 'dress/one-piece']);
-
-function ItemCard({ item, allItems, onRemove, onWearLogged, profileImageUrl, onAddPhoto, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; profileImageUrl?: string | null; onAddPhoto?: () => void; bodyProfile?: BodyProfile }) {
+function ItemCard({ item, allItems, onRemove, onWearLogged, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
   const [confirming, setConfirming] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
-  const [showTryOn, setShowTryOn] = useState(false);
   const [loggingWear, setLoggingWear] = useState(false);
-  const canTryOn = TRY_ON_CATEGORIES.has(item.category.toLowerCase());
 
   const logWear = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -174,14 +169,6 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, profileImageUrl, onA
     <>
       {showDetail && (
         <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} />
-      )}
-      {showTryOn && (
-        <TryOnModal
-          item={item}
-          hasProfilePhoto={Boolean(profileImageUrl)}
-          onClose={() => setShowTryOn(false)}
-          onAddPhoto={onAddPhoto ?? (() => setShowTryOn(false))}
-        />
       )}
       <div className="bg-white border border-[#E5DDD0] group relative cursor-pointer" onClick={() => !confirming && setShowDetail(true)}>
         <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC]">
@@ -219,17 +206,7 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, profileImageUrl, onA
               <button onClick={() => setConfirming(false)} className="flex-1 text-[10px] border border-[#E5DDD0] text-[#6B6058] py-1 font-light">Cancel</button>
             </div>
           ) : (
-            <div className="absolute top-2 right-2 flex gap-1 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-              {canTryOn && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowTryOn(true); }}
-                  className="text-[#D6CFC0] hover:text-[#9B7B3A] transition-colors"
-                  aria-label="Try on"
-                  title="Virtual try-on"
-                >
-                  <Sparkles size={13} />
-                </button>
-              )}
+            <div className="absolute top-2 right-2 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               <button
                 onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
                 className="text-[#D6CFC0] hover:text-red-600 transition-colors"
@@ -270,7 +247,7 @@ function isDormant(item: WardrobeItem) {
   return (item.wearCount ?? 0) === 0 && Date.now() - item.addedAt > NINETY_DAYS_MS;
 }
 
-export default function ClosetTab({ items, onRemove, onWearLogged, profileImageUrl, onAddPhoto, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; profileImageUrl?: string | null; onAddPhoto?: () => void; bodyProfile?: BodyProfile }) {
+export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('All');
   const [formality, setFormality] = useState('All');
@@ -398,7 +375,7 @@ export default function ClosetTab({ items, onRemove, onWearLogged, profileImageU
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
           {visible.map((item) => (
-            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} profileImageUrl={profileImageUrl} onAddPhoto={onAddPhoto} bodyProfile={bodyProfile} />
+            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} bodyProfile={bodyProfile} />
           ))}
         </div>
       )}

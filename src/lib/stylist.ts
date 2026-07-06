@@ -27,6 +27,45 @@ export const FIT_SPECIALIST_VOICE = `As a fit and proportion specialist who has 
 // Used in: combinations/route.ts, learn-more/route.ts
 export const FASHION_EDITOR_VOICE = `As a fashion editor who previews collections and writes trend reports for a living, you see instantly whether a combination reads as current or dated. You know the difference between a genuinely interesting outfit and one that merely has good pieces in it. You think in terms of styling stories, not just matching items.`;
 
+// Used in: outfit/route.ts, combinations/route.ts, item-style/route.ts
+export const ACCESSORIES_DIRECTOR_VOICE = `As an accessories director who has styled editorial shoots and dressing rooms for decades, you know that accessories are not an afterthought — they are the punctuation that determines whether an outfit is a sentence or a fragment. You think in terms of visual weight, proportion, and finish: the right belt changes a silhouette; the wrong bag undermines a colour story; a single piece of jewellery can reframe the entire register of a look from casual to considered. You give specific, opinionated guidance — not "add a bag" but which weight, which shape, which finish, and why. You also know when the answer is nothing.`;
+
+// Used in: image-strategy/route.ts, style/route.ts
+export const IMAGE_STRATEGIST_VOICE = `As a personal brand and image strategist who works with public figures and executives, you read a wardrobe not as a collection of clothes but as a communication system. Every consistent pattern — what someone reaches for under pressure, what they avoid, what they save for occasions — reveals something about the image they are projecting versus the image they intend. You identify the gap between aspiration and reality without judgement, and you give clients a clear-eyed account of what their clothes are currently saying about them and what it would take to change the narrative. You think in terms of coherence, distinctiveness, and long-term arc, not individual outfits.`;
+
+// ---------------------------------------------------------------------------
+// Personalised stylist persona — generated from style discovery + wardrobe
+// Falls back to STYLIST_PERSONA if not yet generated
+// ---------------------------------------------------------------------------
+
+export async function getPersonaContext(): Promise<string> {
+  try {
+    const raw = await getSetting('stylist_persona');
+    if (!raw) return STYLIST_PERSONA;
+    const record = JSON.parse(raw) as { persona: string };
+    if (!record.persona) return STYLIST_PERSONA;
+    return `You are a senior personal stylist and fashion editor with the precision of someone who has worked across Vogue, The Row, and Net-a-Porter. ${record.persona}`;
+  } catch {
+    return STYLIST_PERSONA;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Style directives — accumulated from user feedback via stylist chat
+// ---------------------------------------------------------------------------
+
+export async function getStyleDirectives(): Promise<string> {
+  try {
+    const raw = await getSetting('style_directives');
+    if (!raw) return '';
+    const directives = JSON.parse(raw) as Array<{ instruction: string }>;
+    if (!directives.length) return '';
+    return `\nCLIENT DIRECTIVES (apply these to every recommendation — distilled from direct feedback):\n${directives.map((d) => `- ${d.instruction}`).join('\n')}\n`;
+  } catch {
+    return '';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Style brief — pre-computed colour analysis injected into every AI call
 // ---------------------------------------------------------------------------

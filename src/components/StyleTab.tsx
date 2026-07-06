@@ -6,6 +6,9 @@ import { slim } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
 import MirrorTab from './MirrorTab';
+import StylistChat from './StylistChat';
+import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
+import ImageStrategySection from './ImageStrategySection';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -63,6 +66,7 @@ function MatchStrengthBar({ strength }: { strength: string }) {
 
 export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
   const [view, setView] = useState<'dna' | 'insights'>('dna');
+  const [showPersonaSetup, setShowPersonaSetup] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
@@ -158,6 +162,13 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
 
   return (
     <div className="space-y-5">
+      {showPersonaSetup && (
+        <StyleDiscoveryCarousel
+          onDone={() => { setShowPersonaSetup(false); localStorage.setItem('wl_style_discovery_done', '1'); }}
+          itemCount={items.length}
+          topWorn={[...items].sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0)).slice(0, 5).filter((i) => (i.wearCount ?? 0) > 0).map((i) => i.name)}
+        />
+      )}
       {/* Internal view toggle */}
       <div className="flex border border-[#E5DDD0] overflow-hidden">
         {(['dna', 'insights'] as const).map((v) => (
@@ -428,6 +439,12 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
           </div>
         )}
       </div>
+
+      {/* Image strategy */}
+      <ImageStrategySection items={items} bodyProfile={bodyProfile} />
+
+      {/* Stylist feedback */}
+      <StylistChat onRebuildProfile={() => setShowPersonaSetup(true)} />
       </>)}
     </div>
   );

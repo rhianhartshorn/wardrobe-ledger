@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { STYLIST_PERSONA, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,10 +11,10 @@ export async function POST(req: NextRequest) {
     };
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-    const styleBriefCtx = await getStyleBriefContext();
+    const [styleBriefCtx, personaCtx, styleDirectives] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives()]);
     const clientCtx = styleBriefCtx ? `\n${styleBriefCtx}\nApply this client's colour profile and colouring when giving any advice — all recommendations should be tailored to their specific palette.\n` : '';
 
-    const base = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS}${clientCtx}`;
+    const base = `${personaCtx} Today is ${today}. ${STYLIST_2026_LENS}${clientCtx}${styleDirectives}`;
 
     const prompts: Record<string, string> = {
       outfit: `${base}${FIT_SPECIALIST_VOICE} Write a rich editorial breakdown of this outfit concept: "${title}". Context: ${context}. Cover: what makes this aesthetic work in 2026, exactly how to put it together (with specific attention to fit and proportion), what details matter (fabric, fit, accessories), what mood/occasion it suits, and 3 concrete styling tips. Be specific and inspiring — write like a great magazine feature, not a generic style guide.`,

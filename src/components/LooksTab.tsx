@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2 } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { OCCASIONS } from './constants';
-import CombinationsTab from './CombinationsTab';
 import type { BodyProfile } from '@/lib/body-profile';
 
 export type SavedLook = {
@@ -149,8 +148,7 @@ function LogModal({ items, savedLooks, onClose, onLogged }: {
   );
 }
 
-export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
-  const [view, setView] = useState<'looks' | 'combos'>('looks');
+export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -184,24 +182,7 @@ export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]
 
   return (
     <div className="space-y-8">
-      {/* Internal view toggle */}
-      <div className="flex border border-[#E5DDD0] overflow-hidden">
-        {(['looks', 'combos'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`flex-1 py-2 text-[10px] uppercase tracking-[0.15em] font-light transition-colors ${
-              view === v ? 'bg-[#1A1714] text-white' : 'bg-white text-[#6B6058] hover:bg-[#F5F2EC]'
-            }`}
-          >
-            {v === 'looks' ? 'Looks & Journal' : 'AI Combinations'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'combos' ? (
-        <CombinationsTab items={items} bodyProfile={bodyProfile} />
-      ) : (<>
+      <>
       {/* Daily journal prompt */}
       <div className="border border-[#E5DDD0] bg-[#1A1714] text-white p-5">
         <div className="flex items-center gap-2 mb-1">
@@ -286,7 +267,7 @@ export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]
           onLogged={(entry) => setJournal((prev) => [entry, ...prev])}
         />
       )}
-      </>)}
+      </>
     </div>
   );
 }

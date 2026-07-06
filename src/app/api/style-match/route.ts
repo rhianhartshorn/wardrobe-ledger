@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { STYLIST_PERSONA, STYLIST_2026_LENS } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
       ? `\nThe person's style aspiration is: "${goal}"\nAnalyse how close their current wardrobe already is to this goal, which specific pieces (by id) already work toward it, what is missing, and 3 concrete tips to bridge the gap using what they own.`
       : '';
 
-    const prompt = `${STYLIST_PERSONA} Today is ${today}. ${STYLIST_2026_LENS}
+    const [personaCtx, styleDirectives] = await Promise.all([getPersonaContext(), getStyleDirectives()]);
+    const prompt = `${personaCtx} Today is ${today}. ${STYLIST_2026_LENS}${styleDirectives}
 
 Wardrobe:
 ${itemListText}

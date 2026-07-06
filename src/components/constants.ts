@@ -6,6 +6,10 @@ export const FORMALITY = ['Casual', 'Smart Casual', 'Business', 'Formal', 'Athle
 
 export const SEASONS = ['All-season', 'Summer', 'Winter', 'Spring/Fall'];
 
+export const ACCESSORY_SUBCATEGORIES = [
+  'Bag', 'Jewellery', 'Belt', 'Hat', 'Scarf', 'Sunglasses', 'Watch', 'Other',
+];
+
 export const MATERIALS = [
   'Cotton', 'Linen', 'Wool', 'Silk', 'Denim', 'Leather',
   'Knit', 'Synthetic', 'Velvet', 'Satin', 'Cashmere', 'Suede',

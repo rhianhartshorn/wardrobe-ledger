@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { STYLIST_PERSONA, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string; category: string; name: string;
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       .map((it) => `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}, ${it.formality}, ${it.season}`)
       .join('\n');
 
-    const styleBriefCtx = await getStyleBriefContext();
+    const [styleBriefCtx, personaCtx, styleDirectives] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives()]);
     const tasteSignals = [
       ...(topWorn?.length ? [`Most-worn pieces (their real go-to items): ${topWorn.join('; ')}`] : []),
       ...(savedLookTitles?.length ? [`Looks they've saved as favourites: ${savedLookTitles.join('; ')}`] : []),
@@ -30,8 +30,8 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `${STYLIST_PERSONA} ${COLOUR_ANALYST_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${tasteSignals ? 'BEHAVIOURAL SIGNALS — what this person actually wears vs what they own. Weight these heavily when determining the real archetype and style groups:\n' + tasteSignals + '\n' : ''} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes. The behavioural signals above reveal actual style vs aspirational — let worn frequency and saved looks sharpen the archetype and inform which style group feels most alive for this person.${profileLine}
+    const prompt = `${personaCtx} ${COLOUR_ANALYST_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'BEHAVIOURAL SIGNALS — what this person actually wears vs what they own. Weight these heavily when determining the real archetype and style groups:\n' + tasteSignals + '\n' : ''} Analyse this real wardrobe to identify the person's genuine style identity with the precision and honesty of an editor who has seen thousands of wardrobes. The behavioural signals above reveal actual style vs aspirational — let worn frequency and saved looks sharpen the archetype and inform which style group feels most alive for this person.${profileLine}
 
 Wardrobe:
 ${itemListText}

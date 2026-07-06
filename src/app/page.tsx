@@ -9,6 +9,7 @@ import StyleTab from '@/components/StyleTab';
 import LooksTab from '@/components/LooksTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
 import OnboardingCarousel from '@/components/OnboardingCarousel';
+import StyleDiscoveryCarousel from '@/components/StyleDiscoveryCarousel';
 import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
 import { EMPTY_PROFILE } from '@/lib/body-profile';
@@ -23,6 +24,7 @@ export type WardrobeItem = {
   formality: string;
   season: string;
   material?: string;
+  accessoryType?: string;
   imageFilename: string | null;
   imageUrl: string | null;
   addedAt: number;
@@ -30,10 +32,11 @@ export type WardrobeItem = {
   wearCount?: number;
 };
 
-type Tab = 'closet' | 'add' | 'outfit' | 'looks' | 'style';
+type Tab = 'closet' | 'outfit' | 'looks' | 'style';
 
 export default function WardrobeApp() {
   const [tab, setTab] = useState<Tab>('closet');
+  const [showAdd, setShowAdd] = useState(false);
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageFilename, setProfileImageFilename] = useState<string | null>(null);
@@ -44,6 +47,10 @@ export default function WardrobeApp() {
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (typeof window === 'undefined') return false;
     return !localStorage.getItem('wl_onboarded');
+  });
+  const [showStyleDiscovery, setShowStyleDiscovery] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('wl_style_discovery_done') && !!localStorage.getItem('wl_onboarded');
   });
 
   useEffect(() => {
@@ -89,6 +96,15 @@ export default function WardrobeApp() {
   const dismissOnboarding = () => {
     localStorage.setItem('wl_onboarded', '1');
     setShowOnboarding(false);
+    // Show style discovery after onboarding completes
+    if (!localStorage.getItem('wl_style_discovery_done')) {
+      setShowStyleDiscovery(true);
+    }
+  };
+
+  const dismissStyleDiscovery = () => {
+    localStorage.setItem('wl_style_discovery_done', '1');
+    setShowStyleDiscovery(false);
   };
 
   if (showBodyProfile) {
@@ -109,12 +125,20 @@ export default function WardrobeApp() {
           onSetupBlueprint={() => { dismissOnboarding(); setShowBodyProfile(true); }}
         />
       )}
+      {showStyleDiscovery && !showOnboarding && (
+        <StyleDiscoveryCarousel
+          onDone={dismissStyleDiscovery}
+          itemCount={items.length}
+          topWorn={[...items].sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0)).slice(0, 5).filter((i) => (i.wearCount ?? 0) > 0).map((i) => i.name)}
+        />
+      )}
       <Header
         tab={tab}
         setTab={setTab}
         count={items.length}
         onProfileOpen={() => setShowBodyProfile(true)}
         profileComplete={profileComplete}
+        onAddItem={() => setShowAdd(true)}
       />
       <main className="max-w-3xl mx-auto px-4 pb-16 pt-5">
         {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
@@ -138,9 +162,7 @@ export default function WardrobeApp() {
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
         ) : tab === 'closet' ? (
-          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} profileImageUrl={profileImageUrl} onAddPhoto={() => setTab('outfit')} bodyProfile={bodyProfile} />
-        ) : tab === 'add' ? (
-          <AddItemTab onAdd={addItem} items={items} />
+          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} bodyProfile={bodyProfile} />
         ) : tab === 'outfit' ? (
           <OutfitTab
             items={items}
@@ -156,6 +178,22 @@ export default function WardrobeApp() {
           <StyleTab items={items} bodyProfile={bodyProfile} />
         ) : (
           <LooksTab items={items} bodyProfile={bodyProfile} />
+        )}
+
+        {/* Add Item drawer overlay */}
+        {showAdd && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setShowAdd(false)}>
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative bg-[#FAF8F4] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-[#FAF8F4] border-b border-[#E5DDD0] px-4 py-3 flex items-center justify-between z-10">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Add to wardrobe</p>
+                <button onClick={() => setShowAdd(false)} className="text-[#A89F96] hover:text-[#1A1714] transition-colors">✕</button>
+              </div>
+              <div className="px-4 pb-8 pt-4">
+                <AddItemTab onAdd={(item) => { addItem(item); setShowAdd(false); }} items={items} />
+              </div>
+            </div>
+          </div>
         )}
 
         <p className="text-center text-[11px] text-[#A89F96] mt-12 font-light tracking-wide">
