@@ -14,6 +14,8 @@ type WardrobeItem = {
   formality: string;
   season: string;
   material?: string;
+  fit?: string;
+  length?: string;
 };
 
 type Combination = {
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
     ].join('\n');
 
     const itemListText = items
-      .map((it) => `${it.id} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}, ${it.formality}, ${it.season}`)
+      .map((it) => `${it.id} :: ${it.category}, "${it.name}", color ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}`)
       .join('\n');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';

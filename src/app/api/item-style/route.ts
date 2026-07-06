@@ -6,7 +6,7 @@ import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITO
 type WardrobeItem = {
   id: string; name: string; category: string;
   primaryColor: string; secondaryColor: string;
-  pattern: string; formality: string; season: string; material?: string;
+  pattern: string; formality: string; season: string; material?: string; fit?: string; length?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const others = wardrobe.filter((i) => i.id !== item.id);
     const wardrobeText = others
-      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}${i.material ? ', ' + i.material : ''}, ${i.formality}`)
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}${i.material ? ', ' + i.material : ''}${i.fit ? ', ' + i.fit : ''}${i.length ? ', ' + i.length : ''}, ${i.formality}`)
       .join('\n');
 
     const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives(), getBrandVoiceContext()]);

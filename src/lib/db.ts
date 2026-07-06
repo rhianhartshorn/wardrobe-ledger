@@ -17,6 +17,8 @@ export type ItemRow = {
   formality: string;
   season: string;
   material?: string;
+  fit?: string;
+  length?: string;
   accessory_type?: string;
   image_filename: string;
   image_data_url: string;

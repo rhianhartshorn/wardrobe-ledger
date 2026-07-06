@@ -15,6 +15,14 @@ export const MATERIALS = [
   'Knit', 'Synthetic', 'Velvet', 'Satin', 'Cashmere', 'Suede',
 ];
 
+export const FIT_OPTIONS = [
+  'Slim', 'Relaxed', 'Oversized', 'Tailored', 'Flowy', 'Bodycon', 'Straight',
+];
+
+export const LENGTH_OPTIONS = [
+  'Crop', 'Standard', 'Longline', 'Mini', 'Midi', 'Maxi',
+];
+
 export const OCCASIONS = [
   'Casual day', 'Business casual', 'Business formal', 'Date night',
   'Golf outing', 'Travel day', 'Festive occasion', 'Outdoor / birding',

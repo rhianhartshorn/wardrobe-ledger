@@ -22,6 +22,8 @@ type WardrobeItem = {
   formality: string;
   season: string;
   material?: string;
+  fit?: string;
+  length?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
     if (profileImageData) { profileImageBase64 = profileImageData.data; profileMediaType = profileImageData.mimeType; }
 
     const itemListText = items
-      .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}${i.material ? ', ' + i.material : ''}, ${i.formality}, ${i.season}`)
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}${i.material ? ', ' + i.material : ''}${i.fit ? ', ' + i.fit : ''}${i.length ? ', ' + i.length : ''}, ${i.formality}, ${i.season}`)
       .join('\n');
 
     const photoLine = profileImageBase64

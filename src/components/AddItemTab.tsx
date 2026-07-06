@@ -4,7 +4,7 @@ import { Camera, Loader2, Check, AlertTriangle, X, ChevronDown, ChevronUp } from
 import type { WardrobeItem } from '@/app/page';
 import { compressImage } from './utils';
 import { Field } from './ui';
-import { CATEGORIES, FORMALITY, SEASONS, MATERIALS } from './constants';
+import { CATEGORIES, FORMALITY, SEASONS, MATERIALS, FIT_OPTIONS, LENGTH_OPTIONS } from './constants';
 
 function genId() {
   return typeof crypto !== 'undefined' && crypto.randomUUID
@@ -21,12 +21,14 @@ type TagForm = {
   formality: string;
   season: string;
   material: string;
+  fit: string;
+  length: string;
   price: string;
 };
 
 const EMPTY_FORM: TagForm = {
   name: '', category: 'Top', primaryColor: '', secondaryColor: '',
-  pattern: '', formality: 'Casual', season: 'All-season', material: '', price: '',
+  pattern: '', formality: 'Casual', season: 'All-season', material: '', fit: '', length: '', price: '',
 };
 
 type QueueStatus = 'pending' | 'analyzing' | 'ready' | 'duplicate' | 'saved' | 'error';
@@ -204,6 +206,20 @@ function QueueCard({
                 {MATERIALS.map((m) => <option key={m}>{m}</option>)}
               </select>
             </Field>
+            <Field label="Fit">
+              <select value={form.fit} onChange={(e) => updateForm({ fit: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                <option value="">Unknown</option>
+                {FIT_OPTIONS.map((f) => <option key={f}>{f}</option>)}
+              </select>
+            </Field>
+            <Field label="Length">
+              <select value={form.length} onChange={(e) => updateForm({ length: e.target.value })}
+                className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                <option value="">N/A</option>
+                {LENGTH_OPTIONS.map((l) => <option key={l}>{l}</option>)}
+              </select>
+            </Field>
             <Field label="Price paid (optional)">
               <div className="relative">
                 <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#A89F96] font-light">$</span>
@@ -340,12 +356,12 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     for (const qi of toSave) {
       try {
         const id = genId();
-        const { price: priceStr, material, ...formRest } = qi.form;
+        const { price: priceStr, material, fit, length, ...formRest } = qi.form;
         const price = priceStr && parseFloat(priceStr) > 0 ? parseFloat(priceStr) : undefined;
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, material: material || undefined, price }),
+          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, material: material || undefined, fit: fit || undefined, length: length || undefined, price }),
         });
         const data = await res.json() as WardrobeItem & { error?: string };
         if (!res.ok) throw new Error(data.error ?? 'Save failed');

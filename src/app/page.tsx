@@ -24,6 +24,8 @@ export type WardrobeItem = {
   formality: string;
   season: string;
   material?: string;
+  fit?: string;
+  length?: string;
   accessoryType?: string;
   imageFilename: string | null;
   imageUrl: string | null;

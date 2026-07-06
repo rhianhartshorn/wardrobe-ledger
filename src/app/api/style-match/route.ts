@@ -6,7 +6,7 @@ import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITO
 type WardrobeItem = {
   id: string; name: string; category: string;
   primaryColor: string; secondaryColor: string;
-  pattern: string; formality: string; season: string;
+  pattern: string; formality: string; season: string; material?: string; fit?: string; length?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     if (!items?.length) return NextResponse.json({ error: 'No items' }, { status: 400 });
 
     const itemListText = items
-      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}`)
+      .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}${i.material ? ', ' + i.material : ''}${i.fit ? ', ' + i.fit : ''}${i.length ? ', ' + i.length : ''}, ${i.formality}`)
       .join('\n');
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
