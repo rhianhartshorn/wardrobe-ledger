@@ -93,6 +93,10 @@ export default function WardrobeApp() {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, wearCount } : i));
   };
 
+  const updateItem = (updated: WardrobeItem) => {
+    setItems((prev) => prev.map((i) => i.id === updated.id ? updated : i));
+  };
+
   const profileComplete = Boolean(bodyProfile.height && bodyProfile.bodyShape && bodyProfile.undertone);
 
   const dismissOnboarding = () => {
@@ -165,7 +169,7 @@ export default function WardrobeApp() {
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
         ) : tab === 'closet' ? (
-          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} bodyProfile={bodyProfile} />
+          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} />
         ) : tab === 'outfit' ? (
           <OutfitTab
             items={items}

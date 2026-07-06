@@ -1,9 +1,17 @@
 'use client';
 import { useState } from 'react';
-import { Shirt, Trash2, X, Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Shirt, Trash2, X, Loader2, ArrowLeft, AlertCircle, Pencil, Check } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { colorDot, slim } from './utils';
+import { Field } from './ui';
+import { CATEGORIES, FORMALITY, SEASONS, MATERIALS, FIT_OPTIONS, LENGTH_OPTIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
+
+type EditForm = {
+  name: string; category: string; primaryColor: string; secondaryColor: string;
+  pattern: string; formality: string; season: string; material: string;
+  fit: string; length: string; price: string;
+};
 
 type Look = {
   title: string;
@@ -62,10 +70,53 @@ function LookCard({ look, allItems }: { look: Look; allItems: WardrobeItem[] }) 
   );
 }
 
-function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: WardrobeItem; allItems: WardrobeItem[]; bodyProfile?: BodyProfile; onClose: () => void }) {
+function ItemDetailView({ item, allItems, bodyProfile, onClose, onEdit }: { item: WardrobeItem; allItems: WardrobeItem[]; bodyProfile?: BodyProfile; onClose: () => void; onEdit: (updated: WardrobeItem) => void }) {
   const [loading, setLoading] = useState(false);
   const [looks, setLooks] = useState<Look[] | null>(null);
   const [err, setErr] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editErr, setEditErr] = useState('');
+  const [editForm, setEditForm] = useState<EditForm>({
+    name: item.name, category: item.category,
+    primaryColor: item.primaryColor, secondaryColor: item.secondaryColor ?? '',
+    pattern: item.pattern ?? '', formality: item.formality, season: item.season,
+    material: item.material ?? '', fit: item.fit ?? '', length: item.length ?? '',
+    price: item.price != null ? String(item.price) : '',
+  });
+
+  const saveEdit = async () => {
+    if (!editForm.name.trim()) return;
+    setSaving(true); setEditErr('');
+    try {
+      const res = await fetch(`/api/items/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update-fields',
+          name: editForm.name.trim(),
+          category: editForm.category,
+          primaryColor: editForm.primaryColor,
+          secondaryColor: editForm.secondaryColor,
+          pattern: editForm.pattern,
+          formality: editForm.formality,
+          season: editForm.season,
+          material: editForm.material || null,
+          fit: editForm.fit || null,
+          length: editForm.length || null,
+          price: editForm.price && parseFloat(editForm.price) > 0 ? parseFloat(editForm.price) : null,
+        }),
+      });
+      const data = await res.json() as WardrobeItem & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Save failed');
+      onEdit({ ...item, ...data, imageUrl: item.imageUrl, imageFilename: item.imageFilename });
+      setEditing(false);
+    } catch (e) {
+      setEditErr(e instanceof Error ? e.message : 'Could not save changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const generate = async () => {
     setLoading(true); setErr(''); setLooks(null);
@@ -91,17 +142,100 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
             <ArrowLeft size={18} />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">How to wear</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">{editing ? 'Edit piece' : 'How to wear'}</p>
             <h2 className="font-serif text-xl text-[#1A1714] truncate">{item.name}</h2>
           </div>
-          {item.imageUrl && (
+          <button
+            onClick={() => { setEditing((v) => !v); setEditErr(''); }}
+            className={`p-1.5 border transition-colors ${editing ? 'border-[#9B7B3A] text-[#9B7B3A]' : 'border-[#E5DDD0] text-[#A89F96] hover:text-[#1A1714]'}`}
+            title={editing ? 'Cancel edit' : 'Edit details'}
+          >
+            {editing ? <X size={14} /> : <Pencil size={14} />}
+          </button>
+          {item.imageUrl && !editing && (
             <div className="w-10 h-10 shrink-0 overflow-hidden border border-[#E5DDD0]">
               <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
             </div>
           )}
         </div>
 
-        {/* Item details */}
+        {/* Edit form */}
+        {editing && (
+          <div className="mb-4 space-y-3 border border-[#E5DDD0] bg-white p-4">
+            <Field label="Name">
+              <input
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                className="w-full border border-[#E5DDD0] px-3 py-1.5 text-sm font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="Category">
+                <select value={editForm.category} onChange={(e) => setEditForm((f) => ({ ...f, category: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Formality">
+                <select value={editForm.formality} onChange={(e) => setEditForm((f) => ({ ...f, formality: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  {FORMALITY.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Primary color">
+                <input value={editForm.primaryColor} onChange={(e) => setEditForm((f) => ({ ...f, primaryColor: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]" />
+              </Field>
+              <Field label="Season">
+                <select value={editForm.season} onChange={(e) => setEditForm((f) => ({ ...f, season: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  {SEASONS.map((c) => <option key={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Material">
+                <select value={editForm.material} onChange={(e) => setEditForm((f) => ({ ...f, material: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  <option value="">Unknown</option>
+                  {MATERIALS.map((m) => <option key={m}>{m}</option>)}
+                </select>
+              </Field>
+              <Field label="Fit">
+                <select value={editForm.fit} onChange={(e) => setEditForm((f) => ({ ...f, fit: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  <option value="">Unknown</option>
+                  {FIT_OPTIONS.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </Field>
+              <Field label="Length">
+                <select value={editForm.length} onChange={(e) => setEditForm((f) => ({ ...f, length: e.target.value }))}
+                  className="w-full border border-[#E5DDD0] px-2 py-1.5 text-xs font-light bg-white text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]">
+                  <option value="">N/A</option>
+                  {LENGTH_OPTIONS.map((v) => <option key={v}>{v}</option>)}
+                </select>
+              </Field>
+              <Field label="Price paid (optional)">
+                <div className="relative">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-[#A89F96] font-light">$</span>
+                  <input type="number" min="0" step="0.01" value={editForm.price}
+                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
+                    placeholder="0.00"
+                    className="w-full border border-[#E5DDD0] pl-5 pr-2 py-1.5 text-xs font-light text-[#1A1714] focus:outline-none focus:border-[#9B7B3A]" />
+                </div>
+              </Field>
+            </div>
+            {editErr && <p className="text-[11px] text-red-700 font-light">{editErr}</p>}
+            <button
+              onClick={saveEdit}
+              disabled={saving || !editForm.name.trim()}
+              className="w-full bg-[#1A1714] text-white py-2.5 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
+            >
+              {saving ? <><Loader2 className="animate-spin" size={12} /> Saving...</> : <><Check size={12} /> Save changes</>}
+            </button>
+          </div>
+        )}
+
+        {/* Item details (hidden while editing) */}
+        {!editing && (
         <div className="flex gap-3 mb-4">
           {item.imageUrl && (
             <div className="w-24 h-24 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
@@ -116,7 +250,9 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
             </div>
           </div>
         </div>
+        )}
 
+        {!editing && (
         <button
           onClick={generate}
           disabled={loading}
@@ -124,10 +260,11 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
         >
           {loading ? <><Loader2 className="animate-spin" size={13} /> Finding ways to wear this...</> : looks ? 'Regenerate looks' : 'Show me how to wear this'}
         </button>
+        )}
 
-        {err && <p className="text-sm text-red-700 font-light mb-4">{err}</p>}
+        {!editing && err && <p className="text-sm text-red-700 font-light mb-4">{err}</p>}
 
-        {looks && (
+        {!editing && looks && (
           <div className="space-y-4">
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">
               {looks.length} ways to wear it
@@ -140,7 +277,7 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose }: { item: Wardro
   );
 }
 
-function ItemCard({ item, allItems, onRemove, onWearLogged, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
+function ItemCard({ item, allItems, onRemove, onWearLogged, onEdit, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile }) {
   const [confirming, setConfirming] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [loggingWear, setLoggingWear] = useState(false);
@@ -168,7 +305,7 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, bodyProfile }: { ite
   return (
     <>
       {showDetail && (
-        <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} />
+        <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} onEdit={(updated) => { onEdit(updated); setShowDetail(false); }} />
       )}
       <div className="bg-white border border-[#E5DDD0] group relative cursor-pointer" onClick={() => !confirming && setShowDetail(true)}>
         <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC]">
@@ -247,7 +384,7 @@ function isDormant(item: WardrobeItem) {
   return (item.wearCount ?? 0) === 0 && Date.now() - item.addedAt > NINETY_DAYS_MS;
 }
 
-export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; bodyProfile?: BodyProfile }) {
+export default function ClosetTab({ items, onRemove, onWearLogged, onEdit, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile }) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('All');
   const [formality, setFormality] = useState('All');
@@ -375,7 +512,7 @@ export default function ClosetTab({ items, onRemove, onWearLogged, bodyProfile }
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
           {visible.map((item) => (
-            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} bodyProfile={bodyProfile} />
+            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} onEdit={onEdit} bodyProfile={bodyProfile} />
           ))}
         </div>
       )}
