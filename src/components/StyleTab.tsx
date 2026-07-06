@@ -8,7 +8,7 @@ import type { BodyProfile } from '@/lib/body-profile';
 import MirrorTab from './MirrorTab';
 import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
-import type { StyleReadResult } from '@/app/api/style-read/route';
+import type { StyleReadResult } from '@/lib/style-types';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
