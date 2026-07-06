@@ -35,6 +35,7 @@ export type SavedLook = {
   rationale?: string;
   accessorizing?: string[];
   savedAt: number;
+  feedback?: 'worked' | 'didnt_work';
 };
 
 export type JournalEntry = {
@@ -308,6 +309,13 @@ export async function addSavedLook(look: SavedLook): Promise<void> {
   if (!ids.includes(look.id)) {
     await setIds(LOOK_IDS_KEY, [look.id, ...ids]);
   }
+}
+
+export async function updateSavedLook(id: string, patch: Partial<SavedLook>): Promise<void> {
+  const raw = await redisGet(lookKey(id));
+  const existing = parseVal<SavedLook>(raw);
+  if (!existing) return;
+  await redisSet(lookKey(id), { ...existing, ...patch });
 }
 
 export async function deleteSavedLook(id: string): Promise<void> {

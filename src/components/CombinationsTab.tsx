@@ -73,11 +73,17 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
       .filter((i) => (i.wearCount ?? 0) > 0)
       .map((i) => `${i.name} (${i.category}, worn ${i.wearCount}x)`);
     const savedLookTitles: string[] = [];
+    const workedLookTitles: string[] = [];
+    const didntWorkLookTitles: string[] = [];
     try {
-      const raw = localStorage.getItem('wl_saved_looks');
+      const raw = localStorage.getItem('wl_looks_cache') ?? localStorage.getItem('wl_saved_looks');
       if (raw) {
-        const looks = JSON.parse(raw) as Array<{ title: string }>;
-        looks.slice(0, 5).forEach((l) => savedLookTitles.push(l.title));
+        const looks = JSON.parse(raw) as Array<{ title: string; feedback?: string }>;
+        looks.slice(0, 10).forEach((l) => {
+          savedLookTitles.push(l.title);
+          if (l.feedback === 'worked') workedLookTitles.push(l.title);
+          if (l.feedback === 'didnt_work') didntWorkLookTitles.push(l.title);
+        });
       }
     } catch { /* ignore */ }
 
@@ -87,7 +93,7 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
       const res = await fetch('/api/combinations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slimItems, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items), wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
+        body: JSON.stringify({ items: slimItems, bodyProfile, topWorn, savedLookTitles, workedLookTitles, didntWorkLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items), wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
       });
       const data = await res.json() as { combinations?: Combo[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Could not curate combinations right now.');

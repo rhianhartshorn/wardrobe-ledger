@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Loader2, Gem, RefreshCw, Target, ChevronRight } from 'lucide-react';
+import { Loader2, Gem, RefreshCw, Target, ChevronRight, ShoppingBag } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { slim, buildWearBehaviourSummary } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
@@ -9,6 +9,7 @@ import MirrorTab from './MirrorTab';
 import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
 import type { StyleReadResult } from '@/lib/style-types';
+import type { GapAnalysisResult } from '@/lib/gap-types';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -43,6 +44,25 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
 
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
+
+  const [loadingGaps, setLoadingGaps] = useState(false);
+  const [gapErr, setGapErr] = useState('');
+  const [gapResult, setGapResult] = useState<GapAnalysisResult | null>(null);
+
+  const runGapAnalysis = async () => {
+    setLoadingGaps(true); setGapErr(''); setGapResult(null);
+    try {
+      const res = await fetch('/api/wardrobe-gaps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slim(items), bodyProfile, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
+      });
+      const data = await res.json() as GapAnalysisResult & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
+      setGapResult(data);
+    } catch (e) { setGapErr(e instanceof Error ? e.message : 'Could not run gap analysis.'); }
+    finally { setLoadingGaps(false); }
+  };
 
   const runAnalysis = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to get a style reading.'); return; }
@@ -423,6 +443,61 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
               context: `Goal: ${matchResult.goalAnalysis!.goal}. Current gap: ${matchResult.goalAnalysis!.howClose}`,
               onClose: () => setLearnMore(null),
             })} />
+          </div>
+        )}
+      </div>
+
+      {/* ── SECTION 3: WHAT'S MISSING ── */}
+      <div className="border-t-2 border-[#E5DDD0] pt-5">
+        <div className="border border-[#E5DDD0] bg-white p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <ShoppingBag size={13} className="text-[#9B7B3A]" />
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 3</p>
+          </div>
+          <h2 className="font-serif text-2xl text-[#1A1714]">What's Missing</h2>
+          <p className="text-sm text-[#6B6058] font-light mt-1 mb-4">A wardrobe audit — specific gaps ranked by impact on your daily dressing, with precise shopping direction to close each one.</p>
+          <button
+            onClick={runGapAnalysis}
+            disabled={loadingGaps}
+            className="w-full flex items-center justify-center gap-2 bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors"
+          >
+            {loadingGaps ? <><Loader2 className="animate-spin" size={14} /> Auditing your wardrobe...</> : <><RefreshCw size={14} /> {gapResult ? 'Re-audit' : 'Audit what\'s missing'}</>}
+          </button>
+          {gapErr && <p className="text-sm text-red-700 mt-3">{gapErr}</p>}
+        </div>
+
+        {gapResult && (
+          <div className="space-y-3 mt-3">
+            <div className="bg-[#F5F2EC] border border-[#E5DDD0] px-4 py-3">
+              <p className="text-sm text-[#1A1714] font-light leading-relaxed">{gapResult.summary}</p>
+            </div>
+            {gapResult.gaps?.map((gap, i) => {
+              const priorityStyles = {
+                high: { border: 'border-[#9B7B3A]/40', badge: 'bg-[#9B7B3A]/10 text-[#9B7B3A] border-[#9B7B3A]/30', label: 'Priority' },
+                medium: { border: 'border-[#E5DDD0]', badge: 'bg-[#F5F2EC] text-[#6B6058] border-[#E5DDD0]', label: 'Medium' },
+                low: { border: 'border-[#E5DDD0]', badge: 'bg-white text-[#A89F96] border-[#E5DDD0]', label: 'Refinement' },
+              }[gap.priority];
+              return (
+                <div key={i} className={`border bg-white p-4 ${priorityStyles.border}`}>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-serif text-base text-[#1A1714] leading-snug">{gap.gap}</p>
+                    <span className={`text-[9px] uppercase tracking-widest border px-1.5 py-0.5 font-light shrink-0 ${priorityStyles.badge}`}>{priorityStyles.label}</span>
+                  </div>
+                  <p className="text-xs text-[#6B6058] font-light leading-snug mb-2">{gap.why}</p>
+                  <div className="border-t border-[#F5F2EC] pt-2">
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mb-1">Buy next</p>
+                    <p className="text-xs text-[#1A1714] font-light leading-snug cursor-pointer group" onClick={() => setLearnMore({
+                      type: 'purchase',
+                      title: gap.gap,
+                      context: `Gap: ${gap.gap}. Why it matters: ${gap.why}. Suggested purchase: ${gap.suggestion}`,
+                      onClose: () => setLearnMore(null),
+                    })}>
+                      {gap.suggestion} <ChevronRight size={10} className="inline text-[#9B7B3A]" />
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

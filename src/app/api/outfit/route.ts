@@ -37,11 +37,13 @@ export async function POST(req: NextRequest) {
       bodyProfile?: BodyProfile;
       topWorn?: string[];
       savedLookTitles?: string[];
+      workedLookTitles?: string[];
+      didntWorkLookTitles?: string[];
       wearBehaviourSummary?: string;
       wardrobeGrid?: string;
       wardrobeGridMapping?: string;
     };
-    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = body;
+    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, workedLookTitles, didntWorkLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = body;
 
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
 
@@ -74,7 +76,9 @@ export async function POST(req: NextRequest) {
 
     const tasteSignals = [
       ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
-      ...(savedLookTitles?.length ? [`Looks they've saved and loved: ${savedLookTitles.join('; ')}`] : []),
+      ...(workedLookTitles?.length ? [`Looks they wore and rated as working well: ${workedLookTitles.join('; ')} — lean into the aesthetic patterns these represent`] : []),
+      ...(didntWorkLookTitles?.length ? [`Looks they wore but said didn't work: ${didntWorkLookTitles.join('; ')} — understand why and avoid repeating those combinations`] : []),
+      ...(!workedLookTitles?.length && savedLookTitles?.length ? [`Looks they've saved: ${savedLookTitles.join('; ')}`] : []),
       ...(wearBehaviourSummary ? [`Wear behaviour patterns: ${wearBehaviourSummary}`] : []),
     ].join('\n');
 

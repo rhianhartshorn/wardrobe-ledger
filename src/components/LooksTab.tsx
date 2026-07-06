@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2 } from 'lucide-react';
+import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { OCCASIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -13,7 +13,10 @@ export type SavedLook = {
   rationale?: string;
   accessorizing?: string[];
   savedAt: number;
+  feedback?: 'worked' | 'didnt_work';
 };
+
+const LOOKS_CACHE_KEY = 'wl_looks_cache';
 
 export type JournalEntry = {
   id: string;
@@ -159,12 +162,32 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
       fetch('/api/looks').then((r) => r.json()),
       fetch('/api/journal').then((r) => r.json()),
     ]).then(([looks, entries]: [SavedLook[], JournalEntry[]]) => {
-      setSavedLooks(looks); setJournal(entries); setLoaded(true);
+      setSavedLooks(looks);
+      setJournal(entries);
+      setLoaded(true);
+      try { localStorage.setItem(LOOKS_CACHE_KEY, JSON.stringify(looks)); } catch { /* quota */ }
     }).catch(() => setLoaded(true));
   }, []);
 
+  const setFeedback = async (id: string, feedback: 'worked' | 'didnt_work' | null) => {
+    setSavedLooks((prev) => {
+      const updated = prev.map((l) => l.id === id ? { ...l, feedback: feedback ?? undefined } : l);
+      try { localStorage.setItem(LOOKS_CACHE_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+      return updated;
+    });
+    await fetch(`/api/looks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback }),
+    });
+  };
+
   const removeLook = async (id: string) => {
-    setSavedLooks((prev) => prev.filter((l) => l.id !== id));
+    setSavedLooks((prev) => {
+      const updated = prev.filter((l) => l.id !== id);
+      try { localStorage.setItem(LOOKS_CACHE_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+      return updated;
+    });
     await fetch(`/api/looks/${id}`, { method: 'DELETE' });
   };
 
@@ -212,7 +235,7 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
             {savedLooks.map((look) => {
               const pieces = look.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
               return (
-                <div key={look.id} className="border border-[#E5DDD0] bg-white p-3 relative group">
+                <div key={look.id} className={`border bg-white p-3 relative group ${look.feedback === 'worked' ? 'border-green-200' : look.feedback === 'didnt_work' ? 'border-[#E5DDD0] opacity-70' : 'border-[#E5DDD0]'}`}>
                   <button onClick={() => removeLook(look.id)} className="absolute top-2 right-2 text-[#D6CFC0] hover:text-red-600 transition-colors">
                     <Trash2 size={13} />
                   </button>
@@ -221,6 +244,23 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
                   </div>
                   <p className="font-serif text-sm text-[#1A1714] leading-snug pr-4">{look.title}</p>
                   {look.styleReference && <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">{look.styleReference}</p>}
+                  <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-[#F5F2EC]">
+                    <p className="text-[9px] uppercase tracking-widest text-[#A89F96] font-light flex-1">Did it work?</p>
+                    <button
+                      onClick={() => setFeedback(look.id, look.feedback === 'worked' ? null : 'worked')}
+                      className={`p-1 transition-colors ${look.feedback === 'worked' ? 'text-green-600' : 'text-[#D6CFC0] hover:text-green-500'}`}
+                      title="This worked"
+                    >
+                      <ThumbsUp size={13} />
+                    </button>
+                    <button
+                      onClick={() => setFeedback(look.id, look.feedback === 'didnt_work' ? null : 'didnt_work')}
+                      className={`p-1 transition-colors ${look.feedback === 'didnt_work' ? 'text-red-400' : 'text-[#D6CFC0] hover:text-red-400'}`}
+                      title="This didn't work"
+                    >
+                      <ThumbsDown size={13} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

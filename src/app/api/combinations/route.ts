@@ -49,7 +49,7 @@ function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolea
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; wearBehaviourSummary?: string; wardrobeGrid?: string; wardrobeGridMapping?: string };
+    const { items, bodyProfile, topWorn, savedLookTitles, workedLookTitles, didntWorkLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; workedLookTitles?: string[]; didntWorkLookTitles?: string[]; wearBehaviourSummary?: string; wardrobeGrid?: string; wardrobeGridMapping?: string };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to see outfit combinations.' }, { status: 400 });
@@ -58,7 +58,9 @@ export async function POST(req: NextRequest) {
     const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives(), getBrandVoiceContext()]);
     const tasteSignals = [
       ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
-      ...(savedLookTitles?.length ? [`Looks they've saved: ${savedLookTitles.join('; ')}`] : []),
+      ...(workedLookTitles?.length ? [`Looks they wore and rated as working well: ${workedLookTitles.join('; ')} — lean into the aesthetic patterns these represent`] : []),
+      ...(didntWorkLookTitles?.length ? [`Looks they wore but said didn't work: ${didntWorkLookTitles.join('; ')} — understand why and avoid repeating those combinations`] : []),
+      ...(!workedLookTitles?.length && savedLookTitles?.length ? [`Looks they've saved: ${savedLookTitles.join('; ')}`] : []),
       ...(wearBehaviourSummary ? [`Wear behaviour patterns: ${wearBehaviourSummary}`] : []),
     ].join('\n');
 
