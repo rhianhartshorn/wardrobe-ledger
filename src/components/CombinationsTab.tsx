@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Layers, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
-import { slim, buildWearBehaviourSummary } from './utils';
+import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import type { BodyProfile } from '@/lib/body-profile';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 
@@ -81,11 +81,13 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
       }
     } catch { /* ignore */ }
 
+    const slimItems = slim(items).slice(0, 20);
+    const grid = await buildWardrobeGrid(items.slice(0, 20));
     try {
       const res = await fetch('/api/combinations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items).slice(0, 20), bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
+        body: JSON.stringify({ items: slimItems, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items), wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
       });
       const data = await res.json() as { combinations?: Combo[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Could not curate combinations right now.');

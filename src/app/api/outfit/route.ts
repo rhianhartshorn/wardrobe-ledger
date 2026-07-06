@@ -38,8 +38,10 @@ export async function POST(req: NextRequest) {
       topWorn?: string[];
       savedLookTitles?: string[];
       wearBehaviourSummary?: string;
+      wardrobeGrid?: string;
+      wardrobeGridMapping?: string;
     };
-    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = body;
+    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = body;
 
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
 
@@ -61,8 +63,12 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const photoLine = profileImageBase64
-      ? `The attached photo is of the client. ${styleBriefCtx ? 'A professional colour analysis has already been performed (see COLOUR PROFILE below) — use those facts directly. Cross-reference the photo to apply the silhouette and proportion assessment.' : 'Analyse their colouring from the photo before selecting outfits — identify undertone, contrast level, and hair tone, then use this as a hard colour filter.'} In each outfit rationale, name the specific colour reason it works for their colouring. Never comment on weight or size. `
+      ? `The first attached image is a photo of the client. ${styleBriefCtx ? 'A professional colour analysis has already been performed (see COLOUR PROFILE below) — use those facts directly. Cross-reference the photo to apply the silhouette and proportion assessment.' : 'Analyse their colouring from the photo before selecting outfits — identify undertone, contrast level, and hair tone, then use this as a hard colour filter.'} In each outfit rationale, name the specific colour reason it works for their colouring. Never comment on weight or size. `
       : (styleBriefCtx ? 'A professional colour analysis is available — use it as a hard filter when selecting outfits. ' : '');
+
+    const gridLine = wardrobeGrid
+      ? `${profileImageBase64 ? 'The second' : 'The'} attached image is a numbered visual grid of the wardrobe items. Grid key: ${wardrobeGridMapping}. Use it to verify actual colour accuracy, fabric texture and weight, and how each piece's silhouette reads — trust the visual over the text tags for these qualities.`
+      : '';
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
 
@@ -92,7 +98,7 @@ Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones
 ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
 ` : '';
 
-    const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
+    const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}${gridLine ? ' ' + gridLine : ''}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 ${weather ? `Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}` : 'No weather data — the user is planning ahead or exploring. Select outfits that work across a range of conditions for this occasion, and note any weather-sensitive layering in the weatherNote field.'}
@@ -105,7 +111,8 @@ Using ONLY items from this wardrobe list (reference by exact id), assemble exact
 Respond with ONLY valid JSON, no markdown:
 {"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["specific accessory direction max 10 words — name the type, finish, and why (e.g. 'a slim tan leather belt — anchors the waist, adds warmth')","second accessory tip max 10 words"],"weatherNote":"max 15 words"}]}`;
 
-    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, maxTokens: 3000 });
+    const extraImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
+    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, images: extraImages, maxTokens: 3000 });
     const parsed = parseJSON(raw) as { outfits?: Array<{ rationale?: string; accessorizing?: string[] }> };
     const outfits = parsed.outfits ?? [];
 

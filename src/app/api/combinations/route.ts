@@ -49,7 +49,7 @@ function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolea
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; wearBehaviourSummary?: string };
+    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; wearBehaviourSummary?: string; wardrobeGrid?: string; wardrobeGridMapping?: string };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to see outfit combinations.' }, { status: 400 });
@@ -79,11 +79,15 @@ export async function POST(req: NextRequest) {
     }, {});
     const catLine = Object.entries(catSummary).map(([c, n]) => `${n} × ${c}`).join(', ');
 
+    const gridBlock = wardrobeGrid
+      ? `\nVISUAL WARDROBE GRID: A numbered image grid of all wardrobe items is attached. Grid key: ${wardrobeGridMapping}. Use the visual grid to override text descriptions where they differ — trust what you see for actual colour accuracy, fabric weight and texture (knit vs woven vs silk), and how the silhouette actually reads. The text data gives you the IDs to reference in output; the image gives you the truth about what these clothes look like.\n`
+      : '';
+
     const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${COLOUR_ANALYST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}${profileBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}${profileBlock}${gridBlock}
 ${STYLIST_2026_LENS}
 
-Wardrobe (id :: category, name, color, pattern, formality, season):
+Wardrobe (id :: category, name, color, pattern, fit, length, formality, season):
 ${itemListText}
 
 Wardrobe breakdown: ${catLine}
@@ -102,7 +106,8 @@ A shorter list of genuinely great outfits beats padding with mediocre or incompl
 Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words"}]}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 2000 });
+    const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000 });
     const parsed = parseJSON(raw) as { combinations?: Combination[] };
     const rawCombinations = parsed.combinations ?? [];
 

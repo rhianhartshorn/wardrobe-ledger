@@ -4,7 +4,7 @@ import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import CombinationsTab from './CombinationsTab';
 import type { WardrobeItem } from '@/app/page';
-import { compressImage, colorDot, slim, buildWearBehaviourSummary } from './utils';
+import { compressImage, colorDot, slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import { OCCASIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
 
@@ -355,11 +355,12 @@ export default function OutfitTab({
     } catch { /* ignore */ }
 
     const wearBehaviourSummary = buildWearBehaviourSummary(items);
+    const grid = await buildWardrobeGrid(items);
     try {
       const res = await fetch('/api/outfit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary }),
+        body: JSON.stringify({ items: slim(items), weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
       });
       const data = await res.json() as { outfits?: Outfit[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Generation failed');

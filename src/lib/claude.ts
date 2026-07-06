@@ -1,9 +1,15 @@
 import 'server-only';
 
+interface ClaudeImage {
+  base64: string;
+  mediaType?: string;
+}
+
 interface ClaudeOptions {
   prompt: string;
   imageBase64?: string;
   mediaType?: string;
+  images?: ClaudeImage[];
   useWebSearch?: boolean;
   maxTokens?: number;
   model?: string;
@@ -13,6 +19,7 @@ export async function callClaude({
   prompt,
   imageBase64,
   mediaType = 'image/jpeg',
+  images,
   useWebSearch = false,
   maxTokens = 1000,
   model = 'claude-sonnet-4-6',
@@ -23,6 +30,12 @@ export async function callClaude({
     content.push({
       type: 'image',
       source: { type: 'base64', media_type: mediaType, data: imageBase64 },
+    });
+  }
+  for (const img of images ?? []) {
+    content.push({
+      type: 'image',
+      source: { type: 'base64', media_type: img.mediaType ?? 'image/jpeg', data: img.base64 },
     });
   }
   content.push({ type: 'text', text: prompt });

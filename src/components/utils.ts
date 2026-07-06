@@ -35,6 +35,66 @@ export function buildWearBehaviourSummary(items: WardrobeItem[]): string {
   return parts.join('. ');
 }
 
+// Build a numbered image grid from wardrobe item thumbnails for visual AI context.
+// Returns base64 JPEG (no data: prefix) + a numbered mapping string, or null if
+// running server-side or no items have images.
+export async function buildWardrobeGrid(
+  items: WardrobeItem[],
+): Promise<{ base64: string; mapping: string } | null> {
+  if (typeof document === 'undefined') return null;
+  const withImages = items.filter((i) => i.imageUrl);
+  if (withImages.length === 0) return null;
+
+  const COLS = 4;
+  const CELL = 90;
+  const LABEL_H = 14;
+  const rows = Math.ceil(withImages.length / COLS);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = COLS * CELL;
+  canvas.height = rows * (CELL + LABEL_H);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  ctx.fillStyle = '#f5f2ec';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  await Promise.all(
+    withImages.map((item, i) =>
+      new Promise<void>((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const col = i % COLS;
+          const row = Math.floor(i / COLS);
+          const x = col * CELL;
+          const y = row * (CELL + LABEL_H);
+          // object-cover crop
+          const scale = Math.max(CELL / img.width, CELL / img.height);
+          const sw = CELL / scale;
+          const sh = CELL / scale;
+          const sx = (img.width - sw) / 2;
+          const sy = (img.height - sh) / 2;
+          ctx.drawImage(img, sx, sy, sw, sh, x, y, CELL, CELL);
+          // dark label bar
+          ctx.fillStyle = 'rgba(26,23,20,0.72)';
+          ctx.fillRect(x, y + CELL - LABEL_H, CELL, LABEL_H);
+          ctx.fillStyle = '#f5f2ec';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(i + 1), x + CELL / 2, y + CELL - 3);
+          resolve();
+        };
+        img.onerror = () => resolve();
+        img.src = item.imageUrl!;
+      }),
+    ),
+  );
+
+  const base64 = canvas.toDataURL('image/jpeg', 0.65).replace(/^data:[^;]+;base64,/, '');
+  const mapping = withImages.map((it, i) => `${i + 1}="${it.name}" (id:${it.id})`).join(', ');
+  return { base64, mapping };
+}
+
 export function colorDot(name: string | null | undefined): string {
   if (!name) return '#a8a29e';
   const key = name.toLowerCase().trim();
