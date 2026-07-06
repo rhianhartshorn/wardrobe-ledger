@@ -102,11 +102,13 @@ OUTFIT RULES:
 1. Every outfit must achieve full coverage — something on top (Top, Dress/One-piece, or Outerwear) AND something on the bottom (Bottom or Dress/One-piece). A top with no bottom is not an outfit.
 2. Creative layering is encouraged where it genuinely works — a skirt over a slip dress, a longline knit over a shirt-dress, a fine-knit under a blazer. These are editorial moves, not mistakes. Use your judgment: does this specific combination of pieces make sense together, or is it just two items that can't realistically be worn at the same time?
 3. If the wardrobe has no bottoms and no dresses/jumpsuits, return an empty combinations array.
+4. ACCESSORY RULE: If an accessory (belt, jewellery, scarf, bag) or footwear item from the wardrobe belongs in this look, it MUST appear in itemIds — never reference a wardrobe item in accessorizing without including it in itemIds first. Only suggest items that exist in the wardrobe list above.
+5. Rationale override: the 20-word limit in BRAND VOICE does not apply here — combination rationales should be 1–2 sentences and name the proportion logic, texture tension, or colour reasoning specifically. Brevity at the cost of precision is worse than a complete explanation.
 
 A shorter list of genuinely great outfits beats padding with mediocre or incomplete ones.
 
 Respond with ONLY valid JSON, no markdown, no trailing commas:
-{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words"}]}`;
+{"combinations":[{"itemIds":["id1","id2","id3"],"title":"max 5 words","category":"max 3 words","rationale":"1–2 sentences — name the specific proportion logic, texture tension, or colour reasoning that makes this work","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific direction for any accessories already in itemIds, or 'nothing else' if the look is complete — max 15 words"}]}`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000 });
