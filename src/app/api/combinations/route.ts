@@ -53,7 +53,16 @@ ONLY include combinations where you can point to something specific: a proportio
 Wardrobe (id :: details):
 ${itemListText}
 
-Select up to ${maxCombos} combinations, ranked from the single best outfit this wardrobe can produce down to still-excellent. Use ONLY the exact ids above. Minimum 2 items per combination. A shorter list of genuinely great outfits is far better than padding it out.
+Select up to ${maxCombos} combinations, ranked from the single best outfit this wardrobe can produce down to still-excellent. Use ONLY the exact ids above.
+
+CRITICAL — every combination must be a COMPLETE, wearable outfit. That means it must cover the body from top to bottom:
+- It must include at minimum a top (or dress/jumpsuit) AND a bottom (trousers, skirt, shorts, or a dress that covers both)
+- A top + cardigan with no bottom is NOT a complete outfit — do not include it
+- Footwear and accessories are optional additions, not substitutes for a top or bottom
+- A dress or jumpsuit alone counts as complete (it covers both)
+- If the wardrobe does not have enough pieces to form a complete outfit, return an empty combinations array
+
+A shorter list of genuinely complete, great outfits is far better than padding with partial looks.
 
 Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words — name the type, finish, and why"}]}`;
