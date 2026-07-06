@@ -16,6 +16,45 @@ type WardrobeItem = {
   material?: string;
 };
 
+type Combination = {
+  itemIds: string[];
+  title?: string;
+  category?: string;
+  rationale?: string;
+  formality?: string;
+  season?: string;
+  accessorizing?: string;
+};
+
+// Hard validation — runs after AI response, catches what the model misses
+function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolean {
+  const pieces = combo.itemIds
+    .map((id) => items.find((i) => i.id === id))
+    .filter((p): p is WardrobeItem => Boolean(p));
+
+  if (pieces.length === 0) return false;
+
+  const cats = pieces.map((p) => p.category);
+  const tops = cats.filter((c) => c === 'Top').length;
+  const bottoms = cats.filter((c) => c === 'Bottom').length;
+  const dresses = cats.filter((c) => c === 'Dress/One-piece').length;
+
+  // Must be complete: (top + bottom) or dress alone
+  const complete = dresses > 0 || (tops > 0 && bottoms > 0);
+  if (!complete) return false;
+
+  // Dress can't combine with a separate top or bottom
+  if (dresses > 0 && (tops > 0 || bottoms > 0)) return false;
+
+  // Multiple dresses, or multiple bottoms = impossible
+  if (dresses > 1 || bottoms > 1) return false;
+
+  // More than 2 tops is impossible to wear simultaneously
+  if (tops > 2) return false;
+
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; wearBehaviourSummary?: string };
@@ -36,57 +75,49 @@ export async function POST(req: NextRequest) {
       .join('\n');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
-    const profileBlock = profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\nEvery combination must be assessed against this profile — think in terms of silhouette proportion, what elongates or balances this specific body shape, and which colours work with this undertone and hair tone. A combination that doesn't genuinely flatter this person does not make the list.\n` : '';
+    const profileBlock = profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\nEvery combination must be assessed against this profile — silhouette proportion, colours that work with their undertone and hair tone. A combination that doesn't flatter this specific person does not make the list.\n` : '';
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const maxCombos = 10;
 
+    // Summarise what garment categories are actually available so the model works with reality
+    const catSummary = items.reduce<Record<string, number>>((acc, it) => {
+      acc[it.category] = (acc[it.category] ?? 0) + 1;
+      return acc;
+    }, {});
+    const catLine = Object.entries(catSummary).map(([c, n]) => `${n} × ${c}`).join(', ');
+
     const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${COLOUR_ANALYST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}
-${profileBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}${profileBlock}
 ${STYLIST_2026_LENS}
 
-Your client has shared their wardrobe. Every combination must pass review by the full styling team before it can be recommended. A combination only makes the list if ALL four experts approve it:
+Wardrobe (id :: category, name, color, pattern, formality, season):
+${itemListText}
 
-— Fashion Editor: is this genuinely editorial? Does the colour story and aesthetic hold up?
-— Fit Specialist: does the silhouette work? Are the proportions right for this body shape? Is there a hem, tuck, or volume issue that would undermine it?
-— Colour Analyst: do these colours work together and with the client's colouring? Is there a clash, a value conflict, or an undertone mismatch that kills the look?
-— Accessories Director: can this combination be finished properly, or does it have an accessorising problem that can't be solved?
+Wardrobe breakdown: ${catLine}
 
-If any expert would reject it, it does not appear. Edit ruthlessly.
+Select up to ${maxCombos} complete outfit combinations from this wardrobe, ranked best first. Each combination is reviewed by the full styling team — Fashion Editor, Fit Specialist, Colour Analyst, Accessories Director. If any expert would reject it, it does not appear.
 
 ${STYLIST_REJECTION_CRITERIA}
 
-ONLY include combinations where you can point to something specific: a proportion that works, a texture contrast that elevates, a colour story that feels current, a silhouette that flatters this person.
+OUTFIT RULES — these are non-negotiable:
+1. Every outfit MUST include at least one Top AND one Bottom, OR one Dress/One-piece on its own.
+2. A Dress/One-piece already covers top and bottom — never add a Top or Bottom to it. Outerwear over a dress is fine.
+3. Never combine two Bottom items (e.g. skirt + trousers).
+4. Two Top items are only valid when one layers under the other (e.g. shirt under jumper). Never combine two outer-layer tops (jumper + cardigan, two knitwear pieces, etc.).
+5. If the wardrobe has no bottoms and no dresses, return an empty combinations array.
 
-Wardrobe (id :: details):
-${itemListText}
-
-Select up to ${maxCombos} combinations, ranked from the single best outfit this wardrobe can produce down to still-excellent. Use ONLY the exact ids above.
-
-CRITICAL — every combination must be PHYSICALLY WEARABLE and COMPLETE. These are hard rules, not style preferences:
-
-PHYSICAL WEARABILITY — these combinations are impossible and must never appear:
-- A dress or jumpsuit (Dress/One-piece) paired with a Top — a dress already covers the top half; you cannot also wear a separate top as if it replaces the dress's bodice
-- A dress or jumpsuit paired with a Bottom (trousers, skirt, shorts) — a dress already covers the bottom half; it cannot be worn simultaneously with a separate bottom
-- Exception: Outerwear (jackets, coats, blazers) CAN be layered over a dress — that is physically possible and often styled intentionally
-- Two bottoms together (e.g., skirt + trousers) is not wearable — never combine two Bottom items
-- Two tops of the same type are only valid if one is clearly outerwear layered over the other
-
-COMPLETENESS — the outfit must cover the body top to bottom:
-- Minimum: a Top AND a Bottom, OR a Dress/One-piece alone
-- A top + cardigan with no bottom is not complete
-- Footwear and accessories are optional additions, not substitutes for a top or bottom
-- If the wardrobe cannot form any complete, physically wearable outfit, return an empty combinations array
-
-A shorter list of genuinely complete, great outfits is far better than padding with partial looks.
+A shorter list of genuinely great outfits beats padding with mediocre or incomplete ones.
 
 Respond with ONLY valid JSON, no markdown, no trailing commas:
-{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words — name the type, finish, and why"}]}`;
+{"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words"}]}`;
 
     const raw = await callClaude({ prompt, maxTokens: 2000 });
-    const parsed = parseJSON(raw) as { combinations?: Array<{ rationale?: string }> };
-    const combinations = parsed.combinations ?? [];
+    const parsed = parseJSON(raw) as { combinations?: Combination[] };
+    const rawCombinations = parsed.combinations ?? [];
+
+    // Server-side validation — filters what the model misses
+    const combinations = rawCombinations.filter((c) => isPhysicallyWearable(c, items));
 
     const rationaleText = combinations.map((c) => c.rationale).filter(Boolean).join('\n');
     if (rationaleText) auditInBackground('combinations', 'combination rationale', rationaleText);
