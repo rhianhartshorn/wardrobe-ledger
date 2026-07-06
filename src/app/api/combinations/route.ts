@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { auditInBackground } from '@/lib/editorial';
 
 type WardrobeItem = {
   id: string;
@@ -75,8 +76,13 @@ Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words — name the type, finish, and why"}]}`;
 
     const raw = await callClaude({ prompt, maxTokens: 2000, model: 'claude-haiku-4-5-20251001' });
-    const parsed = parseJSON(raw) as { combinations?: unknown[] };
-    return NextResponse.json({ combinations: parsed.combinations ?? [] });
+    const parsed = parseJSON(raw) as { combinations?: Array<{ rationale?: string }> };
+    const combinations = parsed.combinations ?? [];
+
+    const rationaleText = combinations.map((c) => c.rationale).filter(Boolean).join('\n');
+    if (rationaleText) auditInBackground('combinations', 'combination rationale', rationaleText);
+
+    return NextResponse.json({ combinations });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Could not curate combinations right now.';
     return NextResponse.json({ error: message }, { status: 500 });

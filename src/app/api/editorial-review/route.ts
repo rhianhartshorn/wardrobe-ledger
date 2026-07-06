@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
+import { getSetting } from '@/lib/db';
+import type { EditorialLogEntry } from '@/lib/editorial';
 
 export type Violation = {
   quote: string;
@@ -77,5 +79,15 @@ violations array is empty if the copy passes. Never invent violations that aren'
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Review failed';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const raw = await getSetting('editorial_log');
+    const log: EditorialLogEntry[] = raw ? JSON.parse(raw) : [];
+    return NextResponse.json({ log });
+  } catch {
+    return NextResponse.json({ log: [] });
   }
 }

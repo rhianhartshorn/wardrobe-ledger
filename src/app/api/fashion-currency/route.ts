@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { auditInBackground } from '@/lib/editorial';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
@@ -33,8 +34,13 @@ For every item, respond with ONLY valid JSON, no markdown:
 Be ruthlessly specific. Every item needs one entry with a concrete how2026 tip — never leave it blank.`;
 
     const raw = await callClaude({ prompt, maxTokens: 3000 });
-    const parsed = parseJSON(raw) as { fashionCurrency?: unknown[] };
-    return NextResponse.json({ fashionCurrency: parsed.fashionCurrency ?? [] });
+    const parsed = parseJSON(raw) as { fashionCurrency?: Array<{ how2026?: string }> };
+    const fashionCurrency = parsed.fashionCurrency ?? [];
+
+    const tipsText = fashionCurrency.map((f) => f.how2026).filter(Boolean).join('\n');
+    if (tipsText) auditInBackground('fashion-currency', 'fashion currency tip', tipsText);
+
+    return NextResponse.json({ fashionCurrency });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Fashion currency analysis failed';
     return NextResponse.json({ error: message }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, IMAGE_STRATEGIST_VOICE, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { auditInBackground } from '@/lib/editorial';
 
 type WardrobeItem = {
   id: string; category: string; name: string;
@@ -82,6 +83,15 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
 
     const raw = await callClaude({ prompt, maxTokens: 2500 });
     const parsed = parseJSON(raw) as StyleReadResult;
+
+    const auditText = [
+      parsed.archetypeDescription,
+      parsed.brandStatement,
+      parsed.narrativeArc,
+      parsed.nextChapter,
+    ].filter(Boolean).join('\n');
+    if (auditText) auditInBackground('style-read', 'style analysis section', auditText);
+
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Style reading failed';
