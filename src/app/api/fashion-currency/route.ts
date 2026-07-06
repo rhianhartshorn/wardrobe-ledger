@@ -33,7 +33,7 @@ For every item, respond with ONLY valid JSON, no markdown:
 
 Be ruthlessly specific. Every item needs one entry with a concrete how2026 tip — never leave it blank.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 3000 });
+    const raw = await callClaude({ prompt, maxTokens: 3000, route: 'fashion-currency' });
     const parsed = parseJSON(raw) as { fashionCurrency?: Array<{ how2026?: string }> };
     const fashionCurrency = parsed.fashionCurrency ?? [];
 

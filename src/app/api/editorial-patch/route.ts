@@ -51,7 +51,7 @@ Respond with ONLY valid JSON, no markdown:
   ]
 }`;
 
-    const raw2 = await callClaude({ prompt, maxTokens: 800, model: 'claude-haiku-4-5-20251001' });
+    const raw2 = await callClaude({ prompt, maxTokens: 800, model: 'claude-haiku-4-5-20251001', route: 'editorial-patch' });
     const parsed = parseJSON(raw2) as { patches: Array<{ rule: string; triggeredBy: string }> };
 
     if (!parsed.patches?.length) {

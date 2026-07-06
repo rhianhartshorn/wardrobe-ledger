@@ -93,7 +93,7 @@ Respond with ONLY valid JSON, no markdown:
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000 });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000, route: 'style-read' });
     const parsed = parseJSON(raw) as StyleReadResult;
 
     const auditText = [

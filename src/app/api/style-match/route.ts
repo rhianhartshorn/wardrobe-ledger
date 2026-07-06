@@ -71,7 +71,7 @@ Respond with ONLY valid JSON, no markdown:
   }` : ''}
 }`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1200 });
+    const raw = await callClaude({ prompt, maxTokens: 1200, route: 'style-match' });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {

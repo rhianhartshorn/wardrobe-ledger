@@ -64,6 +64,7 @@ Respond with ONLY valid JSON, no markdown:
       mediaType: profileImg.mimeType,
       maxTokens: 600,
       model: 'claude-sonnet-4-6',
+      route: 'style-brief',
     });
 
     const brief = parseJSON(raw) as StyleBrief;

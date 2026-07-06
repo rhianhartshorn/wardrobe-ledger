@@ -51,7 +51,7 @@ Respond with ONLY valid JSON, no markdown:
 
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood — not by category. Every item in exactly one group. Keep responses concise.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 2000 });
+    const raw = await callClaude({ prompt, maxTokens: 2000, route: 'style' });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {

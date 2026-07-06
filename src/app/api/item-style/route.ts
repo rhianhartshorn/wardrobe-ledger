@@ -56,7 +56,7 @@ For every look, give a specific 2026-relevant aesthetic name and explain briefly
 Respond ONLY with valid JSON, no markdown:
 {"looks":[{"title":"max 5 words","aesthetic":"specific current 2026 aesthetic","wardrobeItemIds":["id1","id2"],"suggestedPurchases":["item description max 10 words"],"howToWear":"max 12 words"}]}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 3000 });
+    const raw = await callClaude({ prompt, maxTokens: 3000, route: 'item-style' });
     const parsed = parseJSON(raw) as { looks?: unknown[] };
     return NextResponse.json({ looks: parsed.looks ?? [] });
   } catch (err) {

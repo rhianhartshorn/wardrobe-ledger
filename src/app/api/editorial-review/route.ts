@@ -73,7 +73,7 @@ Respond with ONLY valid JSON, no markdown:
 
 violations array is empty if the copy passes. Never invent violations that aren't there.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1000, model: 'claude-haiku-4-5-20251001' });
+    const raw = await callClaude({ prompt, maxTokens: 1000, model: 'claude-haiku-4-5-20251001', route: 'editorial-review' });
     const parsed = parseJSON(raw) as ReviewResult;
     return NextResponse.json(parsed);
   } catch (err) {

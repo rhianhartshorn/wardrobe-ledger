@@ -74,7 +74,7 @@ Respond with ONLY valid JSON, no markdown:
   "nextChapter": "1 sentence — the single most impactful shift they could make, not a shopping list but a directional instruction. Max 20 words."
 }`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1000 });
+    const raw = await callClaude({ prompt, maxTokens: 1000, route: 'image-strategy' });
     const parsed = parseJSON(raw) as ImageStrategyResult;
     return NextResponse.json(parsed);
   } catch (err) {

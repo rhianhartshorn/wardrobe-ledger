@@ -53,7 +53,7 @@ Respond with ONLY valid JSON, no markdown fences, no other text:
 
 Include exactly one ranking entry per item. mostValuable and worthReconsidering: 3 items each. purchases: exactly 3.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1500 });
+    const raw = await callClaude({ prompt, maxTokens: 1500, route: 'mirror' });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {

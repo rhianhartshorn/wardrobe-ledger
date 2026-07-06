@@ -71,7 +71,7 @@ Write a personalised stylist persona — 4-5 sentences — that a senior stylist
 Respond with ONLY valid JSON, no markdown:
 {"persona": "the full 3-4 sentence persona text"}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 500 });
+    const raw = await callClaude({ prompt, maxTokens: 500, route: 'persona' });
     const parsed = parseJSON(raw) as { persona: string };
 
     const record: PersonaRecord = {

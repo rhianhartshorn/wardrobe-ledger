@@ -81,7 +81,7 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 600 });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 600, route: 'stylist-chat' });
     const parsed = parseJSON(raw) as { directives: string[]; acknowledgment: string };
 
     const newDirectives: StyleDirective[] = (parsed.directives ?? []).map((instruction) => ({

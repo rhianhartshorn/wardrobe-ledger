@@ -45,6 +45,7 @@ Write as a trusted stylist who respects their time. No hollow phrases, no hedgin
       mediaType: profileImg.mimeType,
       maxTokens: 300,
       model: 'claude-sonnet-4-6',
+      route: 'outfit-feedback',
     });
 
     // Strip markdown headers/bold so text renders cleanly in the UI

@@ -117,7 +117,7 @@ Respond with ONLY valid JSON, no markdown:
 {"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["specific accessory direction max 10 words — name the type, finish, and why (e.g. 'a slim tan leather belt — anchors the waist, adds warmth')","second accessory tip max 10 words"],"weatherNote":"max 15 words"}]}`;
 
     const extraImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, images: extraImages, maxTokens: 3000 });
+    const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, images: extraImages, maxTokens: 3000, route: 'outfit' });
     const parsed = parseJSON(raw) as { outfits?: Array<{ rationale?: string; accessorizing?: string[] }> };
     const outfits = parsed.outfits ?? [];
 

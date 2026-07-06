@@ -38,7 +38,7 @@ Respond with ONLY valid JSON, no markdown:
 
 Include 3 sections only.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1500 });
+    const raw = await callClaude({ prompt, maxTokens: 1500, route: 'learn-more' });
     const parsed = parseJSON(raw);
     return NextResponse.json(parsed);
   } catch (err) {

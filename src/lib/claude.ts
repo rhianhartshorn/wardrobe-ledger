@@ -1,4 +1,5 @@
 import 'server-only';
+import { logUsage } from './usage';
 
 interface ClaudeImage {
   base64: string;
@@ -13,6 +14,7 @@ interface ClaudeOptions {
   useWebSearch?: boolean;
   maxTokens?: number;
   model?: string;
+  route?: string; // for cost tracking — e.g. 'combinations', 'style-read'
 }
 
 export async function callClaude({
@@ -23,6 +25,7 @@ export async function callClaude({
   useWebSearch = false,
   maxTokens = 1000,
   model = 'claude-sonnet-4-6',
+  route = 'unknown',
 }: ClaudeOptions): Promise<string> {
   const content: unknown[] = [];
 
@@ -70,13 +73,23 @@ export async function callClaude({
     throw new Error(`Claude API error ${res.status}: ${text.slice(0, 300)}`);
   }
 
-  const data = await res.json();
+  const data = await res.json() as {
+    content?: Array<{ type: string; text?: string }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
+  };
 
   if (!data?.content || !Array.isArray(data.content)) {
     throw new Error('Unexpected response shape from Claude');
   }
 
-  return (data.content as Array<{ type: string; text?: string }>)
+  // Fire-and-forget usage log — never blocks the response
+  const inputTokens = data.usage?.input_tokens ?? 0;
+  const outputTokens = data.usage?.output_tokens ?? 0;
+  if (inputTokens || outputTokens) {
+    logUsage({ ts: Date.now(), route, model, inputTokens, outputTokens }).catch(() => {});
+  }
+
+  return data.content
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')
     .join('\n')

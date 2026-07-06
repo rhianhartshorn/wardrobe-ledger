@@ -111,7 +111,7 @@ Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2","id3"],"title":"max 5 words","category":"max 3 words","rationale":"1–2 sentences — name the specific proportion logic, texture tension, or colour reasoning that makes this work","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific direction for any accessories already in itemIds, or 'nothing else' if the look is complete — max 15 words"}]}`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000 });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000, route: 'combinations' });
     const parsed = parseJSON(raw) as { combinations?: Combination[] };
     const rawCombinations = parsed.combinations ?? [];
 
