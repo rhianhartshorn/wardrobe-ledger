@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getPersonaContext, getStyleDirectives, IMAGE_STRATEGIST_VOICE, STYLIST_2026_LENS, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, IMAGE_STRATEGIST_VOICE, STYLIST_2026_LENS, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
 import type { BodyProfile } from '@/lib/body-profile';
 
 type WardrobeItem = {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `${personaCtx} ${IMAGE_STRATEGIST_VOICE} Today is ${today}. ${STYLIST_2026_LENS}
+    const prompt = `${personaCtx} ${IMAGE_STRATEGIST_VOICE} ${BRAND_VOICE_RULES} Today is ${today}. ${STYLIST_2026_LENS}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}
 Read this wardrobe not as a shopping list but as a communication system. What image is this person currently projecting? What are they trying to say, and what are their clothes actually saying? Where is the gap?
 

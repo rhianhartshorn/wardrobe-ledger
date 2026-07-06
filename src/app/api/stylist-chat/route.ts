@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getSetting, setSetting } from '@/lib/db';
-import { getPersonaContext, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
 
 export type StyleDirective = {
   instruction: string;
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     const prompt = `You are a personal stylist in a direct conversation with your client.
 
 ${personaCtx}
+${BRAND_VOICE_RULES}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}
 ${existingDirectivesText}
 

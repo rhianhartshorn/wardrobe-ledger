@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
 
 type WeatherSnapshot = {
   locationName: string;
@@ -85,7 +85,7 @@ ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-f
 ` : '';
 
     const [personaCtx, styleDirectives] = await Promise.all([getPersonaContext(), getStyleDirectives()]);
-    const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
+    const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${BRAND_VOICE_RULES} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 ${weather ? `Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}` : 'No weather data — the user is planning ahead or exploring. Select outfits that work across a range of conditions for this occasion, and note any weather-sensitive layering in the weatherNote field.'}
