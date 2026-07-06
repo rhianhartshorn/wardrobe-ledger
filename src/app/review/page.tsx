@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { EditorialLogEntry } from '@/lib/editorial';
+import type { EditorialPatch } from '@/app/api/editorial-patch/route';
 
 function ScoreBadge({ score, passed }: { score: number; passed: boolean }) {
   const color = passed ? '#7C9A7E' : score >= 6 ? '#C4A35A' : '#B05252';
@@ -24,21 +25,38 @@ function timeAgo(ts: number) {
 
 export default function ReviewDashboard() {
   const [log, setLog] = useState<EditorialLogEntry[]>([]);
+  const [patches, setPatches] = useState<EditorialPatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'failed'>('all');
+  const [patching, setPatching] = useState(false);
 
   const fetchLog = useCallback(async () => {
     try {
-      const res = await fetch('/api/editorial-review');
-      const data = await res.json() as { log: EditorialLogEntry[] };
-      setLog(data.log ?? []);
+      const [logRes, patchRes] = await Promise.all([
+        fetch('/api/editorial-review'),
+        fetch('/api/editorial-patch-list'),
+      ]);
+      const logData = await logRes.json() as { log: EditorialLogEntry[] };
+      const patchData = await patchRes.json() as { patches: EditorialPatch[] };
+      setLog(logData.log ?? []);
+      setPatches(patchData.patches ?? []);
     } catch {
       // silent
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function runPatch() {
+    setPatching(true);
+    try {
+      await fetch('/api/editorial-patch');
+      await fetchLog();
+    } finally {
+      setPatching(false);
+    }
+  }
 
   useEffect(() => { fetchLog(); }, [fetchLog]);
 
@@ -73,12 +91,32 @@ export default function ReviewDashboard() {
           </div>
         )}
 
+        {patches.length > 0 && (
+          <div style={{ background: '#0E1A10', border: '1px solid #2A3A2B', borderRadius: 8, padding: '16px 20px', marginBottom: 28 }}>
+            <p style={{ fontSize: 11, letterSpacing: '0.12em', color: '#7C9A7E', textTransform: 'uppercase', marginBottom: 12 }}>
+              {patches.length} active correction{patches.length !== 1 ? 's' : ''} — injected into all AI prompts
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {patches.map((p, i) => (
+                <div key={i} style={{ fontSize: 12, color: '#C8C0B5', lineHeight: 1.5 }}>
+                  <span style={{ color: '#5A7A5C', marginRight: 8 }}>→</span>
+                  {p.rule}
+                  <span style={{ color: '#5A5248', marginLeft: 8, fontSize: 11 }}>({p.triggeredBy})</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
           {(['all', 'failed'] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)} style={{ background: filter === f ? '#C4A35A' : '#1A1714', color: filter === f ? '#0E0C0A' : '#A89F96', border: '1px solid #2A2520', padding: '6px 14px', fontSize: 12, letterSpacing: '0.06em', cursor: 'pointer', borderRadius: 4 }}>
               {f === 'all' ? 'All' : `Failed (${failCount})`}
             </button>
           ))}
+          <button onClick={runPatch} disabled={patching || failCount < 3} style={{ background: 'transparent', color: patching || failCount < 3 ? '#5A5248' : '#7C9A7E', border: '1px solid #2A3A2B', padding: '6px 14px', fontSize: 12, cursor: patching || failCount < 3 ? 'not-allowed' : 'pointer', borderRadius: 4 }}>
+            {patching ? 'Patching...' : 'Run patch now'}
+          </button>
           <button onClick={fetchLog} style={{ marginLeft: 'auto', background: 'transparent', color: '#7A7067', border: '1px solid #2A2520', padding: '6px 14px', fontSize: 12, cursor: 'pointer', borderRadius: 4 }}>
             Refresh
           </button>

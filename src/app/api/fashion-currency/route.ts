@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, getBrandVoiceContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
 
 type WardrobeItem = {
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       .map((i) => `${i.id} :: ${i.category}, "${i.name}", ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}, ${i.formality}`)
       .join('\n');
 
-    const [personaCtx, styleDirectives] = await Promise.all([getPersonaContext(), getStyleDirectives()]);
-    const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${BRAND_VOICE_RULES} Today is ${today}. ${STYLIST_2026_LENS}${styleDirectives} Rate the 2026 fashion currency of each wardrobe piece with the honesty of an editor who calls things as they are.
+    const [personaCtx, styleDirectives, brandVoice] = await Promise.all([getPersonaContext(), getStyleDirectives(), getBrandVoiceContext()]);
+    const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}${styleDirectives} Rate the 2026 fashion currency of each wardrobe piece with the honesty of an editor who calls things as they are.
 
 Wardrobe:
 ${itemListText}

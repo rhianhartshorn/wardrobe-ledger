@@ -82,6 +82,29 @@ export async function getStyleDirectives(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Editorial patches — auto-generated corrections from violation patterns
+// ---------------------------------------------------------------------------
+
+async function getEditorialPatches(): Promise<string> {
+  try {
+    const raw = await getSetting('editorial_patches');
+    if (!raw) return '';
+    const patches = JSON.parse(raw) as Array<{ rule: string }>;
+    if (!patches.length) return '';
+    return `\nEDITORIAL CORRECTIONS (specific rules generated from observed failures — these take precedence):\n${patches.map((p) => `- ${p.rule}`).join('\n')}\n`;
+  } catch {
+    return '';
+  }
+}
+
+// Returns BRAND_VOICE_RULES + any active editorial patches in one call.
+// Use this instead of BRAND_VOICE_RULES directly in route handlers.
+export async function getBrandVoiceContext(): Promise<string> {
+  const patches = await getEditorialPatches();
+  return BRAND_VOICE_RULES + patches;
+}
+
+// ---------------------------------------------------------------------------
 // Style brief — pre-computed colour analysis injected into every AI call
 // ---------------------------------------------------------------------------
 

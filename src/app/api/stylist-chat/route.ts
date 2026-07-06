@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getSetting, setSetting } from '@/lib/db';
-import { getPersonaContext, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { getPersonaContext, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
 
 export type StyleDirective = {
   instruction: string;
@@ -13,10 +13,11 @@ export async function POST(req: NextRequest) {
     const { message } = await req.json() as { message: string };
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
-    const [personaCtx, styleBriefCtx, existingRaw] = await Promise.all([
+    const [personaCtx, styleBriefCtx, existingRaw, brandVoice] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getSetting('style_directives'),
+      getBrandVoiceContext(),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     const prompt = `You are a personal stylist in a direct conversation with your client.
 
 ${personaCtx}
-${BRAND_VOICE_RULES}
+${brandVoice}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}
 ${existingDirectivesText}
 

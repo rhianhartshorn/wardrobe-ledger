@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getPersonaContext, getStyleDirectives, IMAGE_STRATEGIST_VOICE, STYLIST_2026_LENS, getStyleBriefContext, BRAND_VOICE_RULES } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, IMAGE_STRATEGIST_VOICE, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
 import type { BodyProfile } from '@/lib/body-profile';
 
 type WardrobeItem = {
@@ -33,10 +33,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Add at least 5 items for a meaningful image analysis.' }, { status: 400 });
     }
 
-    const [personaCtx, styleDirectives, styleBriefCtx] = await Promise.all([
+    const [personaCtx, styleDirectives, styleBriefCtx, brandVoice] = await Promise.all([
       getPersonaContext(),
       getStyleDirectives(),
       getStyleBriefContext(),
+      getBrandVoiceContext(),
     ]);
 
     const itemListText = items
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const prompt = `${personaCtx} ${IMAGE_STRATEGIST_VOICE} ${BRAND_VOICE_RULES} Today is ${today}. ${STYLIST_2026_LENS}
+    const prompt = `${personaCtx} ${IMAGE_STRATEGIST_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}
 Read this wardrobe not as a shopping list but as a communication system. What image is this person currently projecting? What are they trying to say, and what are their clothes actually saying? Where is the gap?
 
