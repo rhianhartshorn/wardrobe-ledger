@@ -83,7 +83,7 @@ A shorter list of genuinely complete, great outfits is far better than padding w
 Respond with ONLY valid JSON, no markdown, no trailing commas:
 {"combinations":[{"itemIds":["id1","id2"],"title":"max 5 words","category":"max 3 words","rationale":"one sharp sentence — name the specific reason this works: a proportion, a contrast, a colour story","formality":"Casual|Smart Casual|Business|Formal|Athletic","season":"All-season|Summer|Winter|Spring/Fall","accessorizing":"specific accessory direction max 10 words — name the type, finish, and why"}]}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 2000, model: 'claude-haiku-4-5-20251001' });
+    const raw = await callClaude({ prompt, maxTokens: 2000 });
     const parsed = parseJSON(raw) as { combinations?: Array<{ rationale?: string }> };
     const combinations = parsed.combinations ?? [];
 
