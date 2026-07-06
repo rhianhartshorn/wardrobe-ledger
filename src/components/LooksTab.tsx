@@ -235,7 +235,7 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Wear history</p>
         </div>
         {journal.length === 0 ? (
-          <p className="text-sm text-[#A89F96] font-light">Nothing logged yet — your wear history will build up here.</p>
+          <p className="text-sm text-[#A89F96] font-light">Nothing logged yet. Track what you wear to see your real patterns.</p>
         ) : (
           <div className="space-y-2">
             {journal.map((entry) => {

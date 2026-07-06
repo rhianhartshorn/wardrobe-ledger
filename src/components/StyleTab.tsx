@@ -113,7 +113,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
       <div className="text-center py-20">
         <Gem className="mx-auto text-[#E5DDD0]" size={36} />
         <p className="mt-4 text-[#6B6058] font-serif text-lg">Nothing to analyse yet.</p>
-        <p className="text-sm text-[#A89F96] font-light mt-1">Add at least 3 pieces to the Closet tab — then come back here for your style archetype, colour story, and wardrobe gaps.</p>
+        <p className="text-sm text-[#A89F96] font-light mt-1">Add 3 or more pieces to the Closet tab, then return here for your style archetype, colour story, and what's missing from your range.</p>
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
       <div className="border border-[#E5DDD0] bg-white p-5">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 1</p>
         <h2 className="font-serif text-2xl mt-0.5 text-[#1A1714]">Read My Style</h2>
-        <p className="text-sm text-[#6B6058] font-light mt-1">Who you are, what your wardrobe says, and who you dress like — one complete reading.</p>
+        <p className="text-sm text-[#6B6058] font-light mt-1">Your style archetype, what your clothes communicate, and which style icons your wardrobe matches closest.</p>
         <button
           onClick={runAnalysis}
           disabled={analyzing}
@@ -340,7 +340,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 2</p>
           </div>
           <h2 className="font-serif text-2xl text-[#1A1714]">Your Style Goals</h2>
-          <p className="text-sm text-[#6B6058] font-light mt-1 mb-4">What style are you aiming for? We'll tell you how close you are and how to get there.</p>
+          <p className="text-sm text-[#6B6058] font-light mt-1 mb-4">Name a style target — your styling team will show you how close you are and the specific steps to close the gap.</p>
           <input
             value={goal}
             onChange={(e) => setGoal(e.target.value)}

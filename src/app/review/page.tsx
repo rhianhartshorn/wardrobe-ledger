@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { EditorialLogEntry } from '@/lib/editorial';
-import type { EditorialPatch } from '@/app/api/editorial-patch/route';
+import type { EditorialPatch } from '@/lib/editorial-types';
 
 function ScoreBadge({ score, passed }: { score: number; passed: boolean }) {
   const color = passed ? '#7C9A7E' : score >= 6 ? '#C4A35A' : '#B05252';

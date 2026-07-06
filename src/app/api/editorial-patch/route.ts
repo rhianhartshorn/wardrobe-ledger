@@ -2,12 +2,9 @@ import { NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getSetting, setSetting } from '@/lib/db';
 import type { EditorialLogEntry } from '@/lib/editorial';
+import type { EditorialPatch } from '@/lib/editorial-types';
 
-export type EditorialPatch = {
-  rule: string;
-  triggeredBy: string; // short description of what pattern triggered this
-  addedAt: number;
-};
+export type { EditorialPatch } from '@/lib/editorial-types';
 
 const PATCH_ANALYST_PROMPT = `You are a copy quality analyst reviewing failures from an editorial audit system. A brand voice spec is being enforced via AI prompts, but some outputs are still violating the rules. Your job: analyse the violation patterns and generate new, specific prompt rules that will fix what keeps slipping through.
 

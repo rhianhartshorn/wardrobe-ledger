@@ -3,6 +3,7 @@ import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, IMAGE_STRATEGIST_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
+import type { StyleReadResult } from '@/lib/style-types';
 
 type WardrobeItem = {
   id: string; category: string; name: string;

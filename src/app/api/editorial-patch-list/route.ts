@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSetting } from '@/lib/db';
-import type { EditorialPatch } from '@/app/api/editorial-patch/route';
+import type { EditorialPatch } from '@/lib/editorial-types';
 
 export async function GET() {
   try {
