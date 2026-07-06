@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Loader2, Gem, RefreshCw, Target, User, ChevronRight } from 'lucide-react';
+import { Loader2, Gem, RefreshCw, Target, ChevronRight } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { slim } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
@@ -8,7 +8,7 @@ import type { BodyProfile } from '@/lib/body-profile';
 import MirrorTab from './MirrorTab';
 import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
-import ImageStrategySection from './ImageStrategySection';
+import type { StyleReadResult } from '@/app/api/style-read/route';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -16,16 +16,9 @@ const GOAL_SUGGESTIONS = [
   'Margot Robbie', 'Coastal Grandmother', 'Clean Girl', 'Timothée Chalamet',
 ];
 
-type StyleGroup = { groupName: string; mood: string; itemIds: string[] };
 type FashionCurrency = { itemId: string; era: string; status: 'timeless' | 'current' | 'dated' | 'coming-back'; how2026: string | null };
-type StyleResult = {
-  archetype: string; archetypeDescription: string; styleKeywords: string[];
-  colorStory: string; wardrobeStrengths: string[]; wardrobeGaps: string[];
-  styleGroups: StyleGroup[]; fashionCurrency?: FashionCurrency[];
-};
-type StyleMatch = { name: string; why: string; matchStrength: 'high' | 'medium' | 'low' };
 type GoalAnalysis = { goal: string; howClose: string; workingPieces: string[]; missingPieces: string[]; bridgeTips: string[] };
-type MatchResult = { closestMatches: StyleMatch[]; goalAnalysis?: GoalAnalysis };
+type MatchResult = { closestMatches?: Array<{ name: string; why: string; matchStrength: string }>; goalAnalysis?: GoalAnalysis };
 
 function LearnMoreButton({ onClick }: { onClick: () => void }) {
   return (
@@ -35,60 +28,32 @@ function LearnMoreButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-function GroupCard({ group, items, onLearnMore }: { group: StyleGroup; items: WardrobeItem[]; onLearnMore: () => void }) {
-  const pieces = group.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
-  return (
-    <div className="border border-[#E5DDD0] bg-white p-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-0.5">{group.mood}</p>
-      <h3 className="font-serif text-lg text-[#1A1714]">{group.groupName}</h3>
-      <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-        {pieces.map((p) => (
-          <div key={p.id} className="shrink-0 w-16">
-            <div className="aspect-square w-16 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
-              {p.imageUrl
-                ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                : <div className="w-full h-full flex items-center justify-center text-[#A89F96] text-[9px] text-center px-1 leading-tight">{p.name}</div>}
-            </div>
-            <p className="text-[10px] text-[#6B6058] truncate mt-1">{p.name}</p>
-          </div>
-        ))}
-      </div>
-      <LearnMoreButton onClick={onLearnMore} />
-    </div>
-  );
-}
-
-function MatchStrengthBar({ strength }: { strength: string }) {
-  const w = strength === 'high' ? '100%' : strength === 'medium' ? '60%' : '30%';
-  const color = strength === 'high' ? 'bg-[#9B7B3A]' : strength === 'medium' ? 'bg-[#C4B08A]' : 'bg-[#E5DDD0]';
-  return <div className="h-px bg-[#E5DDD0] overflow-hidden mt-1"><div className={`h-full ${color}`} style={{ width: w }} /></div>;
-}
-
 export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
   const [view, setView] = useState<'dna' | 'insights'>('dna');
   const [showPersonaSetup, setShowPersonaSetup] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
-  const [result, setResult] = useState<StyleResult | null>(null);
+  const [result, setResult] = useState<StyleReadResult | null>(null);
+  const [fashionCurrency, setFashionCurrency] = useState<FashionCurrency[] | null>(null);
 
-  // Goals section
   const [goal, setGoal] = useState('');
   const [loadingGoal, setLoadingGoal] = useState(false);
   const [goalErr, setGoalErr] = useState('');
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
 
-  // Learn more drill-down
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
 
   const runAnalysis = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to get a style reading.'); return; }
-    setAnalyzing(true); setErr(''); setResult(null); setMatchResult(null);
+    setAnalyzing(true); setErr(''); setResult(null); setFashionCurrency(null); setMatchResult(null);
+
     const topWorn = [...items]
       .sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
       .slice(0, 5)
       .filter((i) => (i.wearCount ?? 0) > 0)
       .map((i) => `${i.name} (${i.category}, worn ${i.wearCount}x)`);
+
     const savedLookTitles: string[] = [];
     try {
       const raw = localStorage.getItem('wl_saved_looks');
@@ -96,23 +61,16 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
     } catch { /* ignore */ }
 
     try {
-      const res = await fetch('/api/style', {
+      const res = await fetch('/api/style-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles }),
       });
-      const data = await res.json() as StyleResult & { error?: string };
+      const data = await res.json() as StyleReadResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
       setResult(data);
 
-      // Load closest matches alongside
-      fetch('/api/style-match', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items) }),
-      }).then((r) => r.json()).then((d: MatchResult) => setMatchResult(d)).catch(() => {});
-
-      // Load fashion currency separately
+      // Fashion currency loads in parallel — heavier per-item call
       setLoadingCurrency(true);
       fetch('/api/fashion-currency', {
         method: 'POST',
@@ -121,7 +79,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
       })
         .then((r) => r.json())
         .then((fc: { fashionCurrency?: FashionCurrency[] }) => {
-          if (fc.fashionCurrency) setResult((prev) => prev ? { ...prev, fashionCurrency: fc.fashionCurrency } : prev);
+          if (fc.fashionCurrency) setFashionCurrency(fc.fashionCurrency);
         })
         .catch(() => {})
         .finally(() => setLoadingCurrency(false));
@@ -169,6 +127,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
           topWorn={[...items].sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0)).slice(0, 5).filter((i) => (i.wearCount ?? 0) > 0).map((i) => i.name)}
         />
       )}
+
       {/* Internal view toggle */}
       <div className="flex border border-[#E5DDD0] overflow-hidden">
         {(['dna', 'insights'] as const).map((v) => (
@@ -188,17 +147,17 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
         <MirrorTab items={items} bodyProfile={bodyProfile} />
       ) : (<>
 
-      {/* ── SECTION 1: YOUR STYLE NOW ── */}
+      {/* ── SECTION 1: READ MY STYLE ── */}
       <div className="border border-[#E5DDD0] bg-white p-5">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 1</p>
-        <h2 className="font-serif text-2xl mt-0.5 text-[#1A1714]">Your Style Now</h2>
-        <p className="text-sm text-[#6B6058] font-light mt-1">Your archetype, aesthetic clusters, and the icons your wardrobe most resembles.</p>
+        <h2 className="font-serif text-2xl mt-0.5 text-[#1A1714]">Read My Style</h2>
+        <p className="text-sm text-[#6B6058] font-light mt-1">Who you are, what your wardrobe says, and who you dress like — one complete reading.</p>
         <button
           onClick={runAnalysis}
           disabled={analyzing}
           className="w-full mt-4 flex items-center justify-center gap-2 bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors"
         >
-          {analyzing ? <><Loader2 className="animate-spin" size={14} /> Reading your wardrobe...</> : <><RefreshCw size={14} /> {result ? 'Re-read my style' : 'Read my style DNA'}</>}
+          {analyzing ? <><Loader2 className="animate-spin" size={14} /> Reading your style...</> : <><RefreshCw size={14} /> {result ? 'Re-read my style' : 'Read my style'}</>}
         </button>
         {err && <p className="text-sm text-red-700 mt-3">{err}</p>}
       </div>
@@ -223,15 +182,21 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
             </p>
           </div>
 
-          {/* Closest matches — shown inside "Your Style Now" */}
-          {matchResult?.closestMatches && (
+          {/* Brand statement */}
+          <div className="border border-[#E5DDD0] bg-white p-4">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">What your wardrobe says right now</p>
+            <p className="font-serif text-lg text-[#1A1714] leading-snug">{result.brandStatement}</p>
+            {result.narrativeArc && (
+              <p className="text-sm text-[#6B6058] font-light mt-3 leading-relaxed border-t border-[#E5DDD0] pt-3">{result.narrativeArc}</p>
+            )}
+          </div>
+
+          {/* Style twins */}
+          {result.styleTwins?.length > 0 && (
             <div className="border border-[#E5DDD0] bg-white p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <User size={13} className="text-[#9B7B3A]" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">You dress closest to</p>
-              </div>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-4">You dress closest to</p>
               <div className="space-y-4">
-                {matchResult.closestMatches.map((m, i) => (
+                {result.styleTwins.map((m, i) => (
                   <div key={i} className="cursor-pointer group" onClick={() => setLearnMore({ type: 'style-match', title: m.name, context: `${m.why}. Match strength: ${m.matchStrength}`, onClose: () => setLearnMore(null) })}>
                     <div className="flex items-baseline justify-between">
                       <p className="font-serif text-lg text-[#1A1714]">{m.name}</p>
@@ -251,9 +216,15 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
             </div>
           )}
 
+          {/* Next chapter */}
+          <div className="bg-[#F5F2EC] p-4 border border-[#E5DDD0]">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light mb-1">The shift that matters most</p>
+            <p className="text-sm text-[#1A1714] font-light leading-relaxed">{result.nextChapter}</p>
+          </div>
+
           {/* Color story */}
           <div className="border border-[#E5DDD0] bg-white p-4">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">Color story</p>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">Colour story</p>
             <p className="text-sm text-[#1A1714] font-light leading-relaxed">{result.colorStory}</p>
           </div>
 
@@ -284,13 +255,29 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
               {result.styleGroups?.map((g, i) => {
                 const groupItems = g.itemIds.map((id) => items.find((it) => it.id === id)).filter((x): x is WardrobeItem => Boolean(x));
                 return (
-                  <GroupCard key={i} group={g} items={items} onLearnMore={() => setLearnMore({
-                    type: 'style-group',
-                    title: g.groupName,
-                    context: `Mood: ${g.mood}. Contains: ${groupItems.map((it) => it.name).join(', ')}`,
-                    relevantItems: groupItems,
-                    onClose: () => setLearnMore(null),
-                  })} />
+                  <div key={i} className="border border-[#E5DDD0] bg-white p-4">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-0.5">{g.mood}</p>
+                    <h3 className="font-serif text-lg text-[#1A1714]">{g.groupName}</h3>
+                    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                      {groupItems.map((p) => (
+                        <div key={p.id} className="shrink-0 w-16">
+                          <div className="aspect-square w-16 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
+                            {p.imageUrl
+                              ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center text-[#A89F96] text-[9px] text-center px-1 leading-tight">{p.name}</div>}
+                          </div>
+                          <p className="text-[10px] text-[#6B6058] truncate mt-1">{p.name}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <LearnMoreButton onClick={() => setLearnMore({
+                      type: 'style-group',
+                      title: g.groupName,
+                      context: `Mood: ${g.mood}. Contains: ${groupItems.map((it) => it.name).join(', ')}`,
+                      relevantItems: groupItems,
+                      onClose: () => setLearnMore(null),
+                    })} />
+                  </div>
                 );
               })}
             </div>
@@ -302,11 +289,11 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
               <Loader2 size={12} className="animate-spin" /> Loading fashion currency...
             </div>
           )}
-          {result.fashionCurrency && result.fashionCurrency.length > 0 && (
+          {fashionCurrency && fashionCurrency.length > 0 && (
             <div>
               <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Fashion currency — 2026</p>
               <div className="border border-[#E5DDD0] bg-white divide-y divide-[#E5DDD0]">
-                {result.fashionCurrency.map((fc) => {
+                {fashionCurrency.map((fc) => {
                   const item = items.find((i) => i.id === fc.itemId);
                   if (!item) return null;
                   const statusStyles: Record<string, string> = {
@@ -353,7 +340,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
             <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 2</p>
           </div>
           <h2 className="font-serif text-2xl text-[#1A1714]">Your Style Goals</h2>
-          <p className="text-sm text-[#6B6058] font-light mt-1 mb-4">Who do you want to dress like, or what style are you aiming for?</p>
+          <p className="text-sm text-[#6B6058] font-light mt-1 mb-4">What style are you aiming for? We'll tell you how close you are and how to get there.</p>
           <input
             value={goal}
             onChange={(e) => setGoal(e.target.value)}
@@ -370,7 +357,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
           </div>
           <button onClick={() => runGoal()} disabled={loadingGoal}
             className="w-full bg-[#1A1714] text-white py-3 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2">
-            {loadingGoal ? <><Loader2 className="animate-spin" size={13} /> Analysing...</> : goal ? 'How do I achieve this?' : 'Who do I currently dress like?'}
+            {loadingGoal ? <><Loader2 className="animate-spin" size={13} /> Analysing...</> : 'How do I achieve this?'}
           </button>
           {goalErr && <p className="text-xs text-red-700 mt-3 font-light">{goalErr}</p>}
         </div>
@@ -439,9 +426,6 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
           </div>
         )}
       </div>
-
-      {/* Image strategy */}
-      <ImageStrategySection items={items} bodyProfile={bodyProfile} />
 
       {/* Stylist feedback */}
       <StylistChat onRebuildProfile={() => setShowPersonaSetup(true)} />
