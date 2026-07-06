@@ -26,7 +26,8 @@ type Combination = {
   accessorizing?: string;
 };
 
-// Hard validation — runs after AI response, catches what the model misses
+// Hard validation — only enforces completeness. Creative layering (skirt over dress,
+// jumper over slip, etc.) is left to stylist team judgment.
 function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolean {
   const pieces = combo.itemIds
     .map((id) => items.find((i) => i.id === id))
@@ -35,24 +36,13 @@ function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolea
   if (pieces.length === 0) return false;
 
   const cats = pieces.map((p) => p.category);
-  const tops = cats.filter((c) => c === 'Top').length;
-  const bottoms = cats.filter((c) => c === 'Bottom').length;
-  const dresses = cats.filter((c) => c === 'Dress/One-piece').length;
 
-  // Must be complete: (top + bottom) or dress alone
-  const complete = dresses > 0 || (tops > 0 && bottoms > 0);
-  if (!complete) return false;
+  // Must have something covering the top half
+  const hasTopCoverage = cats.some((c) => c === 'Top' || c === 'Dress/One-piece' || c === 'Outerwear');
+  // Must have something covering the bottom half
+  const hasBottomCoverage = cats.some((c) => c === 'Bottom' || c === 'Dress/One-piece');
 
-  // Dress can't combine with a separate top or bottom
-  if (dresses > 0 && (tops > 0 || bottoms > 0)) return false;
-
-  // Multiple dresses, or multiple bottoms = impossible
-  if (dresses > 1 || bottoms > 1) return false;
-
-  // More than 2 tops is impossible to wear simultaneously
-  if (tops > 2) return false;
-
-  return true;
+  return hasTopCoverage && hasBottomCoverage;
 }
 
 export async function POST(req: NextRequest) {
@@ -100,12 +90,10 @@ Select up to ${maxCombos} complete outfit combinations from this wardrobe, ranke
 
 ${STYLIST_REJECTION_CRITERIA}
 
-OUTFIT RULES — these are non-negotiable:
-1. Every outfit MUST include at least one Top AND one Bottom, OR one Dress/One-piece on its own.
-2. A Dress/One-piece already covers top and bottom — never add a Top or Bottom to it. Outerwear over a dress is fine.
-3. Never combine two Bottom items (e.g. skirt + trousers).
-4. Two Top items are only valid when one layers under the other (e.g. shirt under jumper). Never combine two outer-layer tops (jumper + cardigan, two knitwear pieces, etc.).
-5. If the wardrobe has no bottoms and no dresses, return an empty combinations array.
+OUTFIT RULES:
+1. Every outfit must achieve full coverage — something on top (Top, Dress/One-piece, or Outerwear) AND something on the bottom (Bottom or Dress/One-piece). A top with no bottom is not an outfit.
+2. Creative layering is encouraged where it genuinely works — a skirt over a slip dress, a longline knit over a shirt-dress, a fine-knit under a blazer. These are editorial moves, not mistakes. Use your judgment: does this specific combination of pieces make sense together, or is it just two items that can't realistically be worn at the same time?
+3. If the wardrobe has no bottoms and no dresses/jumpsuits, return an empty combinations array.
 
 A shorter list of genuinely great outfits beats padding with mediocre or incomplete ones.
 
