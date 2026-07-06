@@ -9,6 +9,8 @@ export type StyleDiscoveryAnswers = {
   moodPicks: string[];       // e.g. ['Quiet Luxury', 'Parisian Cool']
   dinnerFeeling: string;     // e.g. 'Effortlessly put-together'
   dressedValue: string;      // e.g. 'Looking expensive and considered'
+  lifestyleMix: string[];    // e.g. ['City social & dining', 'Cultural & arts']
+  dressingFor: string;       // e.g. 'Myself first'
   styleIntent?: string;      // optional free-text from advanced users
 };
 
@@ -51,22 +53,25 @@ CLIENT PROFILE:
 Aesthetic preferences: ${answers.moodPicks.join(', ')}
 How they want to feel when dressed up: ${answers.dinnerFeeling}
 What matters most when getting dressed: ${answers.dressedValue}
+Lifestyle mix (how they actually spend their time): ${answers.lifestyleMix.join(', ')}
+Who they dress for: ${answers.dressingFor}
 ${answers.styleIntent ? `In their own words: "${answers.styleIntent}"` : ''}
 ${colourContext}
 ${bodyContext}
 ${tasteContext ? 'Behavioural signals:\n' + tasteContext : ''}
 
-Write a personalised stylist persona — 3-4 sentences — that a senior stylist would use as their internal brief before advising this specific client. It should:
+Write a personalised stylist persona — 4-5 sentences — that a senior stylist would use as their internal brief before advising this specific client. It should:
 - Encode their aesthetic direction and what they're reaching for
 - Reflect their colour season and how that interacts with their taste
-- Capture what kind of advice will land (practical and direct vs editorial and inspiring, safe vs risk-taking, etc.)
+- Capture their actual lifestyle — the real contexts they dress for — and how this should shape every recommendation (e.g. someone who splits their week between outdoor activity and city social needs versatility and ease; someone who mostly dresses for cultural and professional contexts needs range of register)
+- Note who they dress for and what that means for the kind of advice that will land
 - Be written in second person as if briefing a colleague: "This client is..." or "They respond to..."
 - Sound like a real human stylist briefing, not marketing copy
 
 Respond with ONLY valid JSON, no markdown:
 {"persona": "the full 3-4 sentence persona text"}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 400 });
+    const raw = await callClaude({ prompt, maxTokens: 500 });
     const parsed = parseJSON(raw) as { persona: string };
 
     const record: PersonaRecord = {

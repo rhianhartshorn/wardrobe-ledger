@@ -63,17 +63,44 @@ const VALUE_OPTIONS = [
   { id: 'appropriate', label: 'Always fitting the occasion perfectly' },
 ];
 
-type Step = 'moods' | 'dinner' | 'values' | 'generating';
+const LIFESTYLE_OPTIONS = [
+  { id: 'outdoors', label: 'Outdoors & active', desc: 'Hiking, sport, nature — movement is part of my week' },
+  { id: 'social', label: 'City social & dining', desc: 'Brunches, bars, restaurants, seeing people' },
+  { id: 'cultural', label: 'Cultural & arts', desc: 'Galleries, theatre, gigs, exhibitions' },
+  { id: 'professional', label: 'Professional & work-focused', desc: 'Meetings, client-facing, office or hybrid' },
+  { id: 'home', label: 'Home-based & slow', desc: 'Working from home, quiet weekends, low-key' },
+  { id: 'travel', label: 'Travelling & on the move', desc: 'Airports, new cities, varied climates' },
+];
+
+const DRESSING_FOR_OPTIONS = [
+  { id: 'self', label: 'Myself first', desc: "I dress for how I feel, not what others think" },
+  { id: 'others', label: 'The people I\'m with', desc: 'I like to fit in and feel appropriate for the crowd' },
+  { id: 'occasion', label: 'The occasion', desc: 'Context drives my choices — I dress for the room' },
+  { id: 'aspiration', label: 'The person I\'m becoming', desc: 'I dress slightly ahead of where I am right now' },
+];
+
+type Step = 'moods' | 'dinner' | 'values' | 'lifestyle' | 'dressingfor' | 'generating';
 
 export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, savedLookTitles }: Props) {
   const [step, setStep] = useState<Step>('moods');
   const [moodPicks, setMoodPicks] = useState<Set<string>>(new Set());
   const [dinnerFeeling, setDinnerFeeling] = useState('');
   const [dressedValue, setDressedValue] = useState('');
+  const [lifestyleMix, setLifestyleMix] = useState<Set<string>>(new Set());
+  const [dressingFor, setDressingFor] = useState('');
   const [error, setError] = useState('');
 
   const toggleMood = (id: string) => {
     setMoodPicks((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else if (next.size < 3) next.add(id);
+      return next;
+    });
+  };
+
+  const toggleLifestyle = (id: string) => {
+    setLifestyleMix((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else if (next.size < 3) next.add(id);
@@ -102,6 +129,8 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       moodPicks: Array.from(moodPicks),
       dinnerFeeling,
       dressedValue,
+      lifestyleMix: Array.from(lifestyleMix),
+      dressingFor,
     };
     generatePersona(answers);
   };
@@ -122,17 +151,21 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       {/* Header */}
       <div className="px-6 pt-8 pb-4 shrink-0">
         <p className="text-[10px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light mb-1">
-          {step === 'moods' ? 'Step 1 of 3' : step === 'dinner' ? 'Step 2 of 3' : 'Step 3 of 3'}
+          {step === 'moods' ? 'Step 1 of 5' : step === 'dinner' ? 'Step 2 of 5' : step === 'values' ? 'Step 3 of 5' : step === 'lifestyle' ? 'Step 4 of 5' : 'Step 5 of 5'}
         </p>
         <h2 className="font-serif text-2xl text-white leading-tight">
           {step === 'moods' && 'Which of these feels most like you?'}
           {step === 'dinner' && "You're going for dinner Saturday night."}
           {step === 'values' && 'When you get dressed, what matters most?'}
+          {step === 'lifestyle' && 'What does a typical week look like?'}
+          {step === 'dressingfor' && 'Who do you dress for?'}
         </h2>
         <p className="text-sm text-white/45 font-light mt-1.5">
           {step === 'moods' && 'Pick up to 3 that resonate — not what you own, what you\'re drawn to.'}
           {step === 'dinner' && 'How do you want to feel when you walk in?'}
           {step === 'values' && 'Be honest — there\'s no wrong answer.'}
+          {step === 'lifestyle' && 'Pick up to 3 that describe your life most of the time.'}
+          {step === 'dressingfor' && 'Be honest — the more specific you are, the better the advice.'}
         </p>
       </div>
 
@@ -141,7 +174,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
         <div className="h-px bg-white/10 overflow-hidden">
           <div
             className="h-full bg-[#9B7B3A] transition-all duration-500"
-            style={{ width: step === 'moods' ? '33%' : step === 'dinner' ? '66%' : '100%' }}
+            style={{ width: step === 'moods' ? '20%' : step === 'dinner' ? '40%' : step === 'values' ? '60%' : step === 'lifestyle' ? '80%' : '100%' }}
           />
         </div>
       </div>
@@ -217,6 +250,51 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
             ))}
           </div>
         )}
+
+        {step === 'lifestyle' && (
+          <div className="grid grid-cols-2 gap-3">
+            {LIFESTYLE_OPTIONS.map((opt) => {
+              const selected = lifestyleMix.has(opt.id);
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => toggleLifestyle(opt.id)}
+                  className={`relative text-left p-4 border transition-all ${
+                    selected ? 'border-[#9B7B3A] bg-[#9B7B3A]/10' : 'border-white/10 hover:border-white/30'
+                  }`}
+                >
+                  {selected && (
+                    <div className="absolute top-2 right-2 w-4 h-4 bg-[#9B7B3A] rounded-full flex items-center justify-center">
+                      <Check size={10} className="text-white" />
+                    </div>
+                  )}
+                  <p className={`text-sm font-light leading-snug mb-1 ${selected ? 'text-white' : 'text-white/70'}`}>{opt.label}</p>
+                  <p className="text-[10px] text-white/35 leading-relaxed">{opt.desc}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {step === 'dressingfor' && (
+          <div className="space-y-3">
+            {DRESSING_FOR_OPTIONS.map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setDressingFor(opt.label)}
+                className={`w-full text-left p-4 border transition-all flex items-center justify-between ${
+                  dressingFor === opt.label ? 'border-[#9B7B3A] bg-[#9B7B3A]/10' : 'border-white/10 hover:border-white/30'
+                }`}
+              >
+                <div>
+                  <p className={`text-sm font-light ${dressingFor === opt.label ? 'text-white' : 'text-white/70'}`}>{opt.label}</p>
+                  <p className="text-[10px] text-white/35 mt-0.5">{opt.desc}</p>
+                </div>
+                {dressingFor === opt.label && <Check size={14} className="text-[#9B7B3A] shrink-0 ml-3" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* CTA */}
@@ -241,8 +319,26 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
         )}
         {step === 'values' && (
           <button
-            onClick={handleDone}
+            onClick={() => setStep('lifestyle')}
             disabled={!dressedValue}
+            className="w-full bg-white text-[#1A1714] py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-white/90 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+          >
+            Next <ArrowRight size={13} />
+          </button>
+        )}
+        {step === 'lifestyle' && (
+          <button
+            onClick={() => setStep('dressingfor')}
+            disabled={lifestyleMix.size === 0}
+            className="w-full bg-white text-[#1A1714] py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-white/90 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+          >
+            Next <ArrowRight size={13} />
+          </button>
+        )}
+        {step === 'dressingfor' && (
+          <button
+            onClick={handleDone}
+            disabled={!dressingFor}
             className="w-full bg-[#9B7B3A] text-white py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-[#8A6C2E] transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
           >
             Build my stylist profile <ArrowRight size={13} />
