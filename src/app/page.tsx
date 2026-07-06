@@ -130,6 +130,7 @@ export default function WardrobeApp() {
           onDone={dismissStyleDiscovery}
           itemCount={items.length}
           topWorn={[...items].sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0)).slice(0, 5).filter((i) => (i.wearCount ?? 0) > 0).map((i) => i.name)}
+          bodyProfile={bodyProfile}
         />
       )}
       <Header

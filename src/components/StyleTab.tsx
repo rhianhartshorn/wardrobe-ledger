@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Loader2, Gem, RefreshCw, Target, ChevronRight } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
-import { slim } from './utils';
+import { slim, buildWearBehaviourSummary } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
 import MirrorTab from './MirrorTab';
@@ -64,7 +64,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
       const res = await fetch('/api/style-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles }),
+        body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
       });
       const data = await res.json() as StyleReadResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
@@ -97,7 +97,7 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
       const res = await fetch('/api/style-match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), goal: g || undefined }),
+        body: JSON.stringify({ items: slim(items), goal: g || undefined, bodyProfile, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
       });
       const data = await res.json() as MatchResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');

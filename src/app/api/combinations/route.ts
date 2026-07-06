@@ -18,7 +18,7 @@ type WardrobeItem = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, topWorn, savedLookTitles } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[] };
+    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = await req.json() as { items: WardrobeItem[]; bodyProfile?: BodyProfile; topWorn?: string[]; savedLookTitles?: string[]; wearBehaviourSummary?: string };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to see outfit combinations.' }, { status: 400 });
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
     const tasteSignals = [
       ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
       ...(savedLookTitles?.length ? [`Looks they've saved: ${savedLookTitles.join('; ')}`] : []),
+      ...(wearBehaviourSummary ? [`Wear behaviour patterns: ${wearBehaviourSummary}`] : []),
     ].join('\n');
 
     const itemListText = items

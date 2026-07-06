@@ -16,11 +16,12 @@ export type { StyleGroup, StyleTwin, StyleReadResult } from '@/lib/style-types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, topWorn, savedLookTitles } = await req.json() as {
+    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = await req.json() as {
       items: WardrobeItem[];
       bodyProfile?: BodyProfile;
       topWorn?: string[];
       savedLookTitles?: string[];
+      wearBehaviourSummary?: string;
     };
 
     if (!items || items.length < 3) {
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     const tasteSignals = [
       ...(topWorn?.length ? [`Most-worn (real behaviour): ${topWorn.join('; ')}`] : []),
       ...(savedLookTitles?.length ? [`Saved looks: ${savedLookTitles.join('; ')}`] : []),
+      ...(wearBehaviourSummary ? [`Wear behaviour patterns: ${wearBehaviourSummary}`] : []),
     ].join('\n');
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';

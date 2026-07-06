@@ -6,6 +6,35 @@ export function slim(items: WardrobeItem[]) {
   return items.map(({ imageUrl: _, imageFilename: __, ...rest }) => rest);
 }
 
+// Build a wear behaviour summary string for injecting into AI prompts
+export function buildWearBehaviourSummary(items: WardrobeItem[]): string {
+  const totalWears = items.reduce((sum, i) => sum + (i.wearCount ?? 0), 0);
+  if (totalWears === 0) return '';
+
+  const neverWorn = items.filter((i) => (i.wearCount ?? 0) === 0);
+
+  const catWear: Record<string, number> = {};
+  items.forEach((i) => { catWear[i.category] = (catWear[i.category] ?? 0) + (i.wearCount ?? 0); });
+  const topCat = Object.entries(catWear).sort((a, b) => b[1] - a[1])[0];
+
+  const formalityWear: Record<string, number> = {};
+  items.forEach((i) => { formalityWear[i.formality] = (formalityWear[i.formality] ?? 0) + (i.wearCount ?? 0); });
+  const topFormalities = Object.entries(formalityWear)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 2)
+    .map(([f, v]) => `${f} (${Math.round((v / totalWears) * 100)}%)`);
+
+  const parts: string[] = [];
+  if (topCat) parts.push(`Most-worn category: ${topCat[0]}`);
+  if (topFormalities.length > 1) parts.push(`Formality they actually live in: ${topFormalities.join(' → ')}`);
+  if (neverWorn.length > 0) {
+    const names = neverWorn.slice(0, 3).map((i) => i.name).join(', ');
+    parts.push(`${neverWorn.length} item${neverWorn.length > 1 ? 's' : ''} never worn (${names}${neverWorn.length > 3 ? ` +${neverWorn.length - 3} more` : ''})`);
+  }
+  return parts.join('. ');
+}
+
 export function colorDot(name: string | null | undefined): string {
   if (!name) return '#a8a29e';
   const key = name.toLowerCase().trim();

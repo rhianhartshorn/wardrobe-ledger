@@ -35,20 +35,24 @@ export async function POST(req: NextRequest) {
       bodyProfile?: BodyProfile;
       topWorn?: string[];
       savedLookTitles?: string[];
+      wearBehaviourSummary?: string;
     };
-    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles } = body;
+    const { items, weather, occasion, note, profileImageFilename, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = body;
 
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
 
-    const styleBriefCtx = await getStyleBriefContext();
+    const safeName = profileImageFilename ? profileImageFilename.replace(/[^a-zA-Z0-9._-]/g, '') : null;
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, profileImageData] = await Promise.all([
+      getStyleBriefContext(),
+      getPersonaContext(),
+      getStyleDirectives(),
+      getBrandVoiceContext(),
+      safeName ? getImage(safeName) : Promise.resolve(null),
+    ]);
 
     let profileImageBase64: string | undefined;
     let profileMediaType = 'image/jpeg';
-    if (profileImageFilename) {
-      const safeName = profileImageFilename.replace(/[^a-zA-Z0-9._-]/g, '');
-      const img = await getImage(safeName);
-      if (img) { profileImageBase64 = img.data; profileMediaType = img.mimeType; }
-    }
+    if (profileImageData) { profileImageBase64 = profileImageData.data; profileMediaType = profileImageData.mimeType; }
 
     const itemListText = items
       .map((i) => `${i.id} :: ${i.category}, "${i.name}", color ${i.primaryColor}${i.secondaryColor ? '/' + i.secondaryColor : ''}, ${i.pattern || 'solid'}${i.material ? ', ' + i.material : ''}, ${i.formality}, ${i.season}`)
@@ -63,6 +67,7 @@ export async function POST(req: NextRequest) {
     const tasteSignals = [
       ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
       ...(savedLookTitles?.length ? [`Looks they've saved and loved: ${savedLookTitles.join('; ')}`] : []),
+      ...(wearBehaviourSummary ? [`Wear behaviour patterns: ${wearBehaviourSummary}`] : []),
     ].join('\n');
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -85,7 +90,6 @@ Colour guidance: ${profileCtx.includes('warm') ? 'warm undertone — earth tones
 ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-fitting pieces — avoid suggesting anything too tight or structured.' : bodyProfile.fitPreference === 'tailored' ? 'This client prefers tailored, structured pieces — lean towards fitted, polished silhouettes.' : ''}
 ` : '';
 
-    const [personaCtx, styleDirectives, brandVoice] = await Promise.all([getPersonaContext(), getStyleDirectives(), getBrandVoiceContext()]);
     const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}

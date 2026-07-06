@@ -8,6 +8,7 @@ type Props = {
   itemCount: number;
   topWorn?: string[];
   savedLookTitles?: string[];
+  bodyProfile?: import('@/lib/body-profile').BodyProfile;
 };
 
 const MOODS = [
@@ -79,15 +80,16 @@ const DRESSING_FOR_OPTIONS = [
   { id: 'aspiration', label: 'The person I\'m becoming', desc: 'I dress slightly ahead of where I am right now' },
 ];
 
-type Step = 'moods' | 'dinner' | 'values' | 'lifestyle' | 'dressingfor' | 'generating';
+type Step = 'moods' | 'dinner' | 'values' | 'lifestyle' | 'dressingfor' | 'freetext' | 'generating';
 
-export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, savedLookTitles }: Props) {
+export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, savedLookTitles, bodyProfile }: Props) {
   const [step, setStep] = useState<Step>('moods');
   const [moodPicks, setMoodPicks] = useState<Set<string>>(new Set());
   const [dinnerFeeling, setDinnerFeeling] = useState('');
   const [dressedValue, setDressedValue] = useState('');
   const [lifestyleMix, setLifestyleMix] = useState<Set<string>>(new Set());
   const [dressingFor, setDressingFor] = useState('');
+  const [freeText, setFreeText] = useState('');
   const [error, setError] = useState('');
 
   const toggleMood = (id: string) => {
@@ -114,7 +116,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       const res = await fetch('/api/persona', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, itemCount, topWorn, savedLookTitles }),
+        body: JSON.stringify({ answers, itemCount, topWorn, savedLookTitles, bodyProfile }),
       });
       if (!res.ok) throw new Error('Generation failed');
       onDone();
@@ -131,6 +133,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       dressedValue,
       lifestyleMix: Array.from(lifestyleMix),
       dressingFor,
+      styleIntent: freeText.trim() || undefined,
     };
     generatePersona(answers);
   };
@@ -151,7 +154,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
       {/* Header */}
       <div className="px-6 pt-8 pb-4 shrink-0">
         <p className="text-[10px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light mb-1">
-          {step === 'moods' ? 'Step 1 of 5' : step === 'dinner' ? 'Step 2 of 5' : step === 'values' ? 'Step 3 of 5' : step === 'lifestyle' ? 'Step 4 of 5' : 'Step 5 of 5'}
+          {step === 'moods' ? 'Step 1 of 6' : step === 'dinner' ? 'Step 2 of 6' : step === 'values' ? 'Step 3 of 6' : step === 'lifestyle' ? 'Step 4 of 6' : step === 'dressingfor' ? 'Step 5 of 6' : 'Step 6 of 6'}
         </p>
         <h2 className="font-serif text-2xl text-white leading-tight">
           {step === 'moods' && 'Which of these feels most like you?'}
@@ -159,6 +162,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
           {step === 'values' && 'When you get dressed, what matters most?'}
           {step === 'lifestyle' && 'What does a typical week look like?'}
           {step === 'dressingfor' && 'Who do you dress for?'}
+          {step === 'freetext' && 'Anything else your stylist should know?'}
         </h2>
         <p className="text-sm text-white/45 font-light mt-1.5">
           {step === 'moods' && 'Pick up to 3 that resonate — not what you own, what you\'re drawn to.'}
@@ -166,6 +170,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
           {step === 'values' && 'Be honest — there\'s no wrong answer.'}
           {step === 'lifestyle' && 'Pick up to 3 that describe your life most of the time.'}
           {step === 'dressingfor' && 'Be honest — the more specific you are, the better the advice.'}
+          {step === 'freetext' && 'Optional — your job, where you live, occasions you dress for, a style rut, how you want to be seen. Anything the questions above didn\'t capture.'}
         </p>
       </div>
 
@@ -174,7 +179,7 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
         <div className="h-px bg-white/10 overflow-hidden">
           <div
             className="h-full bg-[#9B7B3A] transition-all duration-500"
-            style={{ width: step === 'moods' ? '20%' : step === 'dinner' ? '40%' : step === 'values' ? '60%' : step === 'lifestyle' ? '80%' : '100%' }}
+            style={{ width: step === 'moods' ? '17%' : step === 'dinner' ? '33%' : step === 'values' ? '50%' : step === 'lifestyle' ? '67%' : step === 'dressingfor' ? '83%' : '100%' }}
           />
         </div>
       </div>
@@ -295,6 +300,19 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
             ))}
           </div>
         )}
+
+        {step === 'freetext' && (
+          <div>
+            <textarea
+              value={freeText}
+              onChange={(e) => setFreeText(e.target.value)}
+              placeholder="e.g. I work in a creative industry and need to look sharp but not corporate. I dress for myself first. I live in London and spend a lot of time outdoors on weekends. I want to move away from all-black everything."
+              rows={7}
+              className="w-full bg-transparent border border-white/15 px-4 py-3 text-sm text-white/80 placeholder:text-white/20 font-light leading-relaxed focus:outline-none focus:border-white/40 resize-none"
+            />
+            <p className="text-[10px] text-white/20 font-light mt-2">This goes directly to your stylist. Be as specific or as vague as you like — or leave it blank and skip.</p>
+          </div>
+        )}
       </div>
 
       {/* CTA */}
@@ -337,9 +355,17 @@ export default function StyleDiscoveryCarousel({ onDone, itemCount, topWorn, sav
         )}
         {step === 'dressingfor' && (
           <button
-            onClick={handleDone}
+            onClick={() => setStep('freetext')}
             disabled={!dressingFor}
-            className="w-full bg-[#9B7B3A] text-white py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-[#8A6C2E] transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+            className="w-full bg-white text-[#1A1714] py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-white/90 transition-colors disabled:opacity-30 flex items-center justify-center gap-2"
+          >
+            Next <ArrowRight size={13} />
+          </button>
+        )}
+        {step === 'freetext' && (
+          <button
+            onClick={handleDone}
+            className="w-full bg-[#9B7B3A] text-white py-3.5 text-xs tracking-[0.2em] uppercase font-light hover:bg-[#8A6C2E] transition-colors flex items-center justify-center gap-2"
           >
             Build my stylist profile <ArrowRight size={13} />
           </button>
