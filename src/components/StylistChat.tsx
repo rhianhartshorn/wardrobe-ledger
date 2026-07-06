@@ -2,12 +2,24 @@
 import { useState, useEffect } from 'react';
 import { Loader2, MessageCircle, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
+import type { WardrobeItem } from '@/app/page';
+import { slim, buildWardrobeGrid } from './utils';
+
+const PROMPT_SUGGESTIONS = [
+  'What should I wear to a job interview?',
+  'I need a dinner date outfit from what I have',
+  'What am I wearing wrong about my wardrobe?',
+  'Stop playing it safe — I want more edge',
+  'What\'s the one piece I\'m underusing?',
+  'How do I make my outfits look more intentional?',
+];
 
 type Props = {
+  items: WardrobeItem[];
   onRebuildProfile?: () => void;
 };
 
-export default function StylistChat({ onRebuildProfile }: Props) {
+export default function StylistChat({ items, onRebuildProfile }: Props) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [acknowledgment, setAcknowledgment] = useState('');
@@ -32,10 +44,17 @@ export default function StylistChat({ onRebuildProfile }: Props) {
     if (!message.trim() || sending) return;
     setSending(true); setErr(''); setAcknowledgment('');
     try {
+      // Build wardrobe grid so the stylist can see the actual clothes
+      const grid = await buildWardrobeGrid(items);
       const res = await fetch('/api/stylist-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({
+          message,
+          items: slim(items),
+          wardrobeGrid: grid?.base64,
+          wardrobeGridMapping: grid?.mapping,
+        }),
       });
       const data = await res.json() as { acknowledgment?: string; allDirectives?: StyleDirective[]; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
@@ -59,8 +78,8 @@ export default function StylistChat({ onRebuildProfile }: Props) {
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Talk to your stylist</p>
         </div>
         <p className="text-sm text-[#1A1714] font-light">
-          {personaExists
-            ? 'Your stylist knows you. Tell them what\'s been off, what you want more of, or how you want advice to change.'
+          {items.length > 0
+            ? 'Your stylist has your full wardrobe in front of them. Ask what to wear, what\'s missing, or what you\'re doing wrong.'
             : 'Tell your stylist what you\'re looking for — they\'ll adjust their approach to suit you.'}
         </p>
         {onRebuildProfile && (
@@ -74,15 +93,9 @@ export default function StylistChat({ onRebuildProfile }: Props) {
       </div>
 
       <div className="p-4 space-y-3">
-        {/* Prompt suggestions */}
         {!acknowledgment && (
           <div className="flex flex-wrap gap-2">
-            {[
-              'Stop playing it safe — I want more edge',
-              'I want more practical everyday outfits',
-              'Focus on what works for my colouring',
-              'I\'m tired of being told to wear neutrals',
-            ].map((s) => (
+            {PROMPT_SUGGESTIONS.map((s) => (
               <button
                 key={s}
                 onClick={() => setMessage(s)}
@@ -97,7 +110,9 @@ export default function StylistChat({ onRebuildProfile }: Props) {
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="Tell your stylist what you want to change about the advice you're getting..."
+          placeholder={items.length > 0
+            ? 'Ask your stylist anything — what to wear tonight, what\'s missing, what you\'re getting wrong...'
+            : 'Tell your stylist what you want to change about the advice you\'re getting...'}
           rows={3}
           className="w-full border border-[#E5DDD0] px-3 py-2.5 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A] resize-none"
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(); }}
@@ -108,7 +123,7 @@ export default function StylistChat({ onRebuildProfile }: Props) {
           disabled={!message.trim() || sending}
           className="w-full bg-[#1A1714] text-white py-2.5 text-xs tracking-[0.15em] uppercase font-light hover:bg-[#2C2521] disabled:opacity-40 transition-colors flex items-center justify-center gap-2"
         >
-          {sending ? <><Loader2 className="animate-spin" size={12} /> Sending...</> : 'Send to stylist'}
+          {sending ? <><Loader2 className="animate-spin" size={12} /> Your stylist is looking at your wardrobe...</> : 'Send to stylist'}
         </button>
 
         {err && <p className="text-xs text-red-700 font-light">{err}</p>}
@@ -116,7 +131,7 @@ export default function StylistChat({ onRebuildProfile }: Props) {
         {acknowledgment && (
           <div className="border-l-2 border-[#9B7B3A] pl-3 py-1">
             <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mb-1.5">Your stylist</p>
-            <p className="text-sm text-[#1A1714] font-light leading-relaxed">{acknowledgment}</p>
+            <p className="text-sm text-[#1A1714] font-light leading-relaxed whitespace-pre-line">{acknowledgment}</p>
           </div>
         )}
 

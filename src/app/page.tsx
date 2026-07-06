@@ -8,11 +8,13 @@ import OutfitTab from '@/components/OutfitTab';
 import StyleTab from '@/components/StyleTab';
 import LooksTab from '@/components/LooksTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
+import LifestyleProfilePage from '@/components/LifestyleProfilePage';
 import OnboardingCarousel from '@/components/OnboardingCarousel';
 import StyleDiscoveryCarousel from '@/components/StyleDiscoveryCarousel';
 import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
 import { EMPTY_PROFILE } from '@/lib/body-profile';
+import { type LifestyleProfile, EMPTY_LIFESTYLE } from '@/lib/lifestyle-types';
 
 export type WardrobeItem = {
   id: string;
@@ -44,6 +46,8 @@ export default function WardrobeApp() {
   const [profileImageFilename, setProfileImageFilename] = useState<string | null>(null);
   const [bodyProfile, setBodyProfile] = useState<BodyProfile>(EMPTY_PROFILE);
   const [showBodyProfile, setShowBodyProfile] = useState(false);
+  const [lifestyleProfile, setLifestyleProfile] = useState<LifestyleProfile>(EMPTY_LIFESTYLE());
+  const [showLifestyleProfile, setShowLifestyleProfile] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(() => {
@@ -60,8 +64,9 @@ export default function WardrobeApp() {
       fetch('/api/items').then((r) => r.json()),
       fetch('/api/profile').then((r) => r.json()),
       fetch('/api/body-profile').then((r) => r.json()),
+      fetch('/api/lifestyle').then((r) => r.json()),
     ])
-      .then(([itemsData, profileData, bodyData]) => {
+      .then(([itemsData, profileData, bodyData, lifestyleData]) => {
         // Guard: API may return {error: "..."} on 500 — never pass a non-array to setItems
         setItems(Array.isArray(itemsData) ? itemsData as WardrobeItem[] : []);
         if (profileData && typeof profileData === 'object' && !Array.isArray(profileData)) {
@@ -70,6 +75,9 @@ export default function WardrobeApp() {
           setProfileImageFilename(p.imageFilename ?? null);
         }
         setBodyProfile((bodyData && typeof bodyData === 'object') ? bodyData as BodyProfile : EMPTY_PROFILE);
+        if (lifestyleData && typeof lifestyleData === 'object' && !Array.isArray(lifestyleData)) {
+          setLifestyleProfile({ ...EMPTY_LIFESTYLE(), ...(lifestyleData as Partial<LifestyleProfile>) });
+        }
         setLoaded(true);
         if (!Array.isArray(itemsData) && itemsData && (itemsData as { error?: string }).error) {
           setError('Wardrobe failed to load — try refreshing.');
@@ -119,6 +127,16 @@ export default function WardrobeApp() {
         initial={bodyProfile}
         onSave={(p) => setBodyProfile(p)}
         onClose={() => setShowBodyProfile(false)}
+      />
+    );
+  }
+
+  if (showLifestyleProfile) {
+    return (
+      <LifestyleProfilePage
+        initial={lifestyleProfile}
+        onSave={(p) => setLifestyleProfile(p)}
+        onClose={() => setShowLifestyleProfile(false)}
       />
     );
   }
@@ -182,7 +200,7 @@ export default function WardrobeApp() {
             }}
           />
         ) : tab === 'style' ? (
-          <StyleTab items={items} bodyProfile={bodyProfile} />
+          <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowLifestyleProfile(true)} />
         ) : (
           <LooksTab items={items} bodyProfile={bodyProfile} />
         )}

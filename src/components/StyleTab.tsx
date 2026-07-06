@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Loader2, Gem, RefreshCw, Target, ChevronRight, ShoppingBag } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
-import { slim, buildWearBehaviourSummary } from './utils';
+import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
 import MirrorTab from './MirrorTab';
@@ -10,6 +10,7 @@ import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
 import type { StyleReadResult } from '@/lib/style-types';
 import type { GapAnalysisResult } from '@/lib/gap-types';
+import type { LifestyleProfile } from '@/lib/lifestyle-types';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -29,7 +30,7 @@ function LearnMoreButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenLifestyle }: { items: WardrobeItem[]; bodyProfile?: BodyProfile; lifestyleProfile?: LifestyleProfile; onOpenLifestyle?: () => void }) {
   const [view, setView] = useState<'dna' | 'insights'>('dna');
   const [showPersonaSetup, setShowPersonaSetup] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
@@ -52,10 +53,11 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
   const runGapAnalysis = async () => {
     setLoadingGaps(true); setGapErr(''); setGapResult(null);
     try {
+      const grid = await buildWardrobeGrid(items);
       const res = await fetch('/api/wardrobe-gaps', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), bodyProfile, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
+        body: JSON.stringify({ items: slim(items), bodyProfile, wearBehaviourSummary: buildWearBehaviourSummary(items), wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
       });
       const data = await res.json() as GapAnalysisResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
@@ -81,10 +83,11 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
     } catch { /* ignore */ }
 
     try {
+      const grid = await buildWardrobeGrid(items);
       const res = await fetch('/api/style-read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items) }),
+        body: JSON.stringify({ items: slim(items), bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary: buildWearBehaviourSummary(items), wardrobeGrid: grid?.base64, wardrobeGridMapping: grid?.mapping }),
       });
       const data = await res.json() as StyleReadResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
@@ -502,8 +505,29 @@ export default function StyleTab({ items, bodyProfile }: { items: WardrobeItem[]
         )}
       </div>
 
+      {/* Lifestyle profile entry point */}
+      {onOpenLifestyle && (
+        <button
+          onClick={onOpenLifestyle}
+          className="w-full border border-[#E5DDD0] bg-white p-4 flex items-center justify-between hover:border-[#9B7B3A] transition-colors group"
+        >
+          <div className="text-left">
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">
+              {lifestyleProfile?.occasions?.length || lifestyleProfile?.workDressCode ? 'Lifestyle profile — tap to update' : 'Recommended'}
+            </p>
+            <p className="text-sm text-[#1A1714] font-light mt-0.5">
+              {lifestyleProfile?.occasions?.length || lifestyleProfile?.workDressCode
+                ? `${[lifestyleProfile.workDressCode, ...(lifestyleProfile.occasions ?? [])].filter(Boolean).slice(0, 3).join(' · ')}${(lifestyleProfile.occasions?.length ?? 0) > 2 ? ' +more' : ''}`
+                : 'Tell your stylist about your life'}
+            </p>
+            <p className="text-xs text-[#A89F96] font-light mt-0.5">Occasions, dress code, climate, comfort zones — shapes every recommendation</p>
+          </div>
+          <span className="text-[#9B7B3A] text-lg font-light ml-4 group-hover:translate-x-0.5 transition-transform">→</span>
+        </button>
+      )}
+
       {/* Stylist feedback */}
-      <StylistChat onRebuildProfile={() => setShowPersonaSetup(true)} />
+      <StylistChat items={items} onRebuildProfile={() => setShowPersonaSetup(true)} />
       </>)}
     </div>
   );

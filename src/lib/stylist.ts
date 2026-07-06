@@ -108,6 +108,28 @@ export async function getBrandVoiceContext(): Promise<string> {
 // Style brief — pre-computed colour analysis injected into every AI call
 // ---------------------------------------------------------------------------
 
+export async function getLifestyleContext(): Promise<string> {
+  try {
+    const raw = await getSetting('lifestyle_profile');
+    if (!raw) return '';
+    const lp = JSON.parse(raw) as {
+      workDressCode?: string; occasions?: string[]; travelFrequency?: string;
+      climate?: string; fitComfort?: string[]; avoidances?: string;
+    };
+    const parts: string[] = [];
+    if (lp.workDressCode) parts.push(`Work dress code: ${lp.workDressCode}`);
+    if (lp.occasions?.length) parts.push(`Key occasions: ${lp.occasions.join(', ')}`);
+    if (lp.travelFrequency) parts.push(`Travel frequency: ${lp.travelFrequency}`);
+    if (lp.climate) parts.push(`Climate: ${lp.climate}`);
+    if (lp.fitComfort?.length) parts.push(`Comfortable wearing: ${lp.fitComfort.join(', ')}`);
+    if (lp.avoidances) parts.push(`Avoids: ${lp.avoidances}`);
+    if (!parts.length) return '';
+    return `\nCLIENT LIFESTYLE CONTEXT:\n${parts.join('\n')}\nFactor this into every recommendation — occasion appropriateness, climate suitability, and comfort constraints are hard requirements, not suggestions.\n`;
+  } catch {
+    return '';
+  }
+}
+
 export async function getStyleBriefContext(): Promise<string> {
   try {
     const raw = await getSetting('style_brief');

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, FASHION_EDITOR_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, FASHION_EDITOR_VOICE, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import type { GapAnalysisResult } from '@/lib/gap-types';
 
 type WardrobeItem = {
@@ -24,21 +24,24 @@ export type { WardrobeGap, GapAnalysisResult } from '@/lib/gap-types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, wearBehaviourSummary } = await req.json() as {
+    const { items, bodyProfile, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = await req.json() as {
       items: WardrobeItem[];
       bodyProfile?: BodyProfile;
       wearBehaviourSummary?: string;
+      wardrobeGrid?: string;
+      wardrobeGridMapping?: string;
     };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to analyse wardrobe gaps.' }, { status: 400 });
     }
 
-    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, lifestyleCtx] = await Promise.all([
       getStyleBriefContext(),
       getPersonaContext(),
       getStyleDirectives(),
       getBrandVoiceContext(),
+      getLifestyleContext(),
     ]);
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
@@ -60,8 +63,12 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
+    const gridBlock = wardrobeGrid
+      ? `\nVISUAL WARDROBE GRID: A numbered image grid of all items is attached. Grid key: ${wardrobeGridMapping}. Use the visual grid to verify actual colours, fabric textures, and silhouettes when identifying gaps.\n`
+      : '';
+
     const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${brandVoice} Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\n` : ''}${wearBehaviourSummary ? `\nWEAR BEHAVIOUR: ${wearBehaviourSummary}\n` : ''}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${gridBlock}${styleDirectives}${profileCtx ? `\nCLIENT PROFILE: ${profileCtx}\n` : ''}${wearBehaviourSummary ? `\nWEAR BEHAVIOUR: ${wearBehaviourSummary}\n` : ''}
 ${STYLIST_2026_LENS}
 
 FULL WARDROBE:
@@ -81,7 +88,8 @@ Identify 3–6 gaps. Be ruthlessly specific. If the wardrobe is genuinely comple
 Respond with ONLY valid JSON, no markdown:
 {"summary":"one sentence honest assessment of the wardrobe's biggest structural challenge","gaps":[{"priority":"high|medium|low","gap":"what's missing — max 8 words","why":"specific data-backed reason referencing actual items or patterns","suggestion":"specific piece to buy: cut, colour, fabric, and why it integrates — max 25 words"}]}`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1500 });
+    const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1500 });
     const parsed = parseJSON(raw) as GapAnalysisResult;
 
     return NextResponse.json(parsed);

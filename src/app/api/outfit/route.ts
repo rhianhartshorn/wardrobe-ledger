@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getImage } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FIT_SPECIALIST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
 
 type WeatherSnapshot = {
@@ -48,11 +48,12 @@ export async function POST(req: NextRequest) {
     if (!items?.length) return NextResponse.json({ error: 'No wardrobe items provided' }, { status: 400 });
 
     const safeName = profileImageFilename ? profileImageFilename.replace(/[^a-zA-Z0-9._-]/g, '') : null;
-    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, profileImageData] = await Promise.all([
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, lifestyleCtx, profileImageData] = await Promise.all([
       getStyleBriefContext(),
       getPersonaContext(),
       getStyleDirectives(),
       getBrandVoiceContext(),
+      getLifestyleContext(),
       safeName ? getImage(safeName) : Promise.resolve(null),
     ]);
 
@@ -103,7 +104,7 @@ ${bodyProfile.fitPreference === 'relaxed' ? 'This client prefers relaxed, easy-f
 ` : '';
 
     const prompt = `${personaCtx} ${FIT_SPECIALIST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS} ${photoLine}${gridLine ? ' ' + gridLine : ''}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS — use these to understand their real style preferences, not just their wardrobe on paper:\n' + tasteSignals + '\n' : ''}${bodyGuidance}
 Occasion: ${occasion}${note ? ' — additional context: ' + note : ''}
 ${weather ? `Current weather: ${weather.locationName}, ${weather.tempF}°F, ${weather.condition}. ${weather.summary}` : 'No weather data — the user is planning ahead or exploring. Select outfits that work across a range of conditions for this occasion, and note any weather-sensitive layering in the weatherNote field.'}
 

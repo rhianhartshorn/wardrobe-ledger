@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
 
 type WardrobeItem = {
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Add at least 3 items to see outfit combinations.' }, { status: 400 });
     }
 
-    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives(), getBrandVoiceContext()]);
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, lifestyleCtx] = await Promise.all([getStyleBriefContext(), getPersonaContext(), getStyleDirectives(), getBrandVoiceContext(), getLifestyleContext()]);
     const tasteSignals = [
       ...(topWorn?.length ? [`Items this client reaches for most: ${topWorn.join('; ')}`] : []),
       ...(workedLookTitles?.length ? [`Looks they wore and rated as working well: ${workedLookTitles.join('; ')} — lean into the aesthetic patterns these represent`] : []),
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
       : '';
 
     const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${COLOUR_ANALYST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} ${brandVoice} Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}${profileBlock}${gridBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}${profileBlock}${gridBlock}
 ${STYLIST_2026_LENS}
 
 Wardrobe (id :: category, name, color, pattern, fit, length, formality, season):

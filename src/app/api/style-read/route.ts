@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, IMAGE_STRATEGIST_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, IMAGE_STRATEGIST_VOICE, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
 import type { StyleReadResult } from '@/lib/style-types';
 
@@ -16,23 +16,26 @@ export type { StyleGroup, StyleTwin, StyleReadResult } from '@/lib/style-types';
 
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary } = await req.json() as {
+    const { items, bodyProfile, topWorn, savedLookTitles, wearBehaviourSummary, wardrobeGrid, wardrobeGridMapping } = await req.json() as {
       items: WardrobeItem[];
       bodyProfile?: BodyProfile;
       topWorn?: string[];
       savedLookTitles?: string[];
       wearBehaviourSummary?: string;
+      wardrobeGrid?: string;
+      wardrobeGridMapping?: string;
     };
 
     if (!items || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to get a style reading.' }, { status: 400 });
     }
 
-    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, lifestyleCtx] = await Promise.all([
       getStyleBriefContext(),
       getPersonaContext(),
       getStyleDirectives(),
       getBrandVoiceContext(),
+      getLifestyleContext(),
     ]);
 
     const itemListText = items
@@ -52,8 +55,12 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
+    const gridBlock = wardrobeGrid
+      ? `\nVISUAL WARDROBE GRID: A numbered image grid of all wardrobe items is attached. Grid key: ${wardrobeGridMapping}. Use the visual grid to ground your archetype reading in what the clothes actually look like — actual colours, fabric textures, and silhouettes, not just text tags.\n`
+      : '';
+
     const prompt = `${personaCtx} ${COLOUR_ANALYST_VOICE} ${IMAGE_STRATEGIST_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'BEHAVIOURAL SIGNALS — weight these heavily, they reveal real style vs aspiration:\n' + tasteSignals + '\n' : ''}${profileBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${gridBlock}${styleDirectives}${tasteSignals ? 'BEHAVIOURAL SIGNALS — weight these heavily, they reveal real style vs aspiration:\n' + tasteSignals + '\n' : ''}${profileBlock}
 You are delivering a complete style reading of this wardrobe. Three lenses in one:
 1. Who they ARE (archetype, aesthetic identity, style clusters)
 2. What they're PROJECTING (brand statement, narrative coherence, what a stranger reads)
@@ -85,7 +92,8 @@ Respond with ONLY valid JSON, no markdown:
 
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
 
-    const raw = await callClaude({ prompt, maxTokens: 4000 });
+    const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000 });
     const parsed = parseJSON(raw) as StyleReadResult;
 
     const auditText = [
