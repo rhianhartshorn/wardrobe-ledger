@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, STYLIST_REJECTION_CRITERIA, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, ACCESSORIES_DIRECTOR_VOICE, getStyleBriefContext } from '@/lib/stylist';
 
 type WardrobeItem = {
   id: string;
@@ -39,12 +39,19 @@ export async function POST(req: NextRequest) {
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const maxCombos = 10;
 
-    const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} Today is ${today}.
+    const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${COLOUR_ANALYST_VOICE} ${ACCESSORIES_DIRECTOR_VOICE} Today is ${today}.
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${tasteSignals ? 'CLIENT TASTE SIGNALS:\n' + tasteSignals + '\n' : ''}
 ${profileBlock}
 ${STYLIST_2026_LENS}
 
-Your client has shared their wardrobe. Edit ruthlessly — only identify combinations that would make someone look genuinely well-dressed.
+Your client has shared their wardrobe. Every combination must pass review by the full styling team before it can be recommended. A combination only makes the list if ALL four experts approve it:
+
+— Fashion Editor: is this genuinely editorial? Does the colour story and aesthetic hold up?
+— Fit Specialist: does the silhouette work? Are the proportions right for this body shape? Is there a hem, tuck, or volume issue that would undermine it?
+— Colour Analyst: do these colours work together and with the client's colouring? Is there a clash, a value conflict, or an undertone mismatch that kills the look?
+— Accessories Director: can this combination be finished properly, or does it have an accessorising problem that can't be solved?
+
+If any expert would reject it, it does not appear. Edit ruthlessly.
 
 ${STYLIST_REJECTION_CRITERIA}
 
