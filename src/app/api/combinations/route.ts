@@ -63,12 +63,20 @@ ${itemListText}
 
 Select up to ${maxCombos} combinations, ranked from the single best outfit this wardrobe can produce down to still-excellent. Use ONLY the exact ids above.
 
-CRITICAL — every combination must be a COMPLETE, wearable outfit. That means it must cover the body from top to bottom:
-- It must include at minimum a top (or dress/jumpsuit) AND a bottom (trousers, skirt, shorts, or a dress that covers both)
-- A top + cardigan with no bottom is NOT a complete outfit — do not include it
+CRITICAL — every combination must be PHYSICALLY WEARABLE and COMPLETE. These are hard rules, not style preferences:
+
+PHYSICAL WEARABILITY — these combinations are impossible and must never appear:
+- A dress or jumpsuit (Dress/One-piece) paired with a Top — a dress already covers the top half; you cannot also wear a separate top as if it replaces the dress's bodice
+- A dress or jumpsuit paired with a Bottom (trousers, skirt, shorts) — a dress already covers the bottom half; it cannot be worn simultaneously with a separate bottom
+- Exception: Outerwear (jackets, coats, blazers) CAN be layered over a dress — that is physically possible and often styled intentionally
+- Two bottoms together (e.g., skirt + trousers) is not wearable — never combine two Bottom items
+- Two tops of the same type are only valid if one is clearly outerwear layered over the other
+
+COMPLETENESS — the outfit must cover the body top to bottom:
+- Minimum: a Top AND a Bottom, OR a Dress/One-piece alone
+- A top + cardigan with no bottom is not complete
 - Footwear and accessories are optional additions, not substitutes for a top or bottom
-- A dress or jumpsuit alone counts as complete (it covers both)
-- If the wardrobe does not have enough pieces to form a complete outfit, return an empty combinations array
+- If the wardrobe cannot form any complete, physically wearable outfit, return an empty combinations array
 
 A shorter list of genuinely complete, great outfits is far better than padding with partial looks.
 
