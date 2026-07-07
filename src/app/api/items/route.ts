@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllItems, insertItem, clearAllItems, type ItemRow } from '@/lib/db';
+import { getAllItems, insertItem, clearAllItems, setSetting, type ItemRow } from '@/lib/db';
 
 function toClient(row: ItemRow) {
   return {
@@ -34,7 +34,10 @@ export async function GET() {
 }
 
 export async function DELETE() {
-  await clearAllItems();
+  await Promise.all([
+    clearAllItems(),
+    setSetting('style_directives', '[]'),
+  ]);
   return NextResponse.json({ ok: true });
 }
 

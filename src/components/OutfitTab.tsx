@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Loader2, Sparkles, Cloud, Sun, CloudRain, Wind, RefreshCw, ChevronRight, Heart, X, Download } from 'lucide-react';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import CombinationsTab from './CombinationsTab';
@@ -217,7 +217,7 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
             href={tryOnUrl}
             download="outfit-tryon.jpg"
             className="text-white/40 hover:text-white transition-colors"
-            aria-label="Save"
+            aria-label="Download"
           >
             <Download size={16} />
           </a>
@@ -228,6 +228,16 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
         <div className="flex-1 overflow-auto flex items-center justify-center p-4">
           <img src={tryOnUrl} alt="You in this outfit" className="max-w-full max-h-full object-contain" />
         </div>
+        <div className="px-4 pb-6 pt-3 border-t border-white/10">
+          <button
+            onClick={() => { onSave(); setShowTryOn(false); }}
+            disabled={saving || saved}
+            className="w-full py-3 text-xs tracking-[0.15em] uppercase font-light flex items-center justify-center gap-2 transition-colors disabled:opacity-40 border border-white/30 text-white hover:bg-white/10"
+          >
+            <Heart size={13} className={saved ? 'fill-[#9B7B3A] text-[#9B7B3A]' : 'text-white'} />
+            {saved ? 'Saved to your looks' : 'Save this look'}
+          </button>
+        </div>
       </div>
     )}
     </>
@@ -235,13 +245,14 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
 }
 
 export default function OutfitTab({
-  items, profileImageUrl, profileImageFilename, onProfileChange, bodyProfile,
+  items, profileImageUrl, profileImageFilename, onProfileChange, bodyProfile, initialNote,
 }: {
   items: WardrobeItem[];
   profileImageUrl: string | null;
   profileImageFilename: string | null;
   onProfileChange: (url: string | null, filename: string | null) => void;
   bodyProfile?: BodyProfile;
+  initialNote?: string;
 }) {
   const selfieRef = useRef<HTMLInputElement>(null);
   const [locating, setLocating] = useState(false);
@@ -257,6 +268,14 @@ export default function OutfitTab({
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
   const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
   const [savingIdx, setSavingIdx] = useState<number | null>(null);
+
+  // Auto-generate when arriving from HomeTab with a pre-filled context note
+  useEffect(() => {
+    if (initialNote && items.length > 0) {
+      setNote(initialNote);
+      setOccasion('Everyday');
+    }
+  }, [initialNote, items.length]);
   const saveLook = async (idx: number, o: Outfit) => {
     setSavingIdx(idx);
     try {
@@ -496,6 +515,12 @@ export default function OutfitTab({
           <><Sparkles size={14} /> Generate outfits</>
         )}
       </button>
+
+      {bodyProfile?.height && bodyProfile?.bodyShape && (
+        <p className="text-center text-[10px] text-[#A89F96] font-light -mt-1">
+          Styling for {bodyProfile.bodyShape} frame{bodyProfile.undertone ? ` · ${bodyProfile.undertone} undertone` : ''}
+        </p>
+      )}
 
       {genErr && <p className="text-sm text-red-700 font-light">{genErr}</p>}
       {items.length === 0 && <p className="text-xs text-[#A89F96] text-center font-light">Head to the Closet tab and add a few pieces first — this tab builds outfits from your actual wardrobe.</p>}

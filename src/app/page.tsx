@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
+import HomeTab from '@/components/HomeTab';
 import ClosetTab from '@/components/ClosetTab';
 import AddItemTab from '@/components/AddItemTab';
 import OutfitTab from '@/components/OutfitTab';
@@ -15,6 +16,8 @@ import { ErrorBanner } from '@/components/ui';
 import type { BodyProfile } from '@/lib/body-profile';
 import { EMPTY_PROFILE } from '@/lib/body-profile';
 import { type LifestyleProfile, EMPTY_LIFESTYLE } from '@/lib/lifestyle-types';
+import { type FashionCurrencyItem, type StoredFashionCurrency, getCurrentSeasonTag } from '@/lib/fashion-currency-types';
+import { slim } from '@/components/utils';
 
 export type WardrobeItem = {
   id: string;
@@ -36,10 +39,11 @@ export type WardrobeItem = {
   wearCount?: number;
 };
 
-type Tab = 'closet' | 'outfit' | 'looks' | 'style';
+type Tab = 'home' | 'closet' | 'outfit' | 'looks' | 'style';
 
 export default function WardrobeApp() {
-  const [tab, setTab] = useState<Tab>('closet');
+  const [tab, setTab] = useState<Tab>('home');
+  const [outfitContext, setOutfitContext] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -48,16 +52,14 @@ export default function WardrobeApp() {
   const [showBodyProfile, setShowBodyProfile] = useState(false);
   const [lifestyleProfile, setLifestyleProfile] = useState<LifestyleProfile>(EMPTY_LIFESTYLE());
   const [showLifestyleProfile, setShowLifestyleProfile] = useState(false);
+  const [fashionCurrency, setFashionCurrency] = useState<FashionCurrencyItem[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
   const [showOnboarding, setShowOnboarding] = useState(() => {
     if (typeof window === 'undefined') return false;
     return !localStorage.getItem('wl_onboarded');
   });
-  const [showStyleDiscovery, setShowStyleDiscovery] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem('wl_style_discovery_done') && !!localStorage.getItem('wl_onboarded');
-  });
+  const [showStyleDiscovery, setShowStyleDiscovery] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -65,10 +67,12 @@ export default function WardrobeApp() {
       fetch('/api/profile').then((r) => r.json()),
       fetch('/api/body-profile').then((r) => r.json()),
       fetch('/api/lifestyle').then((r) => r.json()),
+      fetch('/api/fashion-currency').then((r) => r.json()),
     ])
-      .then(([itemsData, profileData, bodyData, lifestyleData]) => {
+      .then(([itemsData, profileData, bodyData, lifestyleData, fcData]) => {
         // Guard: API may return {error: "..."} on 500 — never pass a non-array to setItems
-        setItems(Array.isArray(itemsData) ? itemsData as WardrobeItem[] : []);
+        const loadedItems: WardrobeItem[] = Array.isArray(itemsData) ? itemsData as WardrobeItem[] : [];
+        setItems(loadedItems);
         if (profileData && typeof profileData === 'object' && !Array.isArray(profileData)) {
           const p = profileData as { imageUrl?: string | null; imageFilename?: string | null };
           setProfileImageUrl(p.imageUrl ?? null);
@@ -78,6 +82,27 @@ export default function WardrobeApp() {
         if (lifestyleData && typeof lifestyleData === 'object' && !Array.isArray(lifestyleData)) {
           setLifestyleProfile({ ...EMPTY_LIFESTYLE(), ...(lifestyleData as Partial<LifestyleProfile>) });
         }
+
+        // Fashion currency — use cached if current season, otherwise refresh silently in background
+        const stored = fcData as StoredFashionCurrency & { fashionCurrency: FashionCurrencyItem[] | null };
+        if (stored?.fashionCurrency) setFashionCurrency(stored.fashionCurrency);
+
+        if (loadedItems.length >= 3 && stored?.season !== getCurrentSeasonTag()) {
+          fetch('/api/fashion-currency', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: slim(loadedItems) }),
+          })
+            .then((r) => r.json())
+            .then((fresh: StoredFashionCurrency) => { if (fresh.fashionCurrency) setFashionCurrency(fresh.fashionCurrency); })
+            .catch(() => {});
+        }
+
+        // Style Discovery only after 10+ items — needs real wardrobe data to be meaningful
+        if (loadedItems.length >= 10 && !localStorage.getItem('wl_style_discovery_done') && !!localStorage.getItem('wl_onboarded')) {
+          setShowStyleDiscovery(true);
+        }
+
         setLoaded(true);
         if (!Array.isArray(itemsData) && itemsData && (itemsData as { error?: string }).error) {
           setError('Wardrobe failed to load — try refreshing.');
@@ -107,13 +132,15 @@ export default function WardrobeApp() {
 
   const profileComplete = Boolean(bodyProfile.height && bodyProfile.bodyShape && bodyProfile.undertone);
 
+  const handleGetDressed = (note: string) => {
+    setOutfitContext(note);
+    setTab('outfit');
+  };
+
   const dismissOnboarding = () => {
     localStorage.setItem('wl_onboarded', '1');
     setShowOnboarding(false);
-    // Show style discovery after onboarding completes
-    if (!localStorage.getItem('wl_style_discovery_done')) {
-      setShowStyleDiscovery(true);
-    }
+    // Style Discovery fires after 10+ items load — not immediately after onboarding
   };
 
   const dismissStyleDiscovery = () => {
@@ -168,39 +195,37 @@ export default function WardrobeApp() {
       <main className="max-w-3xl mx-auto px-4 pb-16 pt-5">
         {error && <ErrorBanner message={error} onDismiss={() => setError('')} />}
 
-        {!profileComplete && loaded && (
-          <button
-            onClick={() => setShowBodyProfile(true)}
-            className="w-full mb-5 border border-[#9B7B3A]/40 bg-[#9B7B3A]/5 p-4 flex items-center justify-between group hover:bg-[#9B7B3A]/10 transition-colors"
-          >
-            <div className="text-left">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Recommended</p>
-              <p className="text-sm text-[#1A1714] font-light mt-0.5">Complete your Style Blueprint</p>
-              <p className="text-xs text-[#A89F96] font-light mt-0.5">60 seconds — unlocks personalised recommendations based on your body and colouring</p>
-            </div>
-            <span className="text-[#9B7B3A] text-lg font-light ml-4">→</span>
-          </button>
-        )}
-
         {!loaded ? (
           <div className="flex justify-center py-24">
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
+        ) : tab === 'home' ? (
+          <HomeTab
+            items={items}
+            fashionCurrency={fashionCurrency ?? undefined}
+            bodyProfile={bodyProfile}
+            profileComplete={profileComplete}
+            onGetDressed={handleGetDressed}
+            onNavigate={setTab}
+            onSetupBlueprint={() => setShowBodyProfile(true)}
+            onAddItem={() => setShowAdd(true)}
+          />
         ) : tab === 'closet' ? (
-          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} />
+          <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} fashionCurrency={fashionCurrency ?? undefined} />
         ) : tab === 'outfit' ? (
           <OutfitTab
             items={items}
             profileImageUrl={profileImageUrl}
             profileImageFilename={profileImageFilename}
             bodyProfile={bodyProfile}
+            initialNote={outfitContext}
             onProfileChange={(url, filename) => {
               setProfileImageUrl(url);
               setProfileImageFilename(filename);
             }}
           />
         ) : tab === 'style' ? (
-          <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowLifestyleProfile(true)} />
+          <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowLifestyleProfile(true)} fashionCurrency={fashionCurrency ?? undefined} onFashionCurrencyUpdate={setFashionCurrency} />
         ) : (
           <LooksTab items={items} bodyProfile={bodyProfile} />
         )}

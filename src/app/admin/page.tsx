@@ -141,7 +141,8 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 space-y-1 text-[10px] text-[#C4BAB0] font-light">
-        <p>Pricing: Sonnet 4.6 $3.00/MTok in · $15.00/MTok out · Haiku 4.5 $0.80/MTok in · $4.00/MTok out</p>
+        <p>Anthropic: Sonnet 4.6 $3.00/MTok in · $15.00/MTok out · Haiku 4.5 $0.80/MTok in · $4.00/MTok out</p>
+        <p>Try-on: Google Gemini Flash image ~$0.04/image (outfit-try-on) — estimate, verify at Google Cloud console</p>
         <p>Log capped at 1,000 entries. Upstash Redis storage cost not included (typically &lt;$1/mo on free tier).</p>
         <p>Vercel hosting: free on Hobby plan for this traffic level.</p>
       </div>

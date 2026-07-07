@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getImage, getSetting, getItem } from '@/lib/db';
 import { STYLIST_PERSONA } from '@/lib/stylist';
+import { logExternalCall } from '@/lib/usage';
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No image returned. ' + raw.slice(0, 200) }, { status: 502 });
     }
 
+    logExternalCall({ ts: Date.now(), route: 'outfit-try-on', model: 'gemini-flash-image' }).catch(() => {});
     return NextResponse.json({ outputUrl: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}` });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';

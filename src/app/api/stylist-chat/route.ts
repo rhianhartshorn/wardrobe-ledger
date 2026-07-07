@@ -18,11 +18,12 @@ type WardrobeItem = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, items, wardrobeGrid, wardrobeGridMapping } = await req.json() as {
+    const { message, items, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
       message: string;
       items?: WardrobeItem[];
       wardrobeGrid?: string;
       wardrobeGridMapping?: string;
+      conversationHistory?: Array<{ role: 'user' | 'stylist'; text: string }>;
     };
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
@@ -54,6 +55,10 @@ export async function POST(req: NextRequest) {
       ? `\nVISUAL WARDROBE GRID: A numbered image grid of all wardrobe items is attached. Grid key: ${wardrobeGridMapping}. Look at the actual colours, textures, and silhouettes before responding — your advice should be grounded in what these clothes actually look like.\n`
       : '';
 
+    const conversationBlock = conversationHistory?.length
+      ? `\nPREVIOUS CONVERSATION CONTEXT (most recent last):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
+      : '';
+
     const prompt = `You are a personal stylist in a direct one-on-one conversation with your client. You have their full wardrobe in front of you — physically. You can see every piece.
 
 ${personaCtx}
@@ -63,7 +68,7 @@ ${COLOUR_ANALYST_VOICE}
 ${ACCESSORIES_DIRECTOR_VOICE}
 ${brandVoice}
 ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
 The client has just said: "${message}"
 
 RESPONSE RULES:

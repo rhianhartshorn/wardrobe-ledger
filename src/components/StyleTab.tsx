@@ -5,12 +5,12 @@ import type { WardrobeItem } from '@/app/page';
 import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
-import MirrorTab from './MirrorTab';
 import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
 import type { StyleReadResult } from '@/lib/style-types';
 import type { GapAnalysisResult } from '@/lib/gap-types';
 import type { LifestyleProfile } from '@/lib/lifestyle-types';
+import type { FashionCurrencyItem } from '@/lib/fashion-currency-types';
 
 const GOAL_SUGGESTIONS = [
   'Quiet Luxury', 'Old Money', 'Zoe Kravitz', 'Sofia Richie',
@@ -18,7 +18,7 @@ const GOAL_SUGGESTIONS = [
   'Margot Robbie', 'Coastal Grandmother', 'Clean Girl', 'Timothée Chalamet',
 ];
 
-type FashionCurrency = { itemId: string; era: string; status: 'timeless' | 'current' | 'dated' | 'coming-back'; how2026: string | null };
+type FashionCurrency = FashionCurrencyItem;
 type GoalAnalysis = { goal: string; howClose: string; workingPieces: string[]; missingPieces: string[]; bridgeTips: string[] };
 type MatchResult = { closestMatches?: Array<{ name: string; why: string; matchStrength: string }>; goalAnalysis?: GoalAnalysis };
 
@@ -30,14 +30,13 @@ function LearnMoreButton({ onClick }: { onClick: () => void }) {
   );
 }
 
-export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenLifestyle }: { items: WardrobeItem[]; bodyProfile?: BodyProfile; lifestyleProfile?: LifestyleProfile; onOpenLifestyle?: () => void }) {
-  const [view, setView] = useState<'dna' | 'insights'>('dna');
+export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenLifestyle, fashionCurrency: fashionCurrencyProp, onFashionCurrencyUpdate }: { items: WardrobeItem[]; bodyProfile?: BodyProfile; lifestyleProfile?: LifestyleProfile; onOpenLifestyle?: () => void; fashionCurrency?: FashionCurrency[]; onFashionCurrencyUpdate?: (fc: FashionCurrency[]) => void }) {
   const [showPersonaSetup, setShowPersonaSetup] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState<StyleReadResult | null>(null);
-  const [fashionCurrency, setFashionCurrency] = useState<FashionCurrency[] | null>(null);
+  const fashionCurrency = fashionCurrencyProp ?? null;
 
   const [goal, setGoal] = useState('');
   const [loadingGoal, setLoadingGoal] = useState(false);
@@ -68,7 +67,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
 
   const runAnalysis = async () => {
     if (items.length < 3) { setErr('Add at least 3 items to get a style reading.'); return; }
-    setAnalyzing(true); setErr(''); setResult(null); setFashionCurrency(null); setMatchResult(null);
+    setAnalyzing(true); setErr(''); setResult(null); setMatchResult(null);
 
     const topWorn = [...items]
       .sort((a, b) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
@@ -93,7 +92,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
       setResult(data);
 
-      // Fashion currency loads in parallel — heavier per-item call
+      // Fashion currency — refresh when user explicitly runs Read My Style
       setLoadingCurrency(true);
       fetch('/api/fashion-currency', {
         method: 'POST',
@@ -102,7 +101,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
       })
         .then((r) => r.json())
         .then((fc: { fashionCurrency?: FashionCurrency[] }) => {
-          if (fc.fashionCurrency) setFashionCurrency(fc.fashionCurrency);
+          if (fc.fashionCurrency) onFashionCurrencyUpdate?.(fc.fashionCurrency);
         })
         .catch(() => {})
         .finally(() => setLoadingCurrency(false));
@@ -151,25 +150,6 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
         />
       )}
 
-      {/* Internal view toggle */}
-      <div className="flex border border-[#E5DDD0] overflow-hidden">
-        {(['dna', 'insights'] as const).map((v) => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`flex-1 py-2 text-[10px] uppercase tracking-[0.15em] font-light transition-colors ${
-              view === v ? 'bg-[#1A1714] text-white' : 'bg-white text-[#6B6058] hover:bg-[#F5F2EC]'
-            }`}
-          >
-            {v === 'dna' ? 'Style DNA' : 'Insights'}
-          </button>
-        ))}
-      </div>
-
-      {view === 'insights' ? (
-        <MirrorTab items={items} bodyProfile={bodyProfile} />
-      ) : (<>
-
       {/* ── SECTION 1: READ MY STYLE ── */}
       <div className="border border-[#E5DDD0] bg-white p-5">
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Section 1</p>
@@ -183,6 +163,11 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
           {analyzing ? <><Loader2 className="animate-spin" size={14} /> Reading your style...</> : <><RefreshCw size={14} /> {result ? 'Re-read my style' : 'Read my style'}</>}
         </button>
         {err && <p className="text-sm text-red-700 mt-3">{err}</p>}
+        {bodyProfile?.height && bodyProfile?.bodyShape && (
+          <p className="text-center text-[10px] text-[#A89F96] font-light mt-2">
+            Analysis calibrated to your {bodyProfile.bodyShape} frame{bodyProfile.undertone ? ` · ${bodyProfile.undertone} undertone` : ''}
+          </p>
+        )}
       </div>
 
       {result && (
@@ -329,7 +314,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
                     <div key={fc.itemId} className="flex gap-3 p-3 cursor-pointer group" onClick={() => setLearnMore({
                       type: 'aesthetic',
                       title: `How to wear: ${item.name} in 2026`,
-                      context: `This is a ${item.category} in ${item.primaryColor}. Era: ${fc.era}. Status: ${fc.status}. ${fc.how2026 ?? ''}`,
+                      context: `This is a ${item.category} in ${item.primaryColor}. Era: ${fc.era}. Status: ${fc.status}. ${fc.howNow ?? ''}`,
                       relevantItems: [item],
                       onClose: () => setLearnMore(null),
                     })}>
@@ -343,7 +328,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
                             {fc.status === 'coming-back' ? 'Coming back' : fc.status}
                           </span>
                         </div>
-                        {fc.how2026 && <p className="text-[11px] text-[#6B6058] font-light leading-snug">{fc.how2026}</p>}
+                        {fc.howNow && <p className="text-[11px] text-[#6B6058] font-light leading-snug">{fc.howNow}</p>}
                         <p className="text-[10px] text-[#9B7B3A] font-light mt-1 flex items-center gap-0.5 group-hover:opacity-70">How to wear in 2026 <ChevronRight size={10} /></p>
                       </div>
                     </div>
@@ -528,7 +513,6 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
 
       {/* Stylist feedback */}
       <StylistChat items={items} onRebuildProfile={() => setShowPersonaSetup(true)} />
-      </>)}
     </div>
   );
 }

@@ -47,16 +47,33 @@ async function redisSet(key: string, value: string): Promise<void> {
   });
 }
 
+// Fixed cost per call for external (non-Anthropic) APIs
+export const EXTERNAL_PRICING: Record<string, number> = {
+  'gemini-flash-image': 0.04,     // Google Gemini Flash image gen: ~$0.04/image (estimate)
+};
+
+export async function logExternalCall(entry: { ts: number; route: string; model: string }): Promise<void> {
+  const costUsd = EXTERNAL_PRICING[entry.model] ?? 0;
+  return appendToLog({ ...entry, inputTokens: 0, outputTokens: 0, costUsd });
+}
+
+async function appendToLog(full: UsageEntry): Promise<void> {
+  try {
+    const raw = await redisGet(LOG_KEY);
+    const log: UsageEntry[] = raw ? (JSON.parse(raw) as UsageEntry[]) : [];
+    log.push(full);
+    if (log.length > MAX_ENTRIES) log.splice(0, log.length - MAX_ENTRIES);
+    await redisSet(LOG_KEY, JSON.stringify(log));
+  } catch {
+    // Never let logging failures surface to users
+  }
+}
+
 export async function logUsage(entry: Omit<UsageEntry, 'costUsd'>): Promise<void> {
   try {
     const costUsd = computeCost(entry.model, entry.inputTokens, entry.outputTokens);
     const full: UsageEntry = { ...entry, costUsd };
-    const raw = await redisGet(LOG_KEY);
-    const log: UsageEntry[] = raw ? (JSON.parse(raw) as UsageEntry[]) : [];
-    log.push(full);
-    // Keep most recent MAX_ENTRIES only
-    if (log.length > MAX_ENTRIES) log.splice(0, log.length - MAX_ENTRIES);
-    await redisSet(LOG_KEY, JSON.stringify(log));
+    await appendToLog(full);
   } catch {
     // Never let logging failures surface to users
   }

@@ -1,7 +1,46 @@
 import 'server-only';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL!;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!;
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+// ---------------------------------------------------------------------------
+// File-based fallback store — used when Upstash env vars are not set.
+// Persists across hot reloads in development.
+// ---------------------------------------------------------------------------
+const STORE_FILE = path.join(process.cwd(), '.local-store.json');
+
+function loadStore(): Record<string, string> {
+  try {
+    if (fs.existsSync(STORE_FILE)) {
+      return JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8')) as Record<string, string>;
+    }
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveStore(store: Record<string, string>): void {
+  try { fs.writeFileSync(STORE_FILE, JSON.stringify(store)); } catch { /* ignore */ }
+}
+
+function memGet(key: string): string | null {
+  const store = loadStore();
+  return store[key] ?? null;
+}
+function memSet(key: string, value: unknown): void {
+  const store = loadStore();
+  store[key] = JSON.stringify(value);
+  saveStore(store);
+}
+function memIncr(key: string): number {
+  const store = loadStore();
+  const cur = parseInt(store[key] ?? '0', 10);
+  const next = (isNaN(cur) ? 0 : cur) + 1;
+  store[key] = String(next);
+  saveStore(store);
+  return next;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,6 +97,7 @@ export type JournalEntry = {
 // ---------------------------------------------------------------------------
 
 async function redisGet(key: string): Promise<string | null> {
+  if (!REDIS_URL || !REDIS_TOKEN) return memGet(key);
   try {
     const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
       headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
@@ -72,6 +112,7 @@ async function redisGet(key: string): Promise<string | null> {
 
 // Atomically increment an integer key and return the new value.
 async function redisIncr(key: string): Promise<number> {
+  if (!REDIS_URL || !REDIS_TOKEN) return memIncr(key);
   const res = await fetch(`${REDIS_URL}/incr/${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
@@ -83,6 +124,7 @@ async function redisIncr(key: string): Promise<number> {
 
 // Accepts any JSON-serializable value and stores it with ONE level of encoding.
 async function redisSet(key: string, value: unknown): Promise<void> {
+  if (!REDIS_URL || !REDIS_TOKEN) { memSet(key, value); return; }
   await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },

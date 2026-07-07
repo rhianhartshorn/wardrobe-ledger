@@ -199,13 +199,23 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
   const todayStr = new Date().toISOString().slice(0, 10);
   const loggedToday = journal.some((e) => e.date === todayStr);
 
+  // Sort: worked first, then by date saved desc
+  const sortedLooks = [...savedLooks].sort((a, b) => {
+    if (a.feedback === 'worked' && b.feedback !== 'worked') return -1;
+    if (b.feedback === 'worked' && a.feedback !== 'worked') return 1;
+    return b.savedAt - a.savedAt;
+  });
+
+  // Count how many times each look was logged in the journal
+  const lookWearCount = (lookId: string) =>
+    journal.filter((e) => e.savedLookId === lookId).length;
+
   if (!loaded) {
     return <div className="flex justify-center py-24"><Loader2 className="animate-spin text-[#A89F96]" size={24} /></div>;
   }
 
   return (
     <div className="space-y-8">
-      <>
       {/* Daily journal prompt */}
       <div className="border border-[#E5DDD0] bg-[#1A1714] text-white p-5">
         <div className="flex items-center gap-2 mb-1">
@@ -232,8 +242,10 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
           <p className="text-sm text-[#A89F96] font-light">No saved looks yet — heart an outfit in the Outfit tab to build your lookbook.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {savedLooks.map((look) => {
+            {sortedLooks.map((look) => {
               const pieces = look.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+              const hasRemovedItems = pieces.length < look.itemIds.length;
+              const wornCount = lookWearCount(look.id);
               return (
                 <div key={look.id} className={`border bg-white p-3 relative group ${look.feedback === 'worked' ? 'border-green-200' : look.feedback === 'didnt_work' ? 'border-[#E5DDD0] opacity-70' : 'border-[#E5DDD0]'}`}>
                   <button onClick={() => removeLook(look.id)} className="absolute top-2 right-2 text-[#D6CFC0] hover:text-red-600 transition-colors">
@@ -244,6 +256,12 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
                   </div>
                   <p className="font-serif text-sm text-[#1A1714] leading-snug pr-4">{look.title}</p>
                   {look.styleReference && <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">{look.styleReference}</p>}
+                  {wornCount > 0 && (
+                    <p className="text-[9px] text-[#9B7B3A] font-light mt-1">Worn {wornCount}×</p>
+                  )}
+                  {hasRemovedItems && (
+                    <p className="text-[9px] text-amber-600 font-light mt-1">{look.itemIds.length - pieces.length} item{look.itemIds.length - pieces.length !== 1 ? 's' : ''} removed from wardrobe</p>
+                  )}
                   <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-[#F5F2EC]">
                     <p className="text-[9px] uppercase tracking-widest text-[#A89F96] font-light flex-1">Did it work?</p>
                     <button
@@ -307,7 +325,6 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
           onLogged={(entry) => setJournal((prev) => [entry, ...prev])}
         />
       )}
-      </>
     </div>
   );
 }

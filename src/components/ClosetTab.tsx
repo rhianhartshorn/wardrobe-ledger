@@ -6,6 +6,7 @@ import { colorDot, slim } from './utils';
 import { Field } from './ui';
 import { CATEGORIES, FORMALITY, SEASONS, MATERIALS, FIT_OPTIONS, LENGTH_OPTIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
+import type { FashionCurrencyItem } from '@/lib/fashion-currency-types';
 
 type EditForm = {
   name: string; category: string; primaryColor: string; secondaryColor: string;
@@ -70,7 +71,7 @@ function LookCard({ look, allItems }: { look: Look; allItems: WardrobeItem[] }) 
   );
 }
 
-function ItemDetailView({ item, allItems, bodyProfile, onClose, onEdit }: { item: WardrobeItem; allItems: WardrobeItem[]; bodyProfile?: BodyProfile; onClose: () => void; onEdit: (updated: WardrobeItem) => void }) {
+function ItemDetailView({ item, allItems, bodyProfile, onClose, onEdit, currency }: { item: WardrobeItem; allItems: WardrobeItem[]; bodyProfile?: BodyProfile; onClose: () => void; onEdit: (updated: WardrobeItem) => void; currency?: FashionCurrencyItem }) {
   const [loading, setLoading] = useState(false);
   const [looks, setLooks] = useState<Look[] | null>(null);
   const [err, setErr] = useState('');
@@ -252,6 +253,29 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose, onEdit }: { item
         </div>
         )}
 
+        {!editing && currency && (() => {
+          const statusStyles: Record<string, string> = {
+            timeless: 'text-green-700 bg-green-50 border-green-200',
+            current: 'text-[#9B7B3A] bg-amber-50 border-amber-200',
+            'coming-back': 'text-purple-700 bg-purple-50 border-purple-200',
+            dated: 'text-[#A89F96] bg-[#F5F2EC] border-[#E5DDD0]',
+          };
+          const label = currency.status === 'coming-back' ? 'Coming back' : currency.status.charAt(0).toUpperCase() + currency.status.slice(1);
+          return (
+            <div className="mb-4 border border-[#E5DDD0] bg-white p-3 flex gap-3 items-start">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[9px] uppercase tracking-widest border px-1.5 py-0.5 font-light shrink-0 ${statusStyles[currency.status] ?? statusStyles.dated}`}>
+                    {label}
+                  </span>
+                  <span className="text-[10px] text-[#A89F96] font-light">{currency.era}</span>
+                </div>
+                {currency.howNow && <p className="text-xs text-[#6B6058] font-light leading-snug">{currency.howNow}</p>}
+              </div>
+            </div>
+          );
+        })()}
+
         {!editing && (
         <button
           onClick={generate}
@@ -277,10 +301,11 @@ function ItemDetailView({ item, allItems, bodyProfile, onClose, onEdit }: { item
   );
 }
 
-function ItemCard({ item, allItems, onRemove, onWearLogged, onEdit, bodyProfile }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile }) {
+function ItemCard({ item, allItems, onRemove, onWearLogged, onEdit, bodyProfile, fashionCurrency }: { item: WardrobeItem; allItems: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile; fashionCurrency?: FashionCurrencyItem[] }) {
   const [confirming, setConfirming] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [loggingWear, setLoggingWear] = useState(false);
+  const currency = fashionCurrency?.find((fc) => fc.itemId === item.id);
 
   const logWear = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -305,16 +330,26 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, onEdit, bodyProfile 
   return (
     <>
       {showDetail && (
-        <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} onEdit={(updated) => { onEdit(updated); setShowDetail(false); }} />
+        <ItemDetailView item={item} allItems={allItems} bodyProfile={bodyProfile} onClose={() => setShowDetail(false)} onEdit={(updated) => { onEdit(updated); setShowDetail(false); }} currency={currency} />
       )}
       <div className="bg-white border border-[#E5DDD0] group relative cursor-pointer" onClick={() => !confirming && setShowDetail(true)}>
-        <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC]">
+        <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC] relative">
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Shirt size={24} className="text-[#D6CFC0]" />
             </div>
+          )}
+          {currency && (
+            <span className={`absolute bottom-1 left-1 text-[8px] uppercase tracking-widest border px-1 py-0.5 font-light leading-none ${
+              currency.status === 'timeless' ? 'text-green-700 bg-green-50 border-green-200' :
+              currency.status === 'current' ? 'text-[#9B7B3A] bg-amber-50/90 border-amber-200' :
+              currency.status === 'coming-back' ? 'text-purple-700 bg-purple-50 border-purple-200' :
+              'text-[#A89F96] bg-white/90 border-[#E5DDD0]'
+            }`}>
+              {currency.status === 'coming-back' ? '↑' : currency.status === 'dated' ? 'Dated' : currency.status === 'timeless' ? '✦' : 'Now'}
+            </span>
           )}
         </div>
         <div className="p-2.5">
@@ -384,7 +419,7 @@ function isDormant(item: WardrobeItem) {
   return (item.wearCount ?? 0) === 0 && Date.now() - item.addedAt > NINETY_DAYS_MS;
 }
 
-export default function ClosetTab({ items, onRemove, onWearLogged, onEdit, bodyProfile }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile }) {
+export default function ClosetTab({ items, onRemove, onWearLogged, onEdit, bodyProfile, fashionCurrency }: { items: WardrobeItem[]; onRemove: (id: string) => void; onWearLogged: (id: string, wearCount: number) => void; onEdit: (updated: WardrobeItem) => void; bodyProfile?: BodyProfile; fashionCurrency?: FashionCurrencyItem[] }) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('All');
   const [formality, setFormality] = useState('All');
@@ -485,10 +520,16 @@ export default function ClosetTab({ items, onRemove, onWearLogged, onEdit, bodyP
         </button>
       </div>
 
-      {/* Expandable filter rows */}
+      {/* Category chips — always visible */}
+      {cats.length > 1 && (
+        <div className="mb-2 -mx-4 px-4">
+          <FilterChips label="" options={cats} value={cat} onChange={setCat} />
+        </div>
+      )}
+
+      {/* Expandable filter rows — formality + season */}
       {showFilters && (
         <div className="space-y-2 mb-3 -mx-4 px-4">
-          {cats.length > 1 && <FilterChips label="Type" options={cats} value={cat} onChange={setCat} />}
           {formalities.length > 1 && <FilterChips label="Wear" options={formalities} value={formality} onChange={setFormality} />}
           {seasons.length > 1 && <FilterChips label="Season" options={seasons} value={season} onChange={setSeason} />}
         </div>
@@ -512,7 +553,7 @@ export default function ClosetTab({ items, onRemove, onWearLogged, onEdit, bodyP
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-[#E5DDD0]">
           {visible.map((item) => (
-            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} onEdit={onEdit} bodyProfile={bodyProfile} />
+            <ItemCard key={item.id} item={item} allItems={items} onRemove={onRemove} onWearLogged={onWearLogged} onEdit={onEdit} bodyProfile={bodyProfile} fashionCurrency={fashionCurrency} />
           ))}
         </div>
       )}
