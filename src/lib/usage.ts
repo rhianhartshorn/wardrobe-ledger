@@ -126,6 +126,7 @@ export function summarise(log: UsageEntry[]): UsageSummary {
   const dayMap = new Map<string, DayStat>();
 
   for (const e of log) {
+    if (!e.ts || isNaN(new Date(e.ts).getTime())) continue;
     totalCostUsd += e.costUsd;
     totalCalls++;
 

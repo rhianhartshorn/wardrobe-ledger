@@ -14,7 +14,9 @@ function fmtTokens(n: number) {
 }
 
 function fmtTime(ts: number) {
-  return new Date(ts).toLocaleString('en-GB', {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('en-GB', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
   });
 }
