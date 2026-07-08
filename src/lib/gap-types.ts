@@ -5,7 +5,13 @@ export type WardrobeGap = {
   suggestion: string;
 };
 
+export type DontBuy = {
+  category: string;    // e.g. "black knitwear"
+  reason: string;      // e.g. "You already own 4 pieces — more won't solve anything"
+};
+
 export type GapAnalysisResult = {
   summary: string;
   gaps: WardrobeGap[];
+  dontBuy?: DontBuy[];
 };

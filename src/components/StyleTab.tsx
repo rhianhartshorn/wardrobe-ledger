@@ -491,6 +491,22 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
                 <GapCard key={i} gap={gap} priorityStyles={priorityStyles} onLearnMore={(ctx) => setLearnMore({ type: 'purchase', title: gap.gap, context: ctx, onClose: () => setLearnMore(null) })} />
               );
             })}
+            {gapResult.dontBuy && gapResult.dontBuy.length > 0 && (
+              <div className="border border-[#E5DDD0] bg-white p-4">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-3">Don&apos;t buy more of these</p>
+                <ul className="space-y-2.5">
+                  {gapResult.dontBuy.map((item, i) => (
+                    <li key={i} className="flex gap-3 items-start">
+                      <span className="text-[#A89F96] shrink-0 mt-0.5 text-xs">✕</span>
+                      <div>
+                        <p className="text-sm text-[#1A1714] font-light">{item.category}</p>
+                        <p className="text-xs text-[#A89F96] font-light leading-snug mt-0.5">{item.reason}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
       </div>

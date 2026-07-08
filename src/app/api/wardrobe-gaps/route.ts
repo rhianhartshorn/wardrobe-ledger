@@ -85,8 +85,10 @@ Priority HIGH = a gap that prevents the client from dressing appropriately for c
 
 Identify 3–6 gaps. Be ruthlessly specific. If the wardrobe is genuinely complete for its owner's apparent lifestyle, say so in the summary and surface only low-priority refinements.
 
+Also identify 1–3 categories the client should NOT buy more of right now — things they already have enough of, or where buying more won't solve their actual problem. Be direct. "You already own 4 black knitwear pieces — more won't unlock new outfits." This is one of the most useful things a stylist can say.
+
 Respond with ONLY valid JSON, no markdown:
-{"summary":"one sentence honest assessment of the wardrobe's biggest structural challenge","gaps":[{"priority":"high|medium|low","gap":"what's missing — max 8 words","why":"specific data-backed reason referencing actual items or patterns","suggestion":"specific piece to buy: cut, colour, fabric, and why it integrates — max 25 words"}]}`;
+{"summary":"one sentence honest assessment of the wardrobe's biggest structural challenge","gaps":[{"priority":"high|medium|low","gap":"what's missing — max 8 words","why":"specific data-backed reason referencing actual items or patterns","suggestion":"specific piece to buy: cut, colour, fabric, and why it integrates — max 25 words"}],"dontBuy":[{"category":"max 5 words — what NOT to buy","reason":"max 20 words — direct reason referencing actual wardrobe counts or patterns"}]}`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1500, route: 'wardrobe-gaps' });
