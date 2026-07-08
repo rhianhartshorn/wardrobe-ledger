@@ -1,5 +1,7 @@
 import { getUsageLog, summarise } from '@/lib/usage';
 
+export const dynamic = 'force-dynamic';
+
 function fmt$(n: number) {
   if (n < 0.01) return '<$0.01';
   return '$' + n.toFixed(n < 1 ? 4 : 2);
