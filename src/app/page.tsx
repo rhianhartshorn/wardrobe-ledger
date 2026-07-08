@@ -202,7 +202,6 @@ export default function WardrobeApp() {
         ) : tab === 'home' ? (
           <HomeTab
             items={items}
-            fashionCurrency={fashionCurrency ?? undefined}
             bodyProfile={bodyProfile}
             profileComplete={profileComplete}
             onGetDressed={handleGetDressed}

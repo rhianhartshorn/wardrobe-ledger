@@ -1,13 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Sparkles, ArrowRight, MessageCircle, CalendarCheck, Check } from 'lucide-react';
+
 import type { WardrobeItem } from '@/app/page';
-import type { FashionCurrencyItem } from '@/lib/fashion-currency-types';
 import type { BodyProfile } from '@/lib/body-profile';
 
 type AppTab = 'home' | 'closet' | 'outfit' | 'looks' | 'style';
-
-const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 function greeting() {
   const h = new Date().getHours();
@@ -18,7 +16,6 @@ function greeting() {
 
 export default function HomeTab({
   items,
-  fashionCurrency,
   bodyProfile,
   profileComplete,
   onGetDressed,
@@ -27,7 +24,6 @@ export default function HomeTab({
   onAddItem,
 }: {
   items: WardrobeItem[];
-  fashionCurrency?: FashionCurrencyItem[];
   bodyProfile?: BodyProfile;
   profileComplete: boolean;
   onGetDressed: (note: string) => void;
@@ -56,16 +52,6 @@ export default function HomeTab({
       })
       .catch(() => {});
   }, []);
-
-  const dormant = items
-    .filter((i) => (i.wearCount ?? 0) === 0 && Date.now() - i.addedAt > NINETY_DAYS_MS)
-    .slice(0, 2);
-
-  const dated = (fashionCurrency ?? [])
-    .filter((fc) => fc.status === 'dated')
-    .map((fc) => ({ fc, item: items.find((i) => i.id === fc.itemId) }))
-    .filter((x): x is { fc: FashionCurrencyItem; item: WardrobeItem } => Boolean(x.item))
-    .slice(0, 2);
 
   const today = new Date().toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
@@ -104,7 +90,7 @@ export default function HomeTab({
     );
   }
 
-  const hasSecondary = dormant.length > 0 || dated.length > 0 || latestDirective || !profileComplete;
+  const hasSecondary = latestDirective || !profileComplete;
 
   return (
     <div className="space-y-5 pt-2">
@@ -171,41 +157,6 @@ export default function HomeTab({
             </button>
           )}
 
-          {/* Dormant + dated — merged into one quiet list */}
-          {(dormant.length > 0 || dated.length > 0) && (
-            <div className="border border-[#E5DDD0] bg-white divide-y divide-[#F5F2EC]">
-              {dormant.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-8 h-8 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
-                    {item.imageUrl
-                      ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-[#1A1714] font-light truncate">{item.name}</p>
-                    <p className="text-[10px] text-[#A89F96] font-light">Never worn</p>
-                  </div>
-                  <button onClick={() => onGetDressed(item.name)} className="text-[9px] uppercase tracking-widest text-[#9B7B3A] font-light hover:text-[#1A1714] shrink-0">
-                    Wear it
-                  </button>
-                </div>
-              ))}
-              {dated.map(({ fc, item }) => (
-                <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                  <div className="w-8 h-8 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
-                    {item.imageUrl
-                      ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                      : <div className="w-full h-full" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-[#1A1714] font-light truncate">{item.name}</p>
-                    <p className="text-[10px] text-[#A89F96] font-light truncate">{fc.howNow ?? 'Dated — restyle or reconsider'}</p>
-                  </div>
-                  <span className="text-[8px] uppercase tracking-widest border border-[#A89F96]/30 text-[#A89F96] px-1.5 py-0.5 shrink-0">Dated</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

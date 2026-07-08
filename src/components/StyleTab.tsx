@@ -362,6 +362,37 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
         </>
       )}
 
+      {/* Dormant items — wardrobe evolution signal */}
+      {(() => {
+        const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+        const dormant = items.filter((i) => (i.wearCount ?? 0) === 0 && Date.now() - i.addedAt > NINETY_DAYS_MS);
+        if (dormant.length === 0) return null;
+        return (
+          <div className="border border-[#E5DDD0] bg-white">
+            <div className="px-4 py-3 border-b border-[#E5DDD0]">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Never worn</p>
+              <p className="text-xs text-[#A89F96] font-light mt-0.5">{dormant.length} piece{dormant.length !== 1 ? 's' : ''} added over 90 days ago — still unworn</p>
+            </div>
+            <div className="divide-y divide-[#F5F2EC]">
+              {dormant.slice(0, 5).map((item) => {
+                const monthsAgo = Math.floor((Date.now() - item.addedAt) / (30 * 24 * 60 * 60 * 1000));
+                return (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                    <div className="w-9 h-9 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]">
+                      {item.imageUrl && <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-[#1A1714] font-light truncate">{item.name}</p>
+                      <p className="text-[10px] text-[#A89F96] font-light">Added {monthsAgo}mo ago</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── SECTION 2: YOUR STYLE GOALS ── */}
       <div className="border-t-2 border-[#E5DDD0] pt-5">
         <div className="border border-[#E5DDD0] bg-white p-5">
