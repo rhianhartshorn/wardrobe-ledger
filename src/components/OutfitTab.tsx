@@ -80,6 +80,7 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [tryOnErr, setTryOnErr] = useState('');
   const [showTryOn, setShowTryOn] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
 
   const getTryOn = async () => {
     if (tryOnUrl) { setShowTryOn(true); return; }
@@ -167,25 +168,34 @@ function OutfitCard({ outfit, items, onLearnMore, onSave, saved, saving, hasProf
       </div>
 
       <div className="p-4 space-y-3">
-        {outfit.rationale && (
-          <p className="text-sm text-[#1A1714] font-light leading-relaxed">{outfit.rationale}</p>
-        )}
-        {outfit.accessorizing && outfit.accessorizing.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light mb-1.5">Styling notes</p>
-            <ul className="space-y-1">
-              {outfit.accessorizing.map((tip, i) => (
-                <li key={i} className="text-xs text-[#6B6058] font-light flex gap-2">
-                  <span className="text-[#9B7B3A] shrink-0">—</span>{tip}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
         {outfit.weatherNote && (
           <p className="text-[11px] text-[#A89F96] font-light flex items-center gap-1.5">
             <Cloud size={11} />{outfit.weatherNote}
           </p>
+        )}
+        {(outfit.rationale || (outfit.accessorizing && outfit.accessorizing.length > 0)) && (
+          <button
+            onClick={() => setShowDetail((v) => !v)}
+            className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors"
+          >
+            {showDetail ? 'Hide detail' : 'Why this works'} <ChevronRight size={11} className={`transition-transform ${showDetail ? 'rotate-90' : ''}`} />
+          </button>
+        )}
+        {showDetail && (
+          <div className="space-y-2.5 border-l-2 border-[#E5DDD0] pl-3">
+            {outfit.rationale && (
+              <p className="text-sm text-[#1A1714] font-light leading-relaxed">{outfit.rationale}</p>
+            )}
+            {outfit.accessorizing && outfit.accessorizing.length > 0 && (
+              <ul className="space-y-1">
+                {outfit.accessorizing.map((tip, i) => (
+                  <li key={i} className="text-xs text-[#6B6058] font-light flex gap-2">
+                    <span className="text-[#9B7B3A] shrink-0">—</span>{tip}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
         <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors">
           Deep dive into this look <ChevronRight size={11} />

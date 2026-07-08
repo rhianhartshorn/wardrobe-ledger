@@ -77,12 +77,12 @@ RESPONSE RULES:
 - If the question is about a specific occasion, check whether they have appropriate items and say so directly. If they don't, tell them what's missing and be specific about what to buy.
 - Give concrete directions: tuck or don't tuck, belt or no belt, which layer on top, which shoes.
 - Extract 1-3 styling directives from what they've said — specific enough to actually change future recommendations.
-- Write a short acknowledgment (2-3 sentences max) — warm, direct, like a real professional, not a chatbot. Reference what you can now see in the wardrobe if relevant.
+- Write a response of 1-2 sentences maximum. Not 3. Not 4. Two sentences is the ceiling. Be direct, specific, warm — like a stylist who respects the client's time. If recommending something to try, frame it as an experiment: "Try this week: ..." or "Wear your [item] with [item] — [one reason why]." Never over-explain.
 
 Respond with ONLY valid JSON, no markdown:
 {
   "directives": ["directive 1", "directive 2"],
-  "acknowledgment": "your 2-3 sentence response — specific, direct, referencing actual wardrobe pieces where relevant"
+  "acknowledgment": "your 1-2 sentence response — specific, direct, referencing actual wardrobe pieces"
 }`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;

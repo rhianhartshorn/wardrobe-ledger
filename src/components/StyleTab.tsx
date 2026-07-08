@@ -22,6 +22,28 @@ type FashionCurrency = FashionCurrencyItem;
 type GoalAnalysis = { goal: string; howClose: string; workingPieces: string[]; missingPieces: string[]; bridgeTips: string[] };
 type MatchResult = { closestMatches?: Array<{ name: string; why: string; matchStrength: string }>; goalAnalysis?: GoalAnalysis };
 
+type GapPriorityStyles = { border: string; badge: string; label: string };
+function GapCard({ gap, priorityStyles, onLearnMore }: { gap: import('@/lib/gap-types').WardrobeGap; priorityStyles: GapPriorityStyles; onLearnMore: (ctx: string) => void }) {
+  const [showWhy, setShowWhy] = useState(false);
+  return (
+    <div className={`border bg-white p-4 ${priorityStyles.border}`}>
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <p className="font-serif text-base text-[#1A1714] leading-snug">{gap.gap}</p>
+        <span className={`text-[9px] uppercase tracking-widest border px-1.5 py-0.5 font-light shrink-0 ${priorityStyles.badge}`}>{priorityStyles.label}</span>
+      </div>
+      <p className="text-xs text-[#1A1714] font-light leading-snug mb-2 cursor-pointer" onClick={() => onLearnMore(`Gap: ${gap.gap}. Why it matters: ${gap.why}. Suggested purchase: ${gap.suggestion}`)}>
+        {gap.suggestion} <ChevronRight size={10} className="inline text-[#9B7B3A]" />
+      </p>
+      {gap.why && (
+        <button onClick={() => setShowWhy((v) => !v)} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#A89F96] font-light hover:text-[#9B7B3A] transition-colors">
+          {showWhy ? 'Less' : 'Why this matters'} <ChevronRight size={10} className={`transition-transform ${showWhy ? 'rotate-90' : ''}`} />
+        </button>
+      )}
+      {showWhy && <p className="text-xs text-[#6B6058] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{gap.why}</p>}
+    </div>
+  );
+}
+
 function LearnMoreButton({ onClick }: { onClick: () => void }) {
   return (
     <button onClick={onClick} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors mt-2">
@@ -466,24 +488,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
                 low: { border: 'border-[#E5DDD0]', badge: 'bg-white text-[#A89F96] border-[#E5DDD0]', label: 'Refinement' },
               }[gap.priority];
               return (
-                <div key={i} className={`border bg-white p-4 ${priorityStyles.border}`}>
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-serif text-base text-[#1A1714] leading-snug">{gap.gap}</p>
-                    <span className={`text-[9px] uppercase tracking-widest border px-1.5 py-0.5 font-light shrink-0 ${priorityStyles.badge}`}>{priorityStyles.label}</span>
-                  </div>
-                  <p className="text-xs text-[#6B6058] font-light leading-snug mb-2">{gap.why}</p>
-                  <div className="border-t border-[#F5F2EC] pt-2">
-                    <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mb-1">Buy next</p>
-                    <p className="text-xs text-[#1A1714] font-light leading-snug cursor-pointer group" onClick={() => setLearnMore({
-                      type: 'purchase',
-                      title: gap.gap,
-                      context: `Gap: ${gap.gap}. Why it matters: ${gap.why}. Suggested purchase: ${gap.suggestion}`,
-                      onClose: () => setLearnMore(null),
-                    })}>
-                      {gap.suggestion} <ChevronRight size={10} className="inline text-[#9B7B3A]" />
-                    </p>
-                  </div>
-                </div>
+                <GapCard key={i} gap={gap} priorityStyles={priorityStyles} onLearnMore={(ctx) => setLearnMore({ type: 'purchase', title: gap.gap, context: ctx, onClose: () => setLearnMore(null) })} />
               );
             })}
           </div>

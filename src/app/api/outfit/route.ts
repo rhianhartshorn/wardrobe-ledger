@@ -114,7 +114,7 @@ ${itemListText}
 Using ONLY items from this wardrobe list (reference by exact id), assemble exactly 3 distinct polished outfit combinations. Discard any combination where the palette clashes with the client's colouring — only surface outfits that genuinely flatter them. For each, name the current 2026 style aesthetic. Apply the body and colour analysis above to every outfit choice.
 
 Respond with ONLY valid JSON, no markdown:
-{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 35 words — lead with the specific colour reason this works for their complexion/hair, then name the silhouette benefit for their frame","accessorizing":["specific accessory direction max 10 words — name the type, finish, and why (e.g. 'a slim tan leather belt — anchors the waist, adds warmth')","second accessory tip max 10 words"],"weatherNote":"max 15 words"}]}`;
+{"outfits":[{"title":"max 5 words","itemIds":["id1","id2"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 25 words — frame as a coaching nudge, not an analysis. Start with 'Try' or 'Wear' or a direct instruction. Lead with one specific reason this combination works for their body or colouring.","accessorizing":["specific accessory direction max 10 words — name the type, finish, and why (e.g. 'a slim tan leather belt — anchors the waist, adds warmth')","second accessory tip max 10 words"],"weatherNote":"max 15 words"}]}`;
 
     const extraImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const raw = await callClaude({ prompt, imageBase64: profileImageBase64, mediaType: profileMediaType, images: extraImages, maxTokens: 3000, route: 'outfit' });

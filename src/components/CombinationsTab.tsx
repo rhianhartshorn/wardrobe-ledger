@@ -29,6 +29,7 @@ function Thumb({ item }: { item: WardrobeItem }) {
 
 function ComboCard({ combo, rank, items, onLearnMore }: { combo: Combo; rank: number; items: WardrobeItem[]; onLearnMore: () => void }) {
   const pieces = combo.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+  const [showRationale, setShowRationale] = useState(false);
   if (pieces.length === 0) return null;
 
   return (
@@ -39,15 +40,22 @@ function ComboCard({ combo, rank, items, onLearnMore }: { combo: Combo; rank: nu
         {pieces.map((p) => <Thumb key={p.id} item={p} />)}
       </div>
       <p className="font-serif text-base text-[#1A1714] leading-snug pr-5">{combo.title}</p>
-      <p className="text-xs text-[#6B6058] font-light mt-1.5 leading-snug">{combo.rationale}</p>
-      <div className="flex items-center gap-1.5 mt-2.5">
+      <div className="flex items-center gap-1.5 mt-2">
         <span className="text-[9px] uppercase tracking-widest border border-[#E5DDD0] text-[#9B7B3A] px-1.5 py-0.5 font-light">{combo.formality}</span>
         {combo.season !== 'All-season' && (
           <span className="text-[9px] uppercase tracking-widest border border-[#E5DDD0] text-[#6B6058] px-1.5 py-0.5 font-light">{combo.season}</span>
         )}
       </div>
-      <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors mt-2.5">
-        Learn more <ChevronRight size={11} />
+      {combo.rationale && (
+        <button onClick={() => setShowRationale((v) => !v)} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors mt-2">
+          {showRationale ? 'Less' : 'Why this works'} <ChevronRight size={11} className={`transition-transform ${showRationale ? 'rotate-90' : ''}`} />
+        </button>
+      )}
+      {showRationale && (
+        <p className="text-xs text-[#6B6058] font-light mt-1.5 leading-snug border-l-2 border-[#E5DDD0] pl-2">{combo.rationale}</p>
+      )}
+      <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#A89F96] font-light hover:text-[#9B7B3A] transition-colors mt-2">
+        Deep dive <ChevronRight size={11} />
       </button>
     </div>
   );
