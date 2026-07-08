@@ -31,11 +31,21 @@ function Bar({ value, max, className = '' }: { value: number; max: number; class
   );
 }
 
+function safeDate(val: unknown, opts: Intl.DateTimeFormatOptions): string {
+  try {
+    const d = new Date(val as number | string);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-GB', opts);
+  } catch { return '—'; }
+}
+
 export default async function AdminPage() {
-  let log, s;
+  let log, s, maxRouteCost: number, maxDayCost: number;
   try {
     log = await getUsageLog();
     s = summarise(log);
+    maxRouteCost = s.byRoute.length > 0 ? Math.max(...s.byRoute.map((r) => r.costUsd)) : 0.000001;
+    maxDayCost = s.byDay.length > 0 ? Math.max(...s.byDay.map((d) => d.costUsd)) : 0.000001;
   } catch (err) {
     return (
       <div style={{ padding: 40, fontFamily: 'monospace' }}>
@@ -46,9 +56,6 @@ export default async function AdminPage() {
       </div>
     );
   }
-
-  const maxRouteCost = Math.max(...s.byRoute.map((r) => r.costUsd), 0.000001);
-  const maxDayCost = Math.max(...s.byDay.map((d) => d.costUsd), 0.000001);
 
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#1A1714] px-4 py-8 max-w-3xl mx-auto">
@@ -110,7 +117,7 @@ export default async function AdminPage() {
             {s.byDay.map((d) => (
               <div key={d.date} className="space-y-1">
                 <div className="flex items-center justify-between text-xs font-light">
-                  <span className="text-[#6B6058]">{new Date(d.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
+                  <span className="text-[#6B6058]">{safeDate(d.date + 'T12:00:00', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
                   <span className="text-[#1A1714]">{fmt$(d.costUsd)}</span>
                 </div>
                 <Bar value={d.costUsd} max={maxDayCost} className="bg-[#C4A882]" />
@@ -145,7 +152,7 @@ export default async function AdminPage() {
                 <tr key={i} className="hover:bg-[#FAF8F4] transition-colors">
                   <td className="px-4 py-2 text-[#A89F96] whitespace-nowrap">{fmtTime(e.ts)}</td>
                   <td className="px-4 py-2 text-[#1A1714]">{e.route}</td>
-                  <td className="px-4 py-2 text-[#6B6058] whitespace-nowrap">{e.model.replace('claude-', '').replace('-20251001', '')}</td>
+                  <td className="px-4 py-2 text-[#6B6058] whitespace-nowrap">{(e.model ?? '').replace('claude-', '').replace('-20251001', '')}</td>
                   <td className="px-4 py-2 text-right text-[#6B6058]">{fmtTokens(e.inputTokens)}</td>
                   <td className="px-4 py-2 text-right text-[#6B6058]">{fmtTokens(e.outputTokens)}</td>
                   <td className="px-4 py-2 text-right text-[#1A1714]">{fmt$(e.costUsd)}</td>
