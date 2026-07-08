@@ -30,8 +30,20 @@ function Bar({ value, max, className = '' }: { value: number; max: number; class
 }
 
 export default async function AdminPage() {
-  const log = await getUsageLog();
-  const s = summarise(log);
+  let log, s;
+  try {
+    log = await getUsageLog();
+    s = summarise(log);
+  } catch (err) {
+    return (
+      <div style={{ padding: 40, fontFamily: 'monospace' }}>
+        <h2>Admin page error</h2>
+        <pre style={{ color: 'red', whiteSpace: 'pre-wrap' }}>{String(err)}</pre>
+        <p>REDIS_URL set: {!!process.env.UPSTASH_REDIS_REST_URL ? 'yes' : 'NO'}</p>
+        <p>REDIS_TOKEN set: {!!process.env.UPSTASH_REDIS_REST_TOKEN ? 'yes' : 'NO'}</p>
+      </div>
+    );
+  }
 
   const maxRouteCost = Math.max(...s.byRoute.map((r) => r.costUsd), 0.000001);
   const maxDayCost = Math.max(...s.byDay.map((d) => d.costUsd), 0.000001);
