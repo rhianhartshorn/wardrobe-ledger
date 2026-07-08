@@ -1,12 +1,11 @@
-import { Shirt, Sparkles, Gem, Heart, Plus, Home } from 'lucide-react';
+import { Shirt, Gem, Heart, Plus, MessageCircle } from 'lucide-react';
 import { UserCircle } from 'lucide-react';
 
-type Tab = 'home' | 'closet' | 'outfit' | 'looks' | 'style';
+type Tab = 'stylist' | 'closet' | 'looks' | 'style';
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'home', label: 'Today', icon: Home },
+  { id: 'stylist', label: 'Stylist', icon: MessageCircle },
   { id: 'closet', label: 'Closet', icon: Shirt },
-  { id: 'outfit', label: 'Outfit', icon: Sparkles },
   { id: 'looks', label: 'Looks', icon: Heart },
   { id: 'style', label: 'Style', icon: Gem },
 ];

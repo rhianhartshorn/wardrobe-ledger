@@ -5,7 +5,6 @@ import type { WardrobeItem } from '@/app/page';
 import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
 import type { BodyProfile } from '@/lib/body-profile';
-import StylistChat from './StylistChat';
 import StyleDiscoveryCarousel from './StyleDiscoveryCarousel';
 import type { StyleReadResult } from '@/lib/style-types';
 import type { GapAnalysisResult } from '@/lib/gap-types';
@@ -563,8 +562,6 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
         </button>
       )}
 
-      {/* Stylist feedback */}
-      <StylistChat items={items} onRebuildProfile={() => setShowPersonaSetup(true)} />
     </div>
   );
 }

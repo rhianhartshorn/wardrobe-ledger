@@ -2,10 +2,9 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
-import HomeTab from '@/components/HomeTab';
+import StylistTab from '@/components/StylistTab';
 import ClosetTab from '@/components/ClosetTab';
 import AddItemTab from '@/components/AddItemTab';
-import OutfitTab from '@/components/OutfitTab';
 import StyleTab from '@/components/StyleTab';
 import LooksTab from '@/components/LooksTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
@@ -39,11 +38,10 @@ export type WardrobeItem = {
   wearCount?: number;
 };
 
-type Tab = 'home' | 'closet' | 'outfit' | 'looks' | 'style';
+type Tab = 'stylist' | 'closet' | 'looks' | 'style';
 
 export default function WardrobeApp() {
-  const [tab, setTab] = useState<Tab>('home');
-  const [outfitContext, setOutfitContext] = useState('');
+  const [tab, setTab] = useState<Tab>('stylist');
   const [showAdd, setShowAdd] = useState(false);
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -132,11 +130,6 @@ export default function WardrobeApp() {
 
   const profileComplete = Boolean(bodyProfile.height && bodyProfile.bodyShape && bodyProfile.undertone);
 
-  const handleGetDressed = (note: string) => {
-    setOutfitContext(note);
-    setTab('outfit');
-  };
-
   const dismissOnboarding = () => {
     localStorage.setItem('wl_onboarded', '1');
     setShowOnboarding(false);
@@ -199,30 +192,10 @@ export default function WardrobeApp() {
           <div className="flex justify-center py-24">
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
-        ) : tab === 'home' ? (
-          <HomeTab
-            items={items}
-            bodyProfile={bodyProfile}
-            profileComplete={profileComplete}
-            onGetDressed={handleGetDressed}
-            onNavigate={setTab}
-            onSetupBlueprint={() => setShowBodyProfile(true)}
-            onAddItem={() => setShowAdd(true)}
-          />
+        ) : tab === 'stylist' ? (
+          <StylistTab items={items} bodyProfile={bodyProfile} />
         ) : tab === 'closet' ? (
           <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} fashionCurrency={fashionCurrency ?? undefined} />
-        ) : tab === 'outfit' ? (
-          <OutfitTab
-            items={items}
-            profileImageUrl={profileImageUrl}
-            profileImageFilename={profileImageFilename}
-            bodyProfile={bodyProfile}
-            initialNote={outfitContext}
-            onProfileChange={(url, filename) => {
-              setProfileImageUrl(url);
-              setProfileImageFilename(filename);
-            }}
-          />
         ) : tab === 'style' ? (
           <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowLifestyleProfile(true)} fashionCurrency={fashionCurrency ?? undefined} onFashionCurrencyUpdate={setFashionCurrency} />
         ) : (

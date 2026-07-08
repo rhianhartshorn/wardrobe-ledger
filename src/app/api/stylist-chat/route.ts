@@ -71,23 +71,28 @@ ${STYLIST_2026_LENS}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
 The client has just said: "${message}"
 
+INTENT: First decide if the client wants outfit suggestions (they're asking what to wear for a specific occasion, today, an event, or asking you to dress them) OR if they're asking a reflective/strategic question (about their style, patterns, what to buy, what's missing, why they feel a certain way).
+
 RESPONSE RULES:
-- You have their wardrobe. When the client asks what to wear, name specific items from the list above — "your [item name]" — not generic descriptions.
-- When recommending combinations, name every piece. Reference item IDs if you reference more than 2 pieces: e.g. "your white cotton poplin shirt (id:...) with your dark wash straight jeans".
-- If the question is about a specific occasion, check whether they have appropriate items and say so directly. If they don't, tell them what's missing and be specific about what to buy.
-- Give concrete directions: tuck or don't tuck, belt or no belt, which layer on top, which shoes.
-- Extract 1-3 styling directives from what they've said — specific enough to actually change future recommendations.
-- Write a response of 1-2 sentences maximum. Not 3. Not 4. Two sentences is the ceiling. Be direct, specific, warm — like a stylist who respects the client's time. If recommending something to try, frame it as an experiment: "Try this week: ..." or "Wear your [item] with [item] — [one reason why]." Never over-explain.
+- Write a response of 1-2 sentences maximum. Direct, warm, specific. Like a stylist who respects the client's time.
+- If recommending something to try, frame it as an experiment: "Try this week: ..." Never over-explain.
+- Extract 1-3 styling directives from what they've said — specific enough to change future recommendations.
+
+If intent is OUTFIT: generate exactly 3 outfit suggestions using ONLY items from the wardrobe list above (reference by exact id). Each outfit should be a complete look.
 
 Respond with ONLY valid JSON, no markdown:
 {
-  "directives": ["directive 1", "directive 2"],
-  "acknowledgment": "your 1-2 sentence response — specific, direct, referencing actual wardrobe pieces"
-}`;
+  "intent": "outfit|conversation",
+  "directives": ["directive 1"],
+  "acknowledgment": "your 1-2 sentence response",
+  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}]
+}
+
+If intent is "conversation", omit the outfits field entirely.`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 600, route: 'stylist-chat' });
-    const parsed = parseJSON(raw) as { directives: string[]; acknowledgment: string };
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000, route: 'stylist-chat' });
+    const parsed = parseJSON(raw) as { intent?: string; directives: string[]; acknowledgment: string; outfits?: unknown[] };
 
     const newDirectives: StyleDirective[] = (parsed.directives ?? []).map((instruction) => ({
       instruction,
@@ -103,6 +108,7 @@ Respond with ONLY valid JSON, no markdown:
       acknowledgment: parsed.acknowledgment,
       directives: newDirectives,
       allDirectives: updated,
+      outfits: parsed.outfits ?? undefined,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Chat failed';
