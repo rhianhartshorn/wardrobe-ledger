@@ -151,7 +151,12 @@ The client has said: "${message}"
 
 1. INTENT: Determine if the client wants outfit suggestions or a strategic/conversational response.
 
-2. DIRECTIVES: Extract 1-3 specific styling directives from what they have said — concrete enough to change future recommendations. Only extract genuinely new information about their preferences or needs.
+2. DIRECTIVES: Extract only permanent styling preferences or constraints the client has revealed — things that should change every future recommendation. A directive must describe a stable truth about how this person dresses, not a one-time request.
+
+EXTRACT: "avoids heels", "prefers loose fits over the hip", "needs workwear options", "dislikes showing arms", "colour palette should stay neutral", "wants to look less formal day-to-day"
+DO NOT EXTRACT: "wants outfits featuring the beige blazer", "asked for 3 looks today", "requested something for Tuesday", "asked what goes with a specific item", "wanted a casual option this time"
+
+If the message contains no permanent preference — only a one-time request or contextual ask — return an empty directives array. Never log transient requests as directives.
 
 3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
