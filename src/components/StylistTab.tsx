@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, ChevronDown, ChevronUp, Heart, Camera, Sparkles, Download, X } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp, Heart, Camera, Sparkles, Download, X, Mic, MicOff } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import type { BodyProfile } from '@/lib/body-profile';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
@@ -190,8 +190,49 @@ export default function StylistTab({
   const [err, setErr] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [listening, setListening] = useState(false);
   const selfieRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  const toggleVoice = () => {
+    const SR = (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    if (!SR) { setErr('Voice input is not supported in this browser — try Chrome or Safari.'); return; }
+
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = true;
+    rec.lang = 'en-US';
+
+    let finalTranscript = '';
+
+    rec.onstart = () => setListening(true);
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalTranscript += t;
+        else interim = t;
+      }
+      setInput(finalTranscript + interim);
+    };
+    rec.onerror = () => { setListening(false); };
+    rec.onend = () => {
+      setListening(false);
+      if (finalTranscript.trim()) {
+        // Small delay so state settles, then send
+        setTimeout(() => send(finalTranscript.trim()), 100);
+      }
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+  };
 
   const uploadSelfie = async (file: File) => {
     setUploadingPhoto(true);
@@ -396,23 +437,40 @@ export default function StylistTab({
       {err && <p className="text-xs text-red-700 font-light mb-2">{err}</p>}
 
       {/* Input */}
-      <div className="flex gap-2 items-end sticky bottom-4 bg-[var(--ivory)] pt-2 border-t border-[#E5DDD0]">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={messages.length > 0 ? 'Continue the conversation...' : 'Ask your stylist anything...'}
-          rows={2}
-          className="flex-1 border border-[#E5DDD0] px-3 py-2.5 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A] resize-none"
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(); }}
-        />
-        <button
-          onClick={() => send()}
-          disabled={!input.trim() || sending}
-          className="shrink-0 w-10 h-10 bg-[#1A1714] text-white flex items-center justify-center hover:bg-[#2C2521] disabled:opacity-40 transition-colors"
-          aria-label="Send"
-        >
-          <Send size={14} />
-        </button>
+      <div className="sticky bottom-4 bg-[var(--ivory)] pt-2 border-t border-[#E5DDD0]">
+        {listening && (
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-[10px] text-[#A89F96] font-light uppercase tracking-widest">Listening — speak now</span>
+          </div>
+        )}
+        <div className="flex gap-2 items-end">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={listening ? '' : messages.length > 0 ? 'Continue the conversation...' : 'Ask your stylist anything...'}
+            rows={2}
+            className="flex-1 border border-[#E5DDD0] px-3 py-2.5 text-sm font-light text-[#1A1714] placeholder:text-[#A89F96] focus:outline-none focus:border-[#9B7B3A] resize-none"
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) send(); }}
+          />
+          <button
+            onClick={toggleVoice}
+            disabled={sending}
+            title={listening ? 'Stop listening' : 'Speak to your stylist'}
+            className={`shrink-0 w-10 h-10 flex items-center justify-center border transition-colors disabled:opacity-40 ${listening ? 'bg-red-500 border-red-500 text-white' : 'border-[#E5DDD0] text-[#A89F96] hover:border-[#9B7B3A] hover:text-[#9B7B3A]'}`}
+            aria-label={listening ? 'Stop' : 'Voice input'}
+          >
+            {listening ? <MicOff size={14} /> : <Mic size={14} />}
+          </button>
+          <button
+            onClick={() => send()}
+            disabled={!input.trim() || sending}
+            className="shrink-0 w-10 h-10 bg-[#1A1714] text-white flex items-center justify-center hover:bg-[#2C2521] disabled:opacity-40 transition-colors"
+            aria-label="Send"
+          >
+            <Send size={14} />
+          </button>
+        </div>
       </div>
     </div>
   );
