@@ -279,7 +279,12 @@ export async function POST(req: NextRequest) {
       : '';
 
     const conversationBlock = conversationHistory?.length
-      ? `\nPREVIOUS CONVERSATION (most recent last):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
+      ? `\nRECENT CONVERSATION HISTORY (for context on the client's preferences and tone — do NOT treat earlier questions as part of the current request; each message is a distinct ask):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
+      : '';
+
+    // Trim conversation history for specialists — only last 2 exchanges for tone/preference context
+    const trimmedConversationBlock = conversationHistory?.length
+      ? `\nRECENT HISTORY (tone/preference context only — focus on the current request):\n${conversationHistory.slice(-4).map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
       : '';
 
     // Context block passed to all specialists (shared context, no specialist personas)
@@ -289,7 +294,7 @@ export async function POST(req: NextRequest) {
       weatherBlock,
       styleDirectives,
       existingDirectivesText,
-      conversationBlock,
+      trimmedConversationBlock,
     ].filter(Boolean).join('\n');
 
     // ── STEP 1: Run 5 specialists in parallel ────────────────────────────────
