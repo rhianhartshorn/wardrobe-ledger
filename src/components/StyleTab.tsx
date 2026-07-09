@@ -541,26 +541,6 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
         )}
       </div>
 
-      {/* Lifestyle profile entry point */}
-      {onOpenLifestyle && (
-        <button
-          onClick={onOpenLifestyle}
-          className="w-full border border-[#E5DDD0] bg-white p-4 flex items-center justify-between hover:border-[#9B7B3A] transition-colors group"
-        >
-          <div className="text-left">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">
-              {lifestyleProfile?.occasions?.length || lifestyleProfile?.workDressCode ? 'Lifestyle profile — tap to update' : 'Recommended'}
-            </p>
-            <p className="text-sm text-[#1A1714] font-light mt-0.5">
-              {lifestyleProfile?.occasions?.length || lifestyleProfile?.workDressCode
-                ? `${[lifestyleProfile.workDressCode, ...(lifestyleProfile.occasions ?? [])].filter(Boolean).slice(0, 3).join(' · ')}${(lifestyleProfile.occasions?.length ?? 0) > 2 ? ' +more' : ''}`
-                : 'Tell your stylist about your life'}
-            </p>
-            <p className="text-xs text-[#A89F96] font-light mt-0.5">Occasions, dress code, climate, comfort zones — shapes every recommendation</p>
-          </div>
-          <span className="text-[#9B7B3A] text-lg font-light ml-4 group-hover:translate-x-0.5 transition-transform">→</span>
-        </button>
-      )}
 
     </div>
   );
