@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, ChevronDown, ChevronUp, Heart, Camera, Sparkles, Download, X, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp, Heart, Sparkles, Download, X, Mic, MicOff } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import type { BodyProfile } from '@/lib/body-profile';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
-import { slim, buildWardrobeGrid, compressImage } from './utils';
+import { slim, buildWardrobeGrid } from './utils';
 
 const PROMPT_SUGGESTIONS = [
   'What should I wear today?',
@@ -189,9 +189,7 @@ export default function StylistTab({
   const [showDirectives, setShowDirectives] = useState(false);
   const [err, setErr] = useState('');
   const [loaded, setLoaded] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [listening, setListening] = useState(false);
-  const selfieRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
@@ -238,20 +236,6 @@ export default function StylistTab({
     rec.start();
   };
 
-  const uploadSelfie = async (file: File) => {
-    setUploadingPhoto(true);
-    try {
-      const dataUrl = await compressImage(file, 1024, 0.82, 900_000);
-      const res = await fetch('/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: dataUrl }),
-      });
-      const data = await res.json() as { imageUrl?: string; imageFilename?: string };
-      if (res.ok) onProfileChange(data.imageUrl ?? null, data.imageFilename ?? null);
-    } catch { /* ignore */ }
-    finally { setUploadingPhoto(false); }
-  };
 
   useEffect(() => {
     fetch('/api/stylist-chat')
@@ -313,42 +297,12 @@ export default function StylistTab({
 
   return (
     <div className="flex flex-col pt-2">
-      {/* Hidden file input */}
-      <input
-        ref={selfieRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSelfie(f); e.target.value = ''; }}
-      />
-
       {/* Header */}
       <div className="mb-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
-            <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
-          </div>
-          {/* Profile photo for try-on */}
-          <button
-            onClick={() => selfieRef.current?.click()}
-            disabled={uploadingPhoto}
-            title={profileImageUrl ? 'Change your photo for try-on' : 'Add your photo to try on outfits'}
-            className="flex flex-col items-center gap-1 mt-1 group"
-          >
-            {profileImageUrl ? (
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#9B7B3A] group-hover:border-[#8A6B2E] transition-colors">
-                <img src={profileImageUrl} alt="Your photo" className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-10 h-10 rounded-full border border-dashed border-[#E5DDD0] flex items-center justify-center group-hover:border-[#9B7B3A] transition-colors">
-                {uploadingPhoto ? <Loader2 size={14} className="animate-spin text-[#A89F96]" /> : <Camera size={14} className="text-[#A89F96] group-hover:text-[#9B7B3A] transition-colors" />}
-              </div>
-            )}
-            <span className="text-[8px] uppercase tracking-widest text-[#A89F96] group-hover:text-[#9B7B3A] transition-colors font-light">
-              {profileImageUrl ? 'Try-on' : 'Add photo'}
-            </span>
-          </button>
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
+          <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
+        </div>
         </div>
         {directives.length > 0 && (
           <>

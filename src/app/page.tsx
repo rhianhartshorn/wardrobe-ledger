@@ -8,7 +8,6 @@ import AddItemTab from '@/components/AddItemTab';
 import StyleTab from '@/components/StyleTab';
 import LooksTab from '@/components/LooksTab';
 import BodyProfilePage from '@/components/BodyProfilePage';
-import LifestyleProfilePage from '@/components/LifestyleProfilePage';
 import OnboardingCarousel from '@/components/OnboardingCarousel';
 import StyleDiscoveryCarousel from '@/components/StyleDiscoveryCarousel';
 import { ErrorBanner } from '@/components/ui';
@@ -49,7 +48,6 @@ export default function WardrobeApp() {
   const [bodyProfile, setBodyProfile] = useState<BodyProfile>(EMPTY_PROFILE);
   const [showBodyProfile, setShowBodyProfile] = useState(false);
   const [lifestyleProfile, setLifestyleProfile] = useState<LifestyleProfile>(EMPTY_LIFESTYLE());
-  const [showLifestyleProfile, setShowLifestyleProfile] = useState(false);
   const [fashionCurrency, setFashionCurrency] = useState<FashionCurrencyItem[] | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState('');
@@ -147,16 +145,10 @@ export default function WardrobeApp() {
         initial={bodyProfile}
         onSave={(p) => setBodyProfile(p)}
         onClose={() => setShowBodyProfile(false)}
-      />
-    );
-  }
-
-  if (showLifestyleProfile) {
-    return (
-      <LifestyleProfilePage
-        initial={lifestyleProfile}
-        onSave={(p) => setLifestyleProfile(p)}
-        onClose={() => setShowLifestyleProfile(false)}
+        initialLifestyle={lifestyleProfile}
+        onSaveLifestyle={(p) => setLifestyleProfile(p)}
+        profileImageUrl={profileImageUrl}
+        onProfileChange={(url, filename) => { setProfileImageUrl(url); setProfileImageFilename(filename); }}
       />
     );
   }
@@ -203,7 +195,7 @@ export default function WardrobeApp() {
         ) : tab === 'closet' ? (
           <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} fashionCurrency={fashionCurrency ?? undefined} />
         ) : tab === 'style' ? (
-          <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowLifestyleProfile(true)} fashionCurrency={fashionCurrency ?? undefined} onFashionCurrencyUpdate={setFashionCurrency} />
+          <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowBodyProfile(true)} fashionCurrency={fashionCurrency ?? undefined} onFashionCurrencyUpdate={setFashionCurrency} />
         ) : (
           <LooksTab items={items} bodyProfile={bodyProfile} />
         )}
