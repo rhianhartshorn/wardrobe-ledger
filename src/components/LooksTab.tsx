@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown, Layers, Sparkles, Download } from 'lucide-react';
+import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown, Layers, Sparkles, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { OCCASIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -152,6 +152,199 @@ function LogModal({ items, savedLooks, onClose, onLogged }: {
   );
 }
 
+function WearIntelligence({ journal, items, onRemoveEntry }: {
+  journal: JournalEntry[];
+  items: WardrobeItem[];
+  onRemoveEntry: (id: string) => void;
+}) {
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+
+  // ── Stats ──────────────────────────────────────────────────────────────────
+
+  // Item frequency across journal entries
+  const itemFreq = new Map<string, number>();
+  journal.forEach((e) => {
+    e.itemIds.forEach((id) => itemFreq.set(id, (itemFreq.get(id) ?? 0) + 1));
+  });
+
+  // Top items by journal frequency
+  const topItems = [...itemFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([id, count]) => ({ item: items.find((i) => i.id === id), count }))
+    .filter((x): x is { item: WardrobeItem; count: number } => Boolean(x.item));
+
+  // Logging streak — consecutive days ending today (or yesterday)
+  const streak = (() => {
+    if (!journal.length) return 0;
+    const dates = new Set(journal.map((e) => e.date));
+    let count = 0;
+    const today = new Date();
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (dates.has(d.toISOString().slice(0, 10))) count++;
+      else if (i > 0) break; // allow missing today
+    }
+    return count;
+  })();
+
+  // Best cost-per-wear
+  const bestCPW = items
+    .filter((i) => i.price && (i.wearCount ?? 0) > 0)
+    .map((i) => ({ item: i, cpw: i.price! / i.wearCount! }))
+    .sort((a, b) => a.cpw - b.cpw)[0] ?? null;
+
+  // Most common occasion
+  const occasionFreq = new Map<string, number>();
+  journal.forEach((e) => {
+    if (e.occasion) occasionFreq.set(e.occasion, (occasionFreq.get(e.occasion) ?? 0) + 1);
+  });
+  const topOccasion = [...occasionFreq.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+
+  // ── Group history by month ─────────────────────────────────────────────────
+
+  const byMonth = new Map<string, JournalEntry[]>();
+  [...journal].sort((a, b) => b.date.localeCompare(a.date)).forEach((e) => {
+    const key = e.date.slice(0, 7); // "2026-06"
+    if (!byMonth.has(key)) byMonth.set(key, []);
+    byMonth.get(key)!.push(e);
+  });
+
+  const toggleMonth = (key: string) =>
+    setExpandedMonths((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
+  const formatMonthKey = (key: string) => {
+    const [y, m] = key.split('-');
+    return new Date(Number(y), Number(m) - 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  if (journal.length === 0) {
+    return (
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <BookOpen size={13} className="text-[#9B7B3A]" />
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Wear intelligence</p>
+        </div>
+        <p className="text-sm text-[#A89F96] font-light">Nothing logged yet. Your wear data — most-reached-for pieces, real cost per wear, your go-to occasions — builds here over time.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <BookOpen size={13} className="text-[#9B7B3A]" />
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Wear intelligence</p>
+      </div>
+
+      {/* Stat tiles */}
+      <div className="grid grid-cols-3 gap-2 mb-5">
+        <div className="border border-[#E5DDD0] bg-white p-3 text-center">
+          <p className="font-serif text-2xl text-[#1A1714]">{journal.length}</p>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-[#A89F96] font-light mt-0.5">Outfits logged</p>
+        </div>
+        <div className="border border-[#E5DDD0] bg-white p-3 text-center">
+          <p className="font-serif text-2xl text-[#1A1714]">{streak}</p>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-[#A89F96] font-light mt-0.5">Day streak</p>
+        </div>
+        <div className="border border-[#E5DDD0] bg-white p-3 text-center">
+          <p className="font-serif text-2xl text-[#1A1714]">{topItems[0]?.count ?? 0}</p>
+          <p className="text-[9px] uppercase tracking-[0.18em] text-[#A89F96] font-light mt-0.5">Max wears</p>
+        </div>
+      </div>
+
+      {/* Most-reached-for pieces */}
+      {topItems.length > 0 && (
+        <div className="mb-5">
+          <p className="text-[9px] uppercase tracking-[0.2em] text-[#6B6058] font-light mb-2.5">Most reached for</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {topItems.map(({ item, count }) => (
+              <div key={item.id} className="shrink-0 text-center">
+                <div className="w-16 h-16 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0] relative">
+                  {item.imageUrl
+                    ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-[7px] text-[#A89F96] text-center px-0.5 leading-tight">{item.name}</div>}
+                  <span className="absolute bottom-0.5 right-0.5 bg-[#1A1714] text-white text-[7px] px-1 py-0.5 font-light leading-none">{count}×</span>
+                </div>
+                <p className="text-[8px] text-[#6B6058] font-light mt-1 w-16 truncate">{item.name}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Secondary insights row */}
+      {(bestCPW || topOccasion) && (
+        <div className="grid grid-cols-2 gap-2 mb-5">
+          {bestCPW && (
+            <div className="border border-[#E5DDD0] bg-white p-3">
+              <p className="text-[9px] uppercase tracking-[0.18em] text-[#A89F96] font-light mb-1">Best cost per wear</p>
+              <p className="font-serif text-sm text-[#1A1714] leading-snug truncate">{bestCPW.item.name}</p>
+              <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">£{bestCPW.cpw.toFixed(2)} per wear</p>
+            </div>
+          )}
+          {topOccasion && (
+            <div className="border border-[#E5DDD0] bg-white p-3">
+              <p className="text-[9px] uppercase tracking-[0.18em] text-[#A89F96] font-light mb-1">Most dressed for</p>
+              <p className="font-serif text-sm text-[#1A1714] leading-snug">{topOccasion[0]}</p>
+              <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">{topOccasion[1]} time{topOccasion[1] !== 1 ? 's' : ''}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* History grouped by month — collapsed */}
+      <div className="space-y-1">
+        {[...byMonth.entries()].map(([key, entries]) => {
+          const open = expandedMonths.has(key);
+          return (
+            <div key={key} className="border border-[#E5DDD0]">
+              <button
+                onClick={() => toggleMonth(key)}
+                className="w-full flex items-center justify-between px-3 py-2.5 bg-white hover:bg-[#FAF8F4] transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-[#6B6058] font-light">{formatMonthKey(key)}</p>
+                  <span className="text-[9px] text-[#A89F96] font-light">{entries.length} outfit{entries.length !== 1 ? 's' : ''}</span>
+                </div>
+                {open ? <ChevronUp size={12} className="text-[#A89F96]" /> : <ChevronDown size={12} className="text-[#A89F96]" />}
+              </button>
+              {open && (
+                <div className="divide-y divide-[#F5F2EC]">
+                  {entries.map((entry) => {
+                    const pieces = entry.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+                    return (
+                      <div key={entry.id} className="flex items-center gap-3 px-3 py-2 bg-white">
+                        <div className="flex -space-x-2 shrink-0">
+                          {pieces.slice(0, 4).map((p) => <ItemThumb key={p.id} item={p} />)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-[#1A1714] font-light">
+                            {new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}
+                          </p>
+                          {entry.occasion && <p className="text-[9px] text-[#A89F96] font-light">{entry.occasion}</p>}
+                        </div>
+                        <button onClick={() => onRemoveEntry(entry.id)} className="text-[#D6CFC0] hover:text-red-600 transition-colors shrink-0">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function LookCard({ look, items, hasProfilePhoto, onRemove, onFeedback }: {
   look: SavedLook; items: WardrobeItem[]; hasProfilePhoto: boolean;
   onRemove: () => void; onFeedback: (f: 'worked' | 'didnt_work' | null) => void;
@@ -279,10 +472,6 @@ export default function LooksTab({ items, bodyProfile, profileImageFilename }: {
     return b.savedAt - a.savedAt;
   });
 
-  // Count how many times each look was logged in the journal
-  const lookWearCount = (lookId: string) =>
-    journal.filter((e) => e.savedLookId === lookId).length;
-
   if (!loaded) {
     return <div className="flex justify-center py-24"><Loader2 className="animate-spin text-[#A89F96]" size={24} /></div>;
   }
@@ -350,36 +539,8 @@ export default function LooksTab({ items, bodyProfile, profileImageFilename }: {
         )}
       </div>
 
-      {/* Journal history */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen size={13} className="text-[#9B7B3A]" />
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Wear history</p>
-        </div>
-        {journal.length === 0 ? (
-          <p className="text-sm text-[#A89F96] font-light">Nothing logged yet. Track what you wear to see your real patterns.</p>
-        ) : (
-          <div className="space-y-2">
-            {journal.map((entry) => {
-              const pieces = entry.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
-              return (
-                <div key={entry.id} className="border border-[#E5DDD0] bg-white p-3 flex items-center gap-3">
-                  <div className="flex -space-x-2 shrink-0">
-                    {pieces.slice(0, 4).map((p) => <ItemThumb key={p.id} item={p} />)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-[#1A1714] font-light">{new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
-                    {entry.occasion && <p className="text-[10px] text-[#A89F96] font-light">{entry.occasion}</p>}
-                  </div>
-                  <button onClick={() => removeEntry(entry.id)} className="text-[#D6CFC0] hover:text-red-600 transition-colors shrink-0">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* Wear intelligence */}
+      <WearIntelligence journal={journal} items={items} onRemoveEntry={removeEntry} />
 
       </>}
 
