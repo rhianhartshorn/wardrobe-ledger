@@ -23,12 +23,14 @@ type ChatOutfit = {
   itemIds: string[];
   styleReference?: string;
   rationale?: string;
+  accessories?: string;
 };
 
 type Message = {
   role: 'user' | 'stylist';
   text: string;
   outfits?: ChatOutfit[];
+  consultedSpecialists?: string[];
 };
 
 function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: ChatOutfit; items: WardrobeItem[]; hasProfilePhoto: boolean; onLearnMore: (props: LearnMoreProps) => void }) {
@@ -125,6 +127,9 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
         </div>
         {showWhy && outfit.rationale && (
           <p className="text-[11px] text-[#6B6058] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{outfit.rationale}</p>
+        )}
+        {outfit.accessories && (
+          <p className="text-[9px] text-[#A89F96] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2 italic">{outfit.accessories}</p>
         )}
         <button
           onClick={() => onLearnMore({ type: 'aesthetic', title: outfit.title, context: `Style: ${outfit.styleReference ?? ''}. ${outfit.rationale ?? ''}. Items: ${pieces.map((p) => p.name).join(', ')}`, relevantItems: pieces, onClose: () => {} })}
@@ -318,6 +323,7 @@ export default function StylistTab({
         acknowledgment?: string;
         outfits?: ChatOutfit[];
         allDirectives?: StyleDirective[];
+        consultedSpecialists?: string[];
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
@@ -325,6 +331,7 @@ export default function StylistTab({
         role: 'stylist',
         text: data.acknowledgment ?? '',
         outfits: data.outfits,
+        consultedSpecialists: data.consultedSpecialists,
       }]);
       setDirectives(data.allDirectives ?? []);
     } catch (e) {
@@ -441,6 +448,11 @@ export default function StylistTab({
               }`}>
                 {msg.text}
               </div>
+              {msg.role === 'stylist' && msg.consultedSpecialists?.length && (
+                <p className="text-[8px] uppercase tracking-[0.18em] text-[#C4B8A8] font-light mt-1.5">
+                  Consulted · {msg.consultedSpecialists.join(' · ')}
+                </p>
+              )}
               {msg.outfits && msg.outfits.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {msg.outfits.map((outfit, j) => (

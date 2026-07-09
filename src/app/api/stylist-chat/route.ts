@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { getSetting, setSetting } from '@/lib/db';
-import { getPersonaContext, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext, FIT_SPECIALIST_VOICE, FASHION_EDITOR_VOICE, ACCESSORIES_DIRECTOR_VOICE, COLOUR_ANALYST_VOICE, STYLIST_2026_LENS } from '@/lib/stylist';
+import {
+  getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
+  getLifestyleContext, getStyleDirectives,
+  FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
+  OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA, ACCESSORIES_DIRECTOR_PERSONA,
+  STYLIST_2026_LENS, BRAND_VOICE_RULES,
+} from '@/lib/stylist';
 
 export type StyleDirective = {
   instruction: string;
@@ -16,6 +22,194 @@ type WardrobeItem = {
   accessoryType?: string; wearCount?: number;
 };
 
+type SpecialistBrief = {
+  role: string;
+  type: 'candidates' | 'advisory';
+  candidates?: Array<{ itemIds: string[]; note: string }>;
+  advisory?: string;
+  flag?: string;
+};
+
+type ChatOutfit = {
+  title: string;
+  itemIds: string[];
+  styleReference?: string;
+  rationale?: string;
+  accessories?: string;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SPECIALIST CALL — runs one member of the style team
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runSpecialist(
+  role: string,
+  persona: string,
+  remit: string,
+  message: string,
+  itemListText: string,
+  contextBlock: string,
+): Promise<SpecialistBrief> {
+  const prompt = `${persona}
+
+You are one specialist on a private styling team. The head stylist will synthesize all specialist inputs into the final recommendation to the client — the client never sees your brief directly.
+
+${contextBlock}
+
+CLIENT'S WARDROBE:
+${itemListText || '(No wardrobe items yet)'}
+
+CLIENT'S REQUEST: "${message}"
+
+YOUR SPECIFIC REMIT FOR THIS BRIEF:
+${remit}
+
+If the client is asking for outfit recommendations (what to wear, outfit for an occasion, dress me for X): propose 1-2 specific combinations from the wardrobe above that pass your specialist criteria (reference items by exact id). Be specific about why each combination passes your test.
+
+If the client is asking a strategic or conversational question (what's missing, style analysis, shopping advice, general styling question): provide your specialist analysis of what you observe — what the wardrobe data reveals from your expert lens.
+
+In either case: name one specific flag — a structural concern, a colour problem, an aesthetic failure, a contextual mismatch, or a behavioural pattern — that the head stylist must be aware of.
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "type": "candidates|advisory",
+  "candidates": [{"itemIds": ["id1","id2","id3"], "note": "max 20 words — the specific reason this passes your specialist test"}],
+  "advisory": "max 40 words — your specialist analysis (omit if type is candidates)",
+  "flag": "max 25 words — one specific concern from your specialist domain"
+}`;
+
+  try {
+    const raw = await callClaude({ prompt, maxTokens: 350, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
+    const parsed = parseJSON(raw) as Omit<SpecialistBrief, 'role'>;
+    return { role, ...parsed };
+  } catch {
+    return { role, type: 'advisory', advisory: 'Brief unavailable.', flag: undefined };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HEAD STYLIST SYNTHESIS
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runHeadStylist(
+  message: string,
+  personaCtx: string,
+  brandVoice: string,
+  styleBriefCtx: string,
+  lifestyleCtx: string,
+  weatherBlock: string,
+  wardrobeBlock: string,
+  gridBlock: string,
+  existingDirectivesText: string,
+  conversationBlock: string,
+  specialistBriefs: SpecialistBrief[],
+  wardrobeImages?: Array<{ base64: string }>,
+): Promise<{ intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] }> {
+
+  const briefsBlock = specialistBriefs.map((b) => {
+    const parts = [`── ${b.role.toUpperCase()} ──`];
+    if (b.type === 'candidates' && b.candidates?.length) {
+      b.candidates.forEach((c, i) => {
+        parts.push(`Candidate ${i + 1}: items [${c.itemIds.join(', ')}] — ${c.note}`);
+      });
+    }
+    if (b.advisory) parts.push(`Analysis: ${b.advisory}`);
+    if (b.flag) parts.push(`Flag: ${b.flag}`);
+    return parts.join('\n');
+  }).join('\n\n');
+
+  const prompt = `${personaCtx}
+
+${STYLIST_2026_LENS}
+${brandVoice}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
+
+━━━ SPECIALIST TEAM BRIEFS ━━━
+Your team has reviewed the client's request. Their briefs are below. You synthesize these into the final recommendation.
+
+${briefsBlock}
+
+━━━ YOUR TASK ━━━
+The client has said: "${message}"
+
+1. INTENT: Determine if the client wants outfit suggestions or a strategic/conversational response.
+
+2. DIRECTIVES: Extract 1-3 specific styling directives from what they have said — concrete enough to change future recommendations. Only extract genuinely new information about their preferences or needs.
+
+3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks.
+
+4. If intent is OUTFIT: Select the best 3 outfits from the specialist candidates above, or compose outfits yourself if the specialist candidates are insufficient. Use ONLY items from the wardrobe. Each outfit should pass the fit specialist's proportion test, respect the colour profile, and be aesthetically coherent. If two specialists conflict, adjudicate and note why in the rationale. Each rationale: max 20 words, begins with Try or Wear, explains the specific logic.
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "intent": "outfit|conversation",
+  "directives": ["directive 1"],
+  "acknowledgment": "your 1-2 sentence response to the client",
+  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}]
+}
+
+If intent is "conversation", omit the outfits field.`;
+
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1200, route: 'head-stylist' });
+  return parseJSON(raw) as { intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACCESSORIES DIRECTOR — finishes the selected outfits
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runAccessoriesDirector(
+  outfits: ChatOutfit[],
+  items: WardrobeItem[],
+  styleBriefCtx: string,
+  lifestyleCtx: string,
+): Promise<ChatOutfit[]> {
+
+  const outfitDescriptions = outfits.map((o, i) => {
+    const pieces = o.itemIds
+      .map((id) => items.find((it) => it.id === id))
+      .filter(Boolean)
+      .map((it) => `${it!.name} (${it!.category}, ${it!.primaryColor}${it!.material ? ', ' + it!.material : ''})`)
+      .join('; ');
+    return `OUTFIT ${i + 1}: "${o.title}"\nPieces: ${pieces}\nStyle reference: ${o.styleReference ?? 'n/a'}`;
+  }).join('\n\n');
+
+  const prompt = `${ACCESSORIES_DIRECTOR_PERSONA}
+
+${BRAND_VOICE_RULES}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}
+
+The head stylist has selected the following three outfits for the client. Your job is to provide the finishing accessory direction for each — the precise, opinionated detail that resolves the look.
+
+${outfitDescriptions}
+
+For each outfit, specify: what accessory or accessories to add (or confirm the look is complete without them), with the exact weight, finish, colour relationship, and why. Be specific — not "add a bag" but which shape, size, finish, and how it relates to the rest of the look. Max 25 words per outfit.
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "outfits": [
+    {"accessories": "specific direction for outfit 1"},
+    {"accessories": "specific direction for outfit 2"},
+    {"accessories": "specific direction for outfit 3"}
+  ]
+}`;
+
+  try {
+    const raw = await callClaude({ prompt, maxTokens: 400, route: 'accessories-director' });
+    const parsed = parseJSON(raw) as { outfits: Array<{ accessories: string }> };
+    return outfits.map((o, i) => ({
+      ...o,
+      accessories: parsed.outfits[i]?.accessories ?? undefined,
+    }));
+  } catch {
+    return outfits;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN POST HANDLER
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
     const { message, items, weather, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
@@ -26,20 +220,23 @@ export async function POST(req: NextRequest) {
       wardrobeGridMapping?: string;
       conversationHistory?: Array<{ role: 'user' | 'stylist'; text: string }>;
     };
+
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice] = await Promise.all([
+    // Load all context in parallel
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
       getSetting('style_directives'),
       getBrandVoiceContext(),
+      getStyleDirectives(),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
 
     const existingDirectivesText = existing.length
-      ? `Styling directives already in place for this client:\n${existing.map((d) => `- ${d.instruction}`).join('\n')}\n`
+      ? `CLIENT DIRECTIVES (from previous sessions — apply to every recommendation):\n${existing.map((d) => `- ${d.instruction}`).join('\n')}\n`
       : '';
 
     const itemListText = items?.length
@@ -49,57 +246,91 @@ export async function POST(req: NextRequest) {
       : '';
 
     const wardrobeBlock = itemListText
-      ? `\nCLIENT'S WARDROBE (${items!.length} pieces — reference these by name when giving specific advice):\n${itemListText}\n`
+      ? `\nCLIENT'S WARDROBE (${items!.length} pieces):\n${itemListText}\n`
       : '';
 
     const gridBlock = wardrobeGrid
-      ? `\nVISUAL WARDROBE GRID: A numbered image grid of all wardrobe items is attached. Grid key: ${wardrobeGridMapping}. Look at the actual colours, textures, and silhouettes before responding — your advice should be grounded in what these clothes actually look like.\n`
-      : '';
-
-    const conversationBlock = conversationHistory?.length
-      ? `\nPREVIOUS CONVERSATION CONTEXT (most recent last):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
+      ? `\nVISUAL WARDROBE GRID attached. Grid key: ${wardrobeGridMapping}. Use the visual to ground your advice in what these clothes actually look like.\n`
       : '';
 
     const weatherBlock = weather
       ? `\nCURRENT CONDITIONS (${weather.locationName}): ${weather.tempF}°F, ${weather.condition}. ${weather.summary} Factor this into outfit suggestions — fabrics, layering, and weather-appropriateness matter.\n`
       : '';
 
-    const prompt = `You are a personal stylist in a direct one-on-one conversation with your client. You have their full wardrobe in front of you — physically. You can see every piece.
+    const conversationBlock = conversationHistory?.length
+      ? `\nPREVIOUS CONVERSATION (most recent last):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
+      : '';
 
-${personaCtx}
-${FASHION_EDITOR_VOICE}
-${FIT_SPECIALIST_VOICE}
-${COLOUR_ANALYST_VOICE}
-${ACCESSORIES_DIRECTOR_VOICE}
-${brandVoice}
-${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
-The client has just said: "${message}"
+    // Context block passed to all specialists (shared context, no specialist personas)
+    const sharedContext = [
+      styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
+      lifestyleCtx,
+      weatherBlock,
+      styleDirectives,
+      existingDirectivesText,
+      conversationBlock,
+    ].filter(Boolean).join('\n');
 
-INTENT: First decide if the client wants outfit suggestions (they're asking what to wear for a specific occasion, today, an event, or asking you to dress them) OR if they're asking a reflective/strategic question (about their style, patterns, what to buy, what's missing, why they feel a certain way).
+    // ── STEP 1: Run 5 specialists in parallel ────────────────────────────────
 
-RESPONSE RULES:
-- Write a response of 1-2 sentences maximum. Direct, warm, specific. Like a stylist who respects the client's time.
-- If recommending something to try, frame it as an experiment: "Try this week: ..." Never over-explain.
-- Extract 1-3 styling directives from what they've said — specific enough to change future recommendations.
+    const specialistCalls: Promise<SpecialistBrief>[] = [
+      runSpecialist(
+        'Fit & Proportion',
+        FIT_SPECIALIST_PERSONA,
+        'Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. Propose combinations that pass all structural tests. Flag any proportion problem you see.',
+        message, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Colour Analysis',
+        COLOUR_ANALYST_PERSONA,
+        'Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.',
+        message, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Fashion Editor',
+        FASHION_EDITOR_PERSONA,
+        'Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated.',
+        message, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Occasion & Context',
+        OCCASION_SPECIALIST_PERSONA,
+        'Assess the occasion or context the client is dressing for against your four axes: formality level, sector/industry culture, geography, and what they are trying to signal. Provide the contextual brief the head stylist needs. Flag any combination that would misread for this context.',
+        message, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Wardrobe Intelligence',
+        WARDROBE_INTELLIGENCE_PERSONA,
+        'Read the wear patterns, category clusters, aspiration-reality gap, and brand projection. Provide the behavioural and identity context the head stylist needs to make a recommendation that serves the client\'s real situation, not just their stated request. Flag the most important pattern or gap you observe.',
+        message, itemListText, sharedContext,
+      ),
+    ];
 
-If intent is OUTFIT: generate exactly 3 outfit suggestions using ONLY items from the wardrobe list above (reference by exact id). Each outfit should be a complete look.
+    const specialistBriefs = await Promise.all(specialistCalls);
 
-Respond with ONLY valid JSON, no markdown:
-{
-  "intent": "outfit|conversation",
-  "directives": ["directive 1"],
-  "acknowledgment": "your 1-2 sentence response",
-  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}]
-}
-
-If intent is "conversation", omit the outfits field entirely.`;
+    // ── STEP 2: Head stylist synthesizes ────────────────────────────────────
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000, route: 'stylist-chat' });
-    const parsed = parseJSON(raw) as { intent?: string; directives: string[]; acknowledgment: string; outfits?: unknown[] };
+    const synthesis = await runHeadStylist(
+      message, personaCtx, brandVoice,
+      styleBriefCtx, lifestyleCtx, weatherBlock,
+      wardrobeBlock, gridBlock,
+      existingDirectivesText, conversationBlock,
+      specialistBriefs, wardrobeImages,
+    );
 
-    const newDirectives: StyleDirective[] = (parsed.directives ?? []).map((instruction) => ({
+    // ── STEP 3: Accessories director finishes the outfits ────────────────────
+
+    let finalOutfits = synthesis.outfits;
+    if (finalOutfits?.length && items?.length) {
+      finalOutfits = await runAccessoriesDirector(
+        finalOutfits, items, styleBriefCtx, lifestyleCtx,
+      );
+    }
+
+    // ── Save directives ──────────────────────────────────────────────────────
+
+    const newDirectives: StyleDirective[] = (synthesis.directives ?? []).map((instruction) => ({
       instruction,
       addedAt: new Date().toISOString(),
     }));
@@ -110,11 +341,13 @@ If intent is "conversation", omit the outfits field entirely.`;
     } catch { /* storage failure — still return the AI response */ }
 
     return NextResponse.json({
-      acknowledgment: parsed.acknowledgment,
+      acknowledgment: synthesis.acknowledgment,
       directives: newDirectives,
       allDirectives: updated,
-      outfits: parsed.outfits ?? undefined,
+      outfits: finalOutfits ?? undefined,
+      consultedSpecialists: specialistBriefs.map((b) => b.role),
     });
+
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Chat failed';
     return NextResponse.json({ error: message }, { status: 500 });
