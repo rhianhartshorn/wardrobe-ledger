@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, type ReactNode } from 'react';
 import { ArrowLeft, Check, Loader2, User, Camera, Trash2 } from 'lucide-react';
 import type { BodyProfile } from '@/lib/body-profile';
 import {
@@ -58,7 +58,7 @@ function SectionHeading({ label, title }: { label: string; title: string }) {
   );
 }
 
-function Pill({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
+function Pill({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button onClick={onClick} className={`flex items-center gap-1.5 border px-3 py-2 text-xs font-light transition-all ${selected ? 'border-[#9B7B3A] bg-[#9B7B3A]/5 text-[#1A1714]' : 'border-[#E5DDD0] text-[#6B6058] hover:border-[#9B7B3A]/50'}`}>
       {selected && <Check size={10} className="text-[#9B7B3A] shrink-0" />}

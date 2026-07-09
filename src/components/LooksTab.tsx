@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown, Layers } from 'lucide-react';
+import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown, Layers, Sparkles, Download } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { OCCASIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -152,7 +152,78 @@ function LogModal({ items, savedLooks, onClose, onLogged }: {
   );
 }
 
-export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+function LookCard({ look, items, hasProfilePhoto, onRemove, onFeedback }: {
+  look: SavedLook; items: WardrobeItem[]; hasProfilePhoto: boolean;
+  onRemove: () => void; onFeedback: (f: 'worked' | 'didnt_work' | null) => void;
+}) {
+  const pieces = look.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
+  const hasRemovedItems = pieces.length < look.itemIds.length;
+  const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnErr, setTryOnErr] = useState('');
+  const [showTryOn, setShowTryOn] = useState(false);
+
+  const getTryOn = async () => {
+    if (tryOnUrl) { setShowTryOn(true); return; }
+    setTryOnLoading(true); setTryOnErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor }));
+      const res = await fetch('/api/outfit-try-on', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: slimItems }) });
+      const data = await res.json() as { outputUrl?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Try-on failed');
+      setTryOnUrl(data.outputUrl ?? null);
+      setShowTryOn(true);
+    } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
+    finally { setTryOnLoading(false); }
+  };
+
+  return (
+    <>
+      <div className={`border bg-white p-3 relative group ${look.feedback === 'worked' ? 'border-green-200' : look.feedback === 'didnt_work' ? 'border-[#E5DDD0] opacity-70' : 'border-[#E5DDD0]'}`}>
+        <button onClick={onRemove} className="absolute top-2 right-2 text-[#D6CFC0] hover:text-red-600 transition-colors">
+          <Trash2 size={13} />
+        </button>
+        <div className="flex gap-1 mb-2 overflow-x-auto">
+          {pieces.map((p) => <ItemThumb key={p.id} item={p} />)}
+        </div>
+        <p className="font-serif text-sm text-[#1A1714] leading-snug pr-4">{look.title}</p>
+        {look.styleReference && <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">{look.styleReference}</p>}
+        {hasRemovedItems && (
+          <p className="text-[9px] text-amber-600 font-light mt-1">{look.itemIds.length - pieces.length} item{look.itemIds.length - pieces.length !== 1 ? 's' : ''} removed from wardrobe</p>
+        )}
+        {hasProfilePhoto && (
+          <div className="mt-2">
+            <button onClick={getTryOn} disabled={tryOnLoading} className="w-full flex items-center justify-center gap-1 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40">
+              {tryOnLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+              Try on
+            </button>
+            {tryOnErr && <p className="text-[9px] text-[#A89F96] font-light mt-1">{tryOnErr}</p>}
+          </div>
+        )}
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-[#F5F2EC]">
+          <p className="text-[9px] uppercase tracking-widest text-[#A89F96] font-light flex-1">Did it work?</p>
+          <button onClick={() => onFeedback(look.feedback === 'worked' ? null : 'worked')} className={`p-1 transition-colors ${look.feedback === 'worked' ? 'text-green-600' : 'text-[#D6CFC0] hover:text-green-500'}`}><ThumbsUp size={13} /></button>
+          <button onClick={() => onFeedback(look.feedback === 'didnt_work' ? null : 'didnt_work')} className={`p-1 transition-colors ${look.feedback === 'didnt_work' ? 'text-red-400' : 'text-[#D6CFC0] hover:text-red-400'}`}><ThumbsDown size={13} /></button>
+        </div>
+      </div>
+
+      {showTryOn && tryOnUrl && (
+        <div className="fixed inset-0 z-50 bg-[#1A1714] flex flex-col">
+          <div className="flex items-center gap-3 px-4 pt-5 pb-4 border-b border-white/10">
+            <p className="flex-1 text-sm text-white font-light">Try-on — {look.title}</p>
+            <a href={tryOnUrl} download="outfit-tryon.jpg" className="text-white/40 hover:text-white transition-colors"><Download size={16} /></a>
+            <button onClick={() => setShowTryOn(false)} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
+          </div>
+          <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+            <img src={tryOnUrl} alt="You in this outfit" className="max-w-full max-h-full object-contain" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+export default function LooksTab({ items, bodyProfile, profileImageFilename }: { items: WardrobeItem[]; bodyProfile?: BodyProfile; profileImageFilename?: string | null }) {
   const [view, setView] = useState<'looks' | 'combinations'>('looks');
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
@@ -235,7 +306,7 @@ export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]
       </div>
 
       {view === 'combinations' && (
-        <CombinationsTab items={items} bodyProfile={bodyProfile} />
+        <CombinationsTab items={items} bodyProfile={bodyProfile} profileImageFilename={profileImageFilename} />
       )}
 
       {view === 'looks' && <>
@@ -265,46 +336,16 @@ export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]
           <p className="text-sm text-[#A89F96] font-light">No saved looks yet — ask your stylist for outfits and heart the ones you love to build your lookbook.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {sortedLooks.map((look) => {
-              const pieces = look.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
-              const hasRemovedItems = pieces.length < look.itemIds.length;
-              const wornCount = lookWearCount(look.id);
-              return (
-                <div key={look.id} className={`border bg-white p-3 relative group ${look.feedback === 'worked' ? 'border-green-200' : look.feedback === 'didnt_work' ? 'border-[#E5DDD0] opacity-70' : 'border-[#E5DDD0]'}`}>
-                  <button onClick={() => removeLook(look.id)} className="absolute top-2 right-2 text-[#D6CFC0] hover:text-red-600 transition-colors">
-                    <Trash2 size={13} />
-                  </button>
-                  <div className="flex gap-1 mb-2 overflow-x-auto">
-                    {pieces.map((p) => <ItemThumb key={p.id} item={p} />)}
-                  </div>
-                  <p className="font-serif text-sm text-[#1A1714] leading-snug pr-4">{look.title}</p>
-                  {look.styleReference && <p className="text-[10px] text-[#9B7B3A] font-light mt-0.5">{look.styleReference}</p>}
-                  {wornCount > 0 && (
-                    <p className="text-[9px] text-[#9B7B3A] font-light mt-1">Worn {wornCount}×</p>
-                  )}
-                  {hasRemovedItems && (
-                    <p className="text-[9px] text-amber-600 font-light mt-1">{look.itemIds.length - pieces.length} item{look.itemIds.length - pieces.length !== 1 ? 's' : ''} removed from wardrobe</p>
-                  )}
-                  <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-[#F5F2EC]">
-                    <p className="text-[9px] uppercase tracking-widest text-[#A89F96] font-light flex-1">Did it work?</p>
-                    <button
-                      onClick={() => setFeedback(look.id, look.feedback === 'worked' ? null : 'worked')}
-                      className={`p-1 transition-colors ${look.feedback === 'worked' ? 'text-green-600' : 'text-[#D6CFC0] hover:text-green-500'}`}
-                      title="This worked"
-                    >
-                      <ThumbsUp size={13} />
-                    </button>
-                    <button
-                      onClick={() => setFeedback(look.id, look.feedback === 'didnt_work' ? null : 'didnt_work')}
-                      className={`p-1 transition-colors ${look.feedback === 'didnt_work' ? 'text-red-400' : 'text-[#D6CFC0] hover:text-red-400'}`}
-                      title="This didn't work"
-                    >
-                      <ThumbsDown size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {sortedLooks.map((look) => (
+              <LookCard
+                key={look.id}
+                look={look}
+                items={items}
+                hasProfilePhoto={Boolean(profileImageFilename)}
+                onRemove={() => removeLook(look.id)}
+                onFeedback={(f) => setFeedback(look.id, f)}
+              />
+            ))}
           </div>
         )}
       </div>

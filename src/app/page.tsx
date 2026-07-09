@@ -197,7 +197,7 @@ export default function WardrobeApp() {
         ) : tab === 'style' ? (
           <StyleTab items={items} bodyProfile={bodyProfile} lifestyleProfile={lifestyleProfile} onOpenLifestyle={() => setShowBodyProfile(true)} fashionCurrency={fashionCurrency ?? undefined} onFashionCurrencyUpdate={setFashionCurrency} />
         ) : (
-          <LooksTab items={items} bodyProfile={bodyProfile} />
+          <LooksTab items={items} bodyProfile={bodyProfile} profileImageFilename={profileImageFilename} />
         )}
 
         {/* Add Item drawer overlay */}

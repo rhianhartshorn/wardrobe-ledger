@@ -18,9 +18,10 @@ type WardrobeItem = {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, items, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
+    const { message, items, weather, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
       message: string;
       items?: WardrobeItem[];
+      weather?: { locationName: string; tempF: number; condition: string; summary: string };
       wardrobeGrid?: string;
       wardrobeGridMapping?: string;
       conversationHistory?: Array<{ role: 'user' | 'stylist'; text: string }>;
@@ -59,6 +60,10 @@ export async function POST(req: NextRequest) {
       ? `\nPREVIOUS CONVERSATION CONTEXT (most recent last):\n${conversationHistory.map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
       : '';
 
+    const weatherBlock = weather
+      ? `\nCURRENT CONDITIONS (${weather.locationName}): ${weather.tempF}°F, ${weather.condition}. ${weather.summary} Factor this into outfit suggestions — fabrics, layering, and weather-appropriateness matter.\n`
+      : '';
+
     const prompt = `You are a personal stylist in a direct one-on-one conversation with your client. You have their full wardrobe in front of you — physically. You can see every piece.
 
 ${personaCtx}
@@ -68,7 +73,7 @@ ${COLOUR_ANALYST_VOICE}
 ${ACCESSORIES_DIRECTOR_VOICE}
 ${brandVoice}
 ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
 The client has just said: "${message}"
 
 INTENT: First decide if the client wants outfit suggestions (they're asking what to wear for a specific occasion, today, an event, or asking you to dress them) OR if they're asking a reflective/strategic question (about their style, patterns, what to buy, what's missing, why they feel a certain way).

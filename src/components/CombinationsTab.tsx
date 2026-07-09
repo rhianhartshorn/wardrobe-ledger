@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Layers, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Layers, ChevronRight, Loader2, RefreshCw, Sparkles, Download, X } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -27,12 +27,31 @@ function Thumb({ item }: { item: WardrobeItem }) {
   );
 }
 
-function ComboCard({ combo, rank, items, onLearnMore }: { combo: Combo; rank: number; items: WardrobeItem[]; onLearnMore: () => void }) {
+function ComboCard({ combo, rank, items, onLearnMore, hasProfilePhoto }: { combo: Combo; rank: number; items: WardrobeItem[]; onLearnMore: () => void; hasProfilePhoto?: boolean }) {
   const pieces = combo.itemIds.map((id) => items.find((i) => i.id === id)).filter((x): x is WardrobeItem => Boolean(x));
   const [showRationale, setShowRationale] = useState(false);
+  const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnErr, setTryOnErr] = useState('');
+  const [showTryOn, setShowTryOn] = useState(false);
+
+  const getTryOn = async () => {
+    if (tryOnUrl) { setShowTryOn(true); return; }
+    setTryOnLoading(true); setTryOnErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor }));
+      const res = await fetch('/api/outfit-try-on', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: slimItems }) });
+      const data = await res.json() as { outputUrl?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Try-on failed');
+      setTryOnUrl(data.outputUrl ?? null);
+      setShowTryOn(true);
+    } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
+    finally { setTryOnLoading(false); }
+  };
+
   if (pieces.length === 0) return null;
 
-  return (
+  return (<>
     <div className="border border-[#E5DDD0] bg-white p-3 relative">
       <span className="absolute top-2.5 right-2.5 font-serif text-base text-[#E5DDD0] leading-none">#{rank}</span>
       <p className="text-[9px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">{combo.category}</p>
@@ -57,11 +76,33 @@ function ComboCard({ combo, rank, items, onLearnMore }: { combo: Combo; rank: nu
       <button onClick={onLearnMore} className="flex items-center gap-1 text-[10px] uppercase tracking-[0.15em] text-[#A89F96] font-light hover:text-[#9B7B3A] transition-colors mt-2">
         Deep dive <ChevronRight size={11} />
       </button>
+      {hasProfilePhoto && (
+        <div className="mt-2 pt-2 border-t border-[#F5F2EC]">
+          <button onClick={getTryOn} disabled={tryOnLoading} className="w-full flex items-center justify-center gap-1 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40">
+            {tryOnLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+            Try on
+          </button>
+          {tryOnErr && <p className="text-[9px] text-[#A89F96] font-light mt-1">{tryOnErr}</p>}
+        </div>
+      )}
     </div>
-  );
+
+    {showTryOn && tryOnUrl && (
+      <div className="fixed inset-0 z-50 bg-[#1A1714] flex flex-col">
+        <div className="flex items-center gap-3 px-4 pt-5 pb-4 border-b border-white/10">
+          <p className="flex-1 text-sm text-white font-light">Try-on — {combo.title}</p>
+          <a href={tryOnUrl} download="outfit-tryon.jpg" className="text-white/40 hover:text-white transition-colors"><Download size={16} /></a>
+          <button onClick={() => setShowTryOn(false)} className="text-white/40 hover:text-white transition-colors"><X size={18} /></button>
+        </div>
+        <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+          <img src={tryOnUrl} alt="You in this combination" className="max-w-full max-h-full object-contain" />
+        </div>
+      </div>
+    )}
+  </>);
 }
 
-export default function CombinationsTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+export default function CombinationsTab({ items, bodyProfile, profileImageFilename }: { items: WardrobeItem[]; bodyProfile?: BodyProfile; profileImageFilename?: string | null }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
@@ -163,6 +204,7 @@ export default function CombinationsTab({ items, bodyProfile }: { items: Wardrob
                   onClose: () => setLearnMore(null),
                 });
               }}
+              hasProfilePhoto={Boolean(profileImageFilename)}
             />
           ))}
         </div>

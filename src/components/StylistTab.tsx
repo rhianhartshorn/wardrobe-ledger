@@ -1,10 +1,13 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, ChevronDown, ChevronUp, Heart, Sparkles, Download, X, Mic, MicOff } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp, Heart, Sparkles, Download, X, Mic, MicOff, ChevronRight, MapPin, Cloud } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import type { BodyProfile } from '@/lib/body-profile';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
 import { slim, buildWardrobeGrid } from './utils';
+import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
+
+type Weather = { locationName: string; tempF: number; condition: string; windMph: number; summary: string };
 
 const PROMPT_SUGGESTIONS = [
   'What should I wear today?',
@@ -28,7 +31,7 @@ type Message = {
   outfits?: ChatOutfit[];
 };
 
-function OutfitMini({ outfit, items, hasProfilePhoto }: { outfit: ChatOutfit; items: WardrobeItem[]; hasProfilePhoto: boolean }) {
+function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: ChatOutfit; items: WardrobeItem[]; hasProfilePhoto: boolean; onLearnMore: (props: LearnMoreProps) => void }) {
   const pieces = outfit.itemIds
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
@@ -123,6 +126,12 @@ function OutfitMini({ outfit, items, hasProfilePhoto }: { outfit: ChatOutfit; it
         {showWhy && outfit.rationale && (
           <p className="text-[11px] text-[#6B6058] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{outfit.rationale}</p>
         )}
+        <button
+          onClick={() => onLearnMore({ type: 'aesthetic', title: outfit.title, context: `Style: ${outfit.styleReference ?? ''}. ${outfit.rationale ?? ''}. Items: ${pieces.map((p) => p.name).join(', ')}`, relevantItems: pieces, onClose: () => {} })}
+          className="flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors mt-2"
+        >
+          Deep dive <ChevronRight size={10} />
+        </button>
         {hasProfilePhoto && (
           <div className="pt-2 mt-1 border-t border-[#F5F2EC]">
             <button
@@ -190,9 +199,39 @@ export default function StylistTab({
   const [err, setErr] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [listening, setListening] = useState(false);
+  const [weather, setWeather] = useState<Weather | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherErr, setWeatherErr] = useState('');
+  const [city, setCity] = useState('');
+  const [showCityInput, setShowCityInput] = useState(false);
+  const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
+
+  const loadWeather = async (qs: string) => {
+    setWeatherLoading(true); setWeatherErr('');
+    try {
+      const res = await fetch(`/api/weather?${qs}`);
+      const data = await res.json() as Weather & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Weather fetch failed');
+      setWeather(data); setShowCityInput(false);
+    } catch {
+      setWeatherErr("Couldn't get weather — enter your city.");
+      setShowCityInput(true);
+    } finally { setWeatherLoading(false); }
+  };
+
+  const detectWeather = () => {
+    setWeatherLoading(true); setWeatherErr('');
+    if (!navigator.geolocation) { setShowCityInput(true); setWeatherLoading(false); return; }
+    const fallback = setTimeout(() => { setShowCityInput(true); setWeatherLoading(false); }, 10000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { clearTimeout(fallback); loadWeather(`lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`); },
+      () => { clearTimeout(fallback); setShowCityInput(true); setWeatherLoading(false); },
+      { timeout: 8000, maximumAge: 300000 }
+    );
+  };
 
   const toggleVoice = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,6 +308,7 @@ export default function StylistTab({
           message: userText,
           items: slim(items),
           bodyProfile,
+          weather: weather ?? undefined,
           wardrobeGrid: grid?.base64,
           wardrobeGridMapping: grid?.mapping,
           conversationHistory,
@@ -295,20 +335,55 @@ export default function StylistTab({
     }
   };
 
+  if (learnMore) return <LearnMorePage {...learnMore} onClose={() => setLearnMore(null)} />;
+
   return (
     <div className="flex flex-col pt-2">
       {/* Header */}
-      <div className="mb-5">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
-          <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
+      <div className="mb-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
+            <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
+          </div>
+          {/* Weather widget */}
+          {weather ? (
+            <div className="text-right">
+              <p className="text-[10px] text-[#9B7B3A] font-light uppercase tracking-widest">{weather.locationName}</p>
+              <p className="text-xs text-[#6B6058] font-light">{weather.tempF}°F · {weather.condition}</p>
+            </div>
+          ) : (
+            <button
+              onClick={detectWeather}
+              disabled={weatherLoading}
+              className="flex items-center gap-1 text-[9px] uppercase tracking-widest text-[#A89F96] font-light hover:text-[#9B7B3A] transition-colors disabled:opacity-40 mt-1"
+            >
+              {weatherLoading ? <Loader2 size={10} className="animate-spin" /> : <MapPin size={10} />}
+              {weatherLoading ? 'Getting weather...' : 'Add weather'}
+            </button>
+          )}
         </div>
-        </div>
+
+        {/* City input fallback */}
+        {showCityInput && !weather && (
+          <div className="flex gap-2 mt-2">
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Enter your city..."
+              className="flex-1 border border-[#E5DDD0] px-2.5 py-1.5 text-xs font-light focus:outline-none focus:border-[#9B7B3A]"
+              onKeyDown={(e) => { if (e.key === 'Enter' && city.trim()) loadWeather(`city=${encodeURIComponent(city.trim())}`); }}
+            />
+            <button onClick={() => loadWeather(`city=${encodeURIComponent(city.trim())}`)} disabled={!city.trim()} className="border border-[#E5DDD0] px-3 py-1.5 text-[9px] uppercase tracking-widest text-[#6B6058] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40">Go</button>
+          </div>
+        )}
+        {weatherErr && <p className="text-[10px] text-[#A89F96] font-light mt-1">{weatherErr}</p>}
+
         {directives.length > 0 && (
           <>
             <button
               onClick={() => setShowDirectives((v) => !v)}
-              className="flex items-center gap-1.5 text-[10px] text-[#A89F96] font-light mt-1.5 hover:text-[#6B6058] transition-colors"
+              className="flex items-center gap-1.5 text-[10px] text-[#A89F96] font-light mt-2 hover:text-[#6B6058] transition-colors"
             >
               {showDirectives ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
               {directives.length} active instruction{directives.length !== 1 ? 's' : ''}
@@ -369,7 +444,7 @@ export default function StylistTab({
               {msg.outfits && msg.outfits.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {msg.outfits.map((outfit, j) => (
-                    <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} />
+                    <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
                   ))}
                 </div>
               )}
