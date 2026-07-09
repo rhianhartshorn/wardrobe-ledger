@@ -6,7 +6,7 @@ import {
   getLifestyleContext, getStyleDirectives,
   FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
   OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA, ACCESSORIES_DIRECTOR_PERSONA,
-  STYLIST_2026_LENS, BRAND_VOICE_RULES,
+  STYLIST_2026_LENS, BRAND_VOICE_RULES, SHARED_OPERATING_PRINCIPLES,
 } from '@/lib/stylist';
 
 export type StyleDirective = {
@@ -41,10 +41,14 @@ type WardrobeItem = {
 
 type SpecialistBrief = {
   role: string;
-  type: 'candidates' | 'advisory';
+  verdict: 'clear' | 'concern' | 'trade-off' | 'opportunity' | 'blocking';
+  confidence: 'high' | 'medium' | 'low';
+  observation: string;
+  mechanism: string;
+  recommendation: string;
+  trade_off: string;
+  abstain: boolean;
   candidates?: Array<{ itemIds: string[]; note: string }>;
-  advisory?: string;
-  flag?: string;
 };
 
 type ChatOutfit = {
@@ -69,7 +73,9 @@ async function runSpecialist(
 ): Promise<SpecialistBrief> {
   const prompt = `${persona}
 
-You are one specialist on a private styling team. The head stylist will synthesize all specialist inputs into the final recommendation to the client — the client never sees your brief directly.
+${SHARED_OPERATING_PRINCIPLES}
+
+You are one specialist on a private styling team. The head stylist synthesizes all specialist briefs into the final recommendation — the client never sees your brief directly.
 
 ${contextBlock}
 
@@ -78,29 +84,37 @@ ${itemListText || '(No wardrobe items yet)'}
 
 CLIENT'S REQUEST: "${message}"
 
-YOUR SPECIFIC REMIT FOR THIS BRIEF:
-${remit}
+YOUR REMIT: ${remit}
 
-If the client is asking for outfit recommendations (what to wear, outfit for an occasion, dress me for X): propose 1-2 specific combinations from the wardrobe above that pass your specialist criteria (reference items by exact id). Be specific about why each combination passes your test.
+Return a structured specialist brief. Be honest about confidence. Abstain if you cannot make a confident judgement from the available information — do not manufacture confidence.
 
-If the client is asking a strategic or conversational question (what's missing, style analysis, shopping advice, general styling question): provide your specialist analysis of what you observe — what the wardrobe data reveals from your expert lens.
+Use verdicts precisely:
+— clear: no issue in your domain
+— concern: a problem worth noting but not fatal
+— trade-off: two valid options with real costs on each side
+— opportunity: a specific improvement available
+— blocking: a material failure that must change before the outfit works
 
-In either case: name one specific flag — a structural concern, a colour problem, an aesthetic failure, a contextual mismatch, or a behavioural pattern — that the head stylist must be aware of.
+If the client is asking for outfit recommendations, include 1-2 candidate combinations (by exact item id) that pass your specific criteria.
 
 Respond with ONLY valid JSON, no markdown:
 {
-  "type": "candidates|advisory",
-  "candidates": [{"itemIds": ["id1","id2","id3"], "note": "max 20 words — the specific reason this passes your specialist test"}],
-  "advisory": "max 40 words — your specialist analysis (omit if type is candidates)",
-  "flag": "max 25 words — one specific concern from your specialist domain"
+  "verdict": "clear|concern|trade-off|opportunity|blocking",
+  "confidence": "high|medium|low",
+  "observation": "max 30 words — what you can actually see or know, no invented details",
+  "mechanism": "one word or phrase — proportion|colour|context|coherence|identity|practicality|visual-weight",
+  "recommendation": "max 20 words — one precise action, or 'no change needed'",
+  "trade_off": "max 20 words — what would be lost by making this change",
+  "abstain": false,
+  "candidates": [{"itemIds": ["id1","id2","id3"], "note": "max 15 words — why this passes your specific test"}]
 }`;
 
   try {
-    const raw = await callClaude({ prompt, maxTokens: 350, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
+    const raw = await callClaude({ prompt, maxTokens: 400, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
     const parsed = parseJSON(raw) as Omit<SpecialistBrief, 'role'>;
     return { role, ...parsed };
   } catch {
-    return { role, type: 'advisory', advisory: 'Brief unavailable.', flag: undefined };
+    return { role, verdict: 'clear', confidence: 'low', observation: 'Brief unavailable.', mechanism: '', recommendation: '', trade_off: '', abstain: true };
   }
 }
 
@@ -123,15 +137,35 @@ async function runHeadStylist(
   wardrobeImages?: Array<{ base64: string }>,
 ): Promise<{ intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] }> {
 
+  // Classify the tension pattern across briefs
+  const verdicts = specialistBriefs.filter((b) => !b.abstain).map((b) => b.verdict);
+  const hasBlocking = verdicts.includes('blocking');
+  const concernCount = verdicts.filter((v) => v === 'concern').length;
+  const tensionClass = hasBlocking
+    ? 'FATAL — at least one specialist has flagged a blocking issue'
+    : concernCount >= 3
+    ? 'DOMINANT — multiple concerns; the recommendation must address these before aesthetics'
+    : concernCount >= 1
+    ? 'MINOR — one concern; acknowledge it but do not let it derail the look'
+    : verdicts.includes('trade-off')
+    ? 'PRODUCTIVE TENSION — conflicting valid options; make a clear call and explain the trade'
+    : 'CLEAR — no material concerns; proceed with confidence';
+
   const briefsBlock = specialistBriefs.map((b) => {
-    const parts = [`── ${b.role.toUpperCase()} ──`];
-    if (b.type === 'candidates' && b.candidates?.length) {
+    if (b.abstain) return `── ${b.role.toUpperCase()} ── [abstained — insufficient information]`;
+    const parts = [
+      `── ${b.role.toUpperCase()} ──`,
+      `Verdict: ${b.verdict.toUpperCase()} (confidence: ${b.confidence})`,
+      `Observation: ${b.observation}`,
+      `Mechanism: ${b.mechanism}`,
+      `Recommendation: ${b.recommendation}`,
+      `Trade-off: ${b.trade_off}`,
+    ];
+    if (b.candidates?.length) {
       b.candidates.forEach((c, i) => {
-        parts.push(`Candidate ${i + 1}: items [${c.itemIds.join(', ')}] — ${c.note}`);
+        parts.push(`Candidate ${i + 1}: [${c.itemIds.join(', ')}] — ${c.note}`);
       });
     }
-    if (b.advisory) parts.push(`Analysis: ${b.advisory}`);
-    if (b.flag) parts.push(`Flag: ${b.flag}`);
     return parts.join('\n');
   }).join('\n\n');
 
@@ -142,7 +176,7 @@ ${brandVoice}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
-Your team has reviewed the client's request. Their briefs are below. You synthesize these into the final recommendation.
+Tension classification: ${tensionClass}
 
 ${briefsBlock}
 
@@ -158,9 +192,9 @@ DO NOT EXTRACT: "wants outfits featuring the beige blazer", "asked for 3 looks t
 
 If the message contains no permanent preference — only a one-time request or contextual ask — return an empty directives array. Never log transient requests as directives.
 
-3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks.
+3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks. If tension class is FATAL or DOMINANT, address the core issue head-on — do not paper over it with outfit suggestions.
 
-4. If intent is OUTFIT: Select the best 3 outfits from the specialist candidates above, or compose outfits yourself if the specialist candidates are insufficient. Use ONLY items from the wardrobe. Each outfit must be COMPLETE — a wearable look a person could walk out the door in.
+4. If intent is OUTFIT: Synthesize the specialist candidates above into the best 3 outfits. Where specialists conflict, make a clear call — explain the trade-off in the rationale. Use ONLY items from the wardrobe. Each outfit must be COMPLETE — a wearable look a person could walk out the door in.
 
 COMPLETENESS RULE (mandatory): Every outfit requires (a) a base layer top — shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit — OR a dress/jumpsuit that covers both top and bottom; AND (b) a bottom — trousers, jeans, skirt — OR the dress/jumpsuit. If a layering piece is included (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt), the base layer top MUST also be included in itemIds. A cardigan + trousers with no top is not a complete outfit. A blazer + skirt with no blouse is not complete.
 
