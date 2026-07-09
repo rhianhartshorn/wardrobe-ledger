@@ -28,8 +28,24 @@ type Combination = {
   accessorizing?: string;
 };
 
-// Hard validation — only enforces completeness. Creative layering (skirt over dress,
-// jumper over slip, etc.) is left to stylist team judgment.
+// Keywords that indicate a piece is a layering/outer item requiring a base layer underneath
+const LAYERING_KEYWORDS = [
+  'cardigan', 'blazer', 'jacket', 'coat', 'gilet', 'vest', 'waistcoat',
+  'kimono', 'overshirt', 'shacket', 'hoodie', 'zip-up', 'sweater', 'jumper',
+  'pullover', 'sweatshirt', 'fleece', 'anorak', 'parka', 'trench', 'cagoule',
+];
+
+function isLayeringPiece(item: WardrobeItem): boolean {
+  const name = item.name.toLowerCase();
+  return item.category === 'Outerwear' || LAYERING_KEYWORDS.some((kw) => name.includes(kw));
+}
+
+function isBaselayerTop(item: WardrobeItem): boolean {
+  if (item.category !== 'Top') return false;
+  return !isLayeringPiece(item);
+}
+
+// Hard validation — enforces that every outfit is actually wearable as a complete look.
 function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolean {
   const pieces = combo.itemIds
     .map((id) => items.find((i) => i.id === id))
@@ -37,14 +53,22 @@ function isPhysicallyWearable(combo: Combination, items: WardrobeItem[]): boolea
 
   if (pieces.length === 0) return false;
 
-  const cats = pieces.map((p) => p.category);
+  const hasDressOrJumpsuit = pieces.some((p) => p.category === 'Dress/One-piece');
+  const hasBottom = pieces.some((p) => p.category === 'Bottom');
+  const hasBaseLayerTop = pieces.some((p) => isBaselayerTop(p));
+  const hasLayeringTop = pieces.some((p) => isLayeringPiece(p));
 
-  // Must have something covering the top half
-  const hasTopCoverage = cats.some((c) => c === 'Top' || c === 'Dress/One-piece' || c === 'Outerwear');
-  // Must have something covering the bottom half
-  const hasBottomCoverage = cats.some((c) => c === 'Bottom' || c === 'Dress/One-piece');
+  // A dress/jumpsuit covers both top and bottom — valid alone or with a layering piece
+  if (hasDressOrJumpsuit) return true;
 
-  return hasTopCoverage && hasBottomCoverage;
+  // Must have a bottom
+  if (!hasBottom) return false;
+
+  // Must have a base layer top. A layering piece (cardigan, blazer, jacket) alone is NOT sufficient.
+  if (!hasBaseLayerTop && hasLayeringTop) return false;
+  if (!hasBaseLayerTop && !hasLayeringTop) return false;
+
+  return true;
 }
 
 export async function POST(req: NextRequest) {
@@ -98,12 +122,30 @@ Select up to ${maxCombos} complete outfit combinations from this wardrobe, ranke
 
 ${STYLIST_REJECTION_CRITERIA}
 
-OUTFIT RULES:
-1. Every outfit must achieve full coverage — something on top (Top, Dress/One-piece, or Outerwear) AND something on the bottom (Bottom or Dress/One-piece). A top with no bottom is not an outfit.
-2. Creative layering is encouraged where it genuinely works — a skirt over a slip dress, a longline knit over a shirt-dress, a fine-knit under a blazer. These are editorial moves, not mistakes. Use your judgment: does this specific combination of pieces make sense together, or is it just two items that can't realistically be worn at the same time?
-3. If the wardrobe has no bottoms and no dresses/jumpsuits, return an empty combinations array.
-4. ACCESSORY RULE: If an accessory (belt, jewellery, scarf, bag) or footwear item from the wardrobe belongs in this look, it MUST appear in itemIds — never reference a wardrobe item in accessorizing without including it in itemIds first. Only suggest items that exist in the wardrobe list above.
-5. Rationale override: the 20-word limit in BRAND VOICE does not apply here — combination rationales should be 1–2 sentences and name the proportion logic, texture tension, or colour reasoning specifically. Brevity at the cost of precision is worse than a complete explanation.
+OUTFIT COMPLETENESS — NON-NEGOTIABLE:
+Every outfit must be a complete, wearable look. Before including any combination, ask: could a person walk out of the door in this? If not, it does not appear.
+
+A complete outfit requires ALL of the following:
+1. A BASE LAYER TOP — a shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit worn directly against the skin. OR a dress/jumpsuit/co-ord that covers both top and bottom.
+2. A BOTTOM — trousers, jeans, shorts, skirt. OR the dress/jumpsuit above.
+3. If the outfit includes a LAYERING PIECE — cardigan, blazer, jacket, coat, overshirt, hoodie, jumper, sweatshirt, gilet, kimono — a base layer top MUST also be included. A cardigan with trousers is not a complete outfit. A blazer with a skirt is not a complete outfit. Include the shirt, blouse, or t-shirt that goes underneath.
+
+PERMITTED LAYERING COMBINATIONS (examples):
+- T-shirt + jeans + blazer ✓
+- Blouse + trousers + cardigan ✓
+- Slip dress + blazer ✓ (dress = base layer)
+- Fine-knit + wide-leg trousers ✓ (if the knit is a base layer, not a cardigan)
+- Shirt-dress + coat ✓
+
+NOT PERMITTED:
+- Cardigan + trousers (no base layer) ✗
+- Blazer + skirt (no base layer) ✗
+- Coat + jeans (no base layer) ✗
+
+ADDITIONAL OUTFIT RULES:
+4. If the wardrobe has no bottoms and no dresses/jumpsuits, return an empty combinations array.
+5. ACCESSORY RULE: If an accessory or footwear item from the wardrobe belongs in this look, it MUST appear in itemIds. Only suggest items that exist in the wardrobe list above.
+6. Rationale override: combination rationales should be 1–2 sentences and name the proportion logic, texture tension, or colour reasoning specifically.
 
 A shorter list of genuinely great outfits beats padding with mediocre or incomplete ones.
 

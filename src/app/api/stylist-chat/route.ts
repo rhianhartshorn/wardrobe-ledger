@@ -14,6 +14,23 @@ export type StyleDirective = {
   addedAt: string;
 };
 
+const LAYERING_KEYWORDS = [
+  'cardigan','blazer','jacket','coat','gilet','vest','waistcoat','kimono',
+  'overshirt','shacket','hoodie','zip-up','sweater','jumper','pullover',
+  'sweatshirt','fleece','anorak','parka','trench',
+];
+
+function isCompleteOutfit(itemIds: string[], items: WardrobeItem[]): boolean {
+  const pieces = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as WardrobeItem[];
+  if (pieces.length === 0) return false;
+  if (pieces.some((p) => p.category === 'Dress/One-piece')) return true;
+  const hasBottom = pieces.some((p) => p.category === 'Bottom');
+  if (!hasBottom) return false;
+  const isLayering = (p: WardrobeItem) => p.category === 'Outerwear' || LAYERING_KEYWORDS.some((kw) => p.name.toLowerCase().includes(kw));
+  const hasBaseLayer = pieces.some((p) => p.category === 'Top' && !isLayering(p));
+  return hasBaseLayer;
+}
+
 type WardrobeItem = {
   id: string; name: string; category: string;
   primaryColor: string; secondaryColor: string;
@@ -138,7 +155,11 @@ The client has said: "${message}"
 
 3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
-4. If intent is OUTFIT: Select the best 3 outfits from the specialist candidates above, or compose outfits yourself if the specialist candidates are insufficient. Use ONLY items from the wardrobe. Each outfit should pass the fit specialist's proportion test, respect the colour profile, and be aesthetically coherent. If two specialists conflict, adjudicate and note why in the rationale. Each rationale: max 20 words, begins with Try or Wear, explains the specific logic.
+4. If intent is OUTFIT: Select the best 3 outfits from the specialist candidates above, or compose outfits yourself if the specialist candidates are insufficient. Use ONLY items from the wardrobe. Each outfit must be COMPLETE — a wearable look a person could walk out the door in.
+
+COMPLETENESS RULE (mandatory): Every outfit requires (a) a base layer top — shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit — OR a dress/jumpsuit that covers both top and bottom; AND (b) a bottom — trousers, jeans, skirt — OR the dress/jumpsuit. If a layering piece is included (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt), the base layer top MUST also be included in itemIds. A cardigan + trousers with no top is not a complete outfit. A blazer + skirt with no blouse is not complete.
+
+Each rationale: max 20 words, begins with Try or Wear, explains the specific logic.
 
 Respond with ONLY valid JSON, no markdown:
 {
@@ -323,9 +344,13 @@ export async function POST(req: NextRequest) {
 
     let finalOutfits = synthesis.outfits;
     if (finalOutfits?.length && items?.length) {
-      finalOutfits = await runAccessoriesDirector(
-        finalOutfits, items, styleBriefCtx, lifestyleCtx,
-      );
+      // Filter incomplete outfits before sending to accessories director
+      finalOutfits = finalOutfits.filter((o) => isCompleteOutfit(o.itemIds, items));
+      if (finalOutfits.length) {
+        finalOutfits = await runAccessoriesDirector(
+          finalOutfits, items, styleBriefCtx, lifestyleCtx,
+        );
+      }
     }
 
     // ── Save directives ──────────────────────────────────────────────────────
