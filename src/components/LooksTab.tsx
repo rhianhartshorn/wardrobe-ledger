@@ -465,12 +465,41 @@ export default function LooksTab({ items, bodyProfile, profileImageFilename }: {
   const todayStr = new Date().toISOString().slice(0, 10);
   const loggedToday = journal.some((e) => e.date === todayStr);
 
-  // Sort: worked first, then by date saved desc
-  const sortedLooks = [...savedLooks].sort((a, b) => {
-    if (a.feedback === 'worked' && b.feedback !== 'worked') return -1;
-    if (b.feedback === 'worked' && a.feedback !== 'worked') return 1;
-    return b.savedAt - a.savedAt;
-  });
+  // Derive formality from look's items — take the highest-ranking formality among pieces
+  const FORMALITY_RANK: Record<string, number> = {
+    'Formal': 5, 'Business': 4, 'Business Casual': 3,
+    'Smart Casual': 2, 'Casual': 1, 'Athletic': 0, 'Loungewear': 0,
+  };
+  const FORMALITY_GROUPS = ['Formal', 'Business', 'Business Casual', 'Smart Casual', 'Casual', 'Athletic'];
+
+  const lookFormality = (look: SavedLook): string => {
+    const pieces = look.itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as WardrobeItem[];
+    if (!pieces.length) return 'Casual';
+    const best = pieces.reduce((top, p) => {
+      const rank = FORMALITY_RANK[p.formality] ?? 1;
+      return rank > (FORMALITY_RANK[top] ?? 1) ? p.formality : top;
+    }, pieces[0].formality);
+    // Normalise to a group label
+    if ((FORMALITY_RANK[best] ?? 1) >= 4) return 'Business';
+    if ((FORMALITY_RANK[best] ?? 1) === 3) return 'Business Casual';
+    if ((FORMALITY_RANK[best] ?? 1) === 2) return 'Smart Casual';
+    if ((FORMALITY_RANK[best] ?? 1) <= 0) return 'Athletic';
+    if (best === 'Formal') return 'Formal';
+    return 'Casual';
+  };
+
+  const feedbackRank = (l: SavedLook) =>
+    l.feedback === 'worked' ? 0 : l.feedback === 'didnt_work' ? 2 : 1;
+
+  // Group by formality, sort within each group: confirmed → untested → retired, then by savedAt
+  const looksByFormality: Array<{ label: string; looks: SavedLook[] }> = FORMALITY_GROUPS
+    .map((label) => ({
+      label,
+      looks: savedLooks
+        .filter((l) => lookFormality(l) === label)
+        .sort((a, b) => feedbackRank(a) - feedbackRank(b) || b.savedAt - a.savedAt),
+    }))
+    .filter((g) => g.looks.length > 0);
 
   if (!loaded) {
     return <div className="flex justify-center py-24"><Loader2 className="animate-spin text-[#A89F96]" size={24} /></div>;
@@ -515,25 +544,32 @@ export default function LooksTab({ items, bodyProfile, profileImageFilename }: {
         </button>
       </div>
 
-      {/* Saved looks */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
+      {/* Saved looks — grouped by formality, ordered by feedback within each group */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
           <Heart size={13} className="text-[#9B7B3A]" />
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Saved looks</p>
         </div>
         {savedLooks.length === 0 ? (
           <p className="text-sm text-[#A89F96] font-light">No saved looks yet — ask your stylist for outfits and heart the ones you love to build your lookbook.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {sortedLooks.map((look) => (
-              <LookCard
-                key={look.id}
-                look={look}
-                items={items}
-                hasProfilePhoto={Boolean(profileImageFilename)}
-                onRemove={() => removeLook(look.id)}
-                onFeedback={(f) => setFeedback(look.id, f)}
-              />
+          <div className="space-y-6">
+            {looksByFormality.map(({ label, looks }) => (
+              <div key={label}>
+                <p className="text-[9px] uppercase tracking-[0.22em] text-[#A89F96] font-light mb-2.5 border-b border-[#F0EBE3] pb-1.5">{label}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {looks.map((look) => (
+                    <LookCard
+                      key={look.id}
+                      look={look}
+                      items={items}
+                      hasProfilePhoto={Boolean(profileImageFilename)}
+                      onRemove={() => removeLook(look.id)}
+                      onFeedback={(f) => setFeedback(look.id, f)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
