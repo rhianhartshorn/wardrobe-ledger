@@ -193,10 +193,13 @@ export default function StylistTab({
   const [listening, setListening] = useState(false);
   const selfieRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
 
   const toggleVoice = () => {
-    const SR = (window as typeof window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
     if (!SR) { setErr('Voice input is not supported in this browser — try Chrome or Safari.'); return; }
 
     if (listening) {
@@ -204,7 +207,8 @@ export default function StylistTab({
       return;
     }
 
-    const rec = new SR();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rec = new SR() as any;
     rec.continuous = false;
     rec.interimResults = true;
     rec.lang = 'en-US';
@@ -212,7 +216,8 @@ export default function StylistTab({
     let finalTranscript = '';
 
     rec.onstart = () => setListening(true);
-    rec.onresult = (e: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const t = e.results[i][0].transcript;
@@ -225,7 +230,6 @@ export default function StylistTab({
     rec.onend = () => {
       setListening(false);
       if (finalTranscript.trim()) {
-        // Small delay so state settles, then send
         setTimeout(() => send(finalTranscript.trim()), 100);
       }
     };
