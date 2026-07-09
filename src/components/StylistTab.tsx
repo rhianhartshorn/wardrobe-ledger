@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, ChevronDown, ChevronUp, Heart } from 'lucide-react';
+import { Send, Loader2, ChevronDown, ChevronUp, Heart, Camera, Sparkles, Download, X } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import type { BodyProfile } from '@/lib/body-profile';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
-import { slim, buildWardrobeGrid } from './utils';
+import { slim, buildWardrobeGrid, compressImage } from './utils';
 
 const PROMPT_SUGGESTIONS = [
   'What should I wear today?',
@@ -28,13 +28,17 @@ type Message = {
   outfits?: ChatOutfit[];
 };
 
-function OutfitMini({ outfit, items }: { outfit: ChatOutfit; items: WardrobeItem[] }) {
+function OutfitMini({ outfit, items, hasProfilePhoto }: { outfit: ChatOutfit; items: WardrobeItem[]; hasProfilePhoto: boolean }) {
   const pieces = outfit.itemIds
     .map((id) => items.find((i) => i.id === id))
     .filter((x): x is WardrobeItem => Boolean(x));
   const [showWhy, setShowWhy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tryOnUrl, setTryOnUrl] = useState<string | null>(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnErr, setTryOnErr] = useState('');
+  const [showTryOn, setShowTryOn] = useState(false);
 
   const save = async () => {
     if (saved || saving || pieces.length === 0) return;
@@ -55,9 +59,34 @@ function OutfitMini({ outfit, items }: { outfit: ChatOutfit; items: WardrobeItem
     finally { setSaving(false); }
   };
 
+  const getTryOn = async () => {
+    if (tryOnUrl) { setShowTryOn(true); return; }
+    setTryOnLoading(true); setTryOnErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor }));
+      const res = await fetch('/api/outfit-try-on', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slimItems }),
+      });
+      const data = await res.json() as { outputUrl?: string; error?: string };
+      if (!res.ok) {
+        const msg = data.error ?? 'Failed';
+        if (msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('billing')) {
+          throw new Error('Try-on needs Google AI billing enabled on the API key.');
+        }
+        throw new Error(msg);
+      }
+      setTryOnUrl(data.outputUrl ?? null);
+      setShowTryOn(true);
+    } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
+    finally { setTryOnLoading(false); }
+  };
+
   if (pieces.length === 0) return null;
 
   return (
+    <>
     <div className="border border-[#E5DDD0] bg-white">
       <div className="flex items-center gap-1 overflow-x-auto p-2">
         {pieces.map((p) => (
@@ -94,17 +123,64 @@ function OutfitMini({ outfit, items }: { outfit: ChatOutfit; items: WardrobeItem
         {showWhy && outfit.rationale && (
           <p className="text-[11px] text-[#6B6058] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{outfit.rationale}</p>
         )}
+        {hasProfilePhoto && (
+          <div className="pt-2 mt-1 border-t border-[#F5F2EC]">
+            <button
+              onClick={getTryOn}
+              disabled={tryOnLoading}
+              className="w-full flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+            >
+              {tryOnLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+              Try on full look
+            </button>
+            {tryOnErr && <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">{tryOnErr}</p>}
+          </div>
+        )}
       </div>
     </div>
+
+    {showTryOn && tryOnUrl && (
+      <div className="fixed inset-0 z-50 bg-[#1A1714] flex flex-col">
+        <div className="flex items-center gap-3 px-4 pt-5 pb-4 border-b border-white/10">
+          <p className="flex-1 text-sm text-white font-light">Full outfit try-on</p>
+          <a href={tryOnUrl} download="outfit-tryon.jpg" className="text-white/40 hover:text-white transition-colors" aria-label="Download">
+            <Download size={16} />
+          </a>
+          <button onClick={() => setShowTryOn(false)} className="text-white/40 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+          <img src={tryOnUrl} alt="You in this outfit" className="max-w-full max-h-full object-contain" />
+        </div>
+        <div className="px-4 pb-6 pt-3 border-t border-white/10">
+          <button
+            onClick={() => { save(); setShowTryOn(false); }}
+            disabled={saving || saved}
+            className="w-full py-3 text-xs tracking-[0.15em] uppercase font-light flex items-center justify-center gap-2 transition-colors disabled:opacity-40 border border-white/30 text-white hover:bg-white/10"
+          >
+            <Heart size={13} className={saved ? 'fill-[#9B7B3A] text-[#9B7B3A]' : 'text-white'} />
+            {saved ? 'Saved to your looks' : 'Save this look'}
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
 export default function StylistTab({
   items,
   bodyProfile,
+  profileImageUrl,
+  profileImageFilename,
+  onProfileChange,
 }: {
   items: WardrobeItem[];
   bodyProfile?: BodyProfile;
+  profileImageUrl: string | null;
+  profileImageFilename: string | null;
+  onProfileChange: (url: string | null, filename: string | null) => void;
 }) {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -113,7 +189,24 @@ export default function StylistTab({
   const [showDirectives, setShowDirectives] = useState(false);
   const [err, setErr] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const selfieRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const uploadSelfie = async (file: File) => {
+    setUploadingPhoto(true);
+    try {
+      const dataUrl = await compressImage(file, 1024, 0.82, 900_000);
+      const res = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: dataUrl }),
+      });
+      const data = await res.json() as { imageUrl?: string; imageFilename?: string };
+      if (res.ok) onProfileChange(data.imageUrl ?? null, data.imageFilename ?? null);
+    } catch { /* ignore */ }
+    finally { setUploadingPhoto(false); }
+  };
 
   useEffect(() => {
     fetch('/api/stylist-chat')
@@ -175,10 +268,43 @@ export default function StylistTab({
 
   return (
     <div className="flex flex-col pt-2">
+      {/* Hidden file input */}
+      <input
+        ref={selfieRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadSelfie(f); e.target.value = ''; }}
+      />
+
       {/* Header */}
       <div className="mb-5">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
-        <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Personal styling atelier</p>
+            <h2 className="font-serif text-2xl text-[#1A1714] mt-0.5">Your Stylist</h2>
+          </div>
+          {/* Profile photo for try-on */}
+          <button
+            onClick={() => selfieRef.current?.click()}
+            disabled={uploadingPhoto}
+            title={profileImageUrl ? 'Change your photo for try-on' : 'Add your photo to try on outfits'}
+            className="flex flex-col items-center gap-1 mt-1 group"
+          >
+            {profileImageUrl ? (
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#9B7B3A] group-hover:border-[#8A6B2E] transition-colors">
+                <img src={profileImageUrl} alt="Your photo" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full border border-dashed border-[#E5DDD0] flex items-center justify-center group-hover:border-[#9B7B3A] transition-colors">
+                {uploadingPhoto ? <Loader2 size={14} className="animate-spin text-[#A89F96]" /> : <Camera size={14} className="text-[#A89F96] group-hover:text-[#9B7B3A] transition-colors" />}
+              </div>
+            )}
+            <span className="text-[8px] uppercase tracking-widest text-[#A89F96] group-hover:text-[#9B7B3A] transition-colors font-light">
+              {profileImageUrl ? 'Try-on' : 'Add photo'}
+            </span>
+          </button>
+        </div>
         {directives.length > 0 && (
           <>
             <button
@@ -244,7 +370,7 @@ export default function StylistTab({
               {msg.outfits && msg.outfits.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {msg.outfits.map((outfit, j) => (
-                    <OutfitMini key={j} outfit={outfit} items={items} />
+                    <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} />
                   ))}
                 </div>
               )}

@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Heart, BookOpen, Loader2, Check, X, CalendarCheck, Trash2, ThumbsUp, ThumbsDown, Layers } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { OCCASIONS } from './constants';
 import type { BodyProfile } from '@/lib/body-profile';
+import CombinationsTab from './CombinationsTab';
 
 export type SavedLook = {
   id: string;
@@ -151,7 +152,8 @@ function LogModal({ items, savedLooks, onClose, onLogged }: {
   );
 }
 
-export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+export default function LooksTab({ items, bodyProfile }: { items: WardrobeItem[]; bodyProfile?: BodyProfile }) {
+  const [view, setView] = useState<'looks' | 'combinations'>('looks');
   const [savedLooks, setSavedLooks] = useState<SavedLook[]>([]);
   const [journal, setJournal] = useState<JournalEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -216,6 +218,27 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
 
   return (
     <div className="space-y-8">
+      {/* View toggle */}
+      <div className="flex gap-0 border border-[#E5DDD0]">
+        <button
+          onClick={() => setView('looks')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] uppercase tracking-[0.15em] font-light transition-colors ${view === 'looks' ? 'bg-[#1A1714] text-white' : 'text-[#6B6058] hover:text-[#1A1714]'}`}
+        >
+          <Heart size={11} /> Looks
+        </button>
+        <button
+          onClick={() => setView('combinations')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] uppercase tracking-[0.15em] font-light transition-colors ${view === 'combinations' ? 'bg-[#1A1714] text-white' : 'text-[#6B6058] hover:text-[#1A1714]'}`}
+        >
+          <Layers size={11} /> Combinations
+        </button>
+      </div>
+
+      {view === 'combinations' && (
+        <CombinationsTab items={items} bodyProfile={bodyProfile} />
+      )}
+
+      {view === 'looks' && <>
       {/* Daily journal prompt */}
       <div className="border border-[#E5DDD0] bg-[#1A1714] text-white p-5">
         <div className="flex items-center gap-2 mb-1">
@@ -239,7 +262,7 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
           <p className="text-[10px] uppercase tracking-[0.2em] text-[#6B6058] font-light">Saved looks</p>
         </div>
         {savedLooks.length === 0 ? (
-          <p className="text-sm text-[#A89F96] font-light">No saved looks yet — heart an outfit in the Outfit tab to build your lookbook.</p>
+          <p className="text-sm text-[#A89F96] font-light">No saved looks yet — ask your stylist for outfits and heart the ones you love to build your lookbook.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {sortedLooks.map((look) => {
@@ -316,6 +339,8 @@ export default function LooksTab({ items, bodyProfile: _bodyProfile }: { items: 
           </div>
         )}
       </div>
+
+      </>}
 
       {showLog && (
         <LogModal

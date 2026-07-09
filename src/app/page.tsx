@@ -193,7 +193,13 @@ export default function WardrobeApp() {
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
         ) : tab === 'stylist' ? (
-          <StylistTab items={items} bodyProfile={bodyProfile} />
+          <StylistTab
+            items={items}
+            bodyProfile={bodyProfile}
+            profileImageUrl={profileImageUrl}
+            profileImageFilename={profileImageFilename}
+            onProfileChange={(url, filename) => { setProfileImageUrl(url); setProfileImageFilename(filename); }}
+          />
         ) : tab === 'closet' ? (
           <ClosetTab items={items} onRemove={removeItem} onWearLogged={updateWearCount} onEdit={updateItem} bodyProfile={bodyProfile} fashionCurrency={fashionCurrency ?? undefined} />
         ) : tab === 'style' ? (
