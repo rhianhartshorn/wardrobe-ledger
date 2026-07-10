@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, COLOUR_ANALYST_VOICE, IMAGE_STRATEGIST_VOICE, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
+import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import { auditInBackground } from '@/lib/editorial';
 import type { StyleReadResult } from '@/lib/style-types';
 
@@ -59,7 +59,9 @@ export async function POST(req: NextRequest) {
       ? `\nVISUAL WARDROBE GRID: A numbered image grid of all wardrobe items is attached. Grid key: ${wardrobeGridMapping}. Use the visual grid to ground your archetype reading in what the clothes actually look like — actual colours, fabric textures, and silhouettes, not just text tags.\n`
       : '';
 
-    const prompt = `${personaCtx} ${COLOUR_ANALYST_VOICE} ${IMAGE_STRATEGIST_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
+    const prompt = `${personaCtx} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
+Apply colour analysis (undertone, depth, chroma) and wardrobe psychology (wear patterns, aspiration-reality gap, brand projection) throughout this reading.
+
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${gridBlock}${styleDirectives}${tasteSignals ? 'BEHAVIOURAL SIGNALS — weight these heavily, they reveal real style vs aspiration:\n' + tasteSignals + '\n' : ''}${profileBlock}
 You are delivering a complete style reading of this wardrobe. Three lenses in one:
 1. Who they ARE (archetype, aesthetic identity, style clusters)
@@ -93,7 +95,7 @@ Respond with ONLY valid JSON, no markdown:
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2500, route: 'style-read' });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000, route: 'style-read' });
     const parsed = parseJSON(raw) as StyleReadResult;
 
     const auditText = [
