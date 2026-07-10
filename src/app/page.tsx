@@ -94,8 +94,9 @@ export default function WardrobeApp() {
             .catch(() => {});
         }
 
-        // Style Discovery only after 10+ items — needs real wardrobe data to be meaningful
-        if (loadedItems.length >= 10 && !localStorage.getItem('wl_style_discovery_done') && !!localStorage.getItem('wl_onboarded')) {
+        // Style Discovery only after 10+ items — skip if lifestyle already filled in (Blueprint tab)
+        const hasLifestyle = lifestyleData && typeof lifestyleData === 'object' && !!(lifestyleData as Partial<LifestyleProfile>).workDressCode;
+        if (loadedItems.length >= 10 && !localStorage.getItem('wl_style_discovery_done') && !!localStorage.getItem('wl_onboarded') && !hasLifestyle) {
           setShowStyleDiscovery(true);
         }
 
