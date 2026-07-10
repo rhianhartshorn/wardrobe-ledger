@@ -41,6 +41,8 @@ type QueueItem = {
   status: QueueStatus;
   form: TagForm;
   error?: string;
+  qualityWarning?: string;
+  qualityTip?: string;
   expanded: boolean;
   duplicateOf?: WardrobeItem[];
   confirmedDuplicate?: boolean;
@@ -134,6 +136,16 @@ function QueueCard({
       {status === 'error' && item.error && (
         <div className="border-t border-red-100 bg-red-50 px-3 py-2">
           <p className="text-[10px] text-red-700 font-light">{item.error}</p>
+        </div>
+      )}
+
+      {/* Photo quality warning — shown when AI flags issues that may reduce styling accuracy */}
+      {status !== 'saved' && item.qualityWarning && (
+        <div className="border-t border-amber-100 bg-amber-50 px-3 py-2 space-y-0.5">
+          <p className="text-[10px] text-amber-800 font-light"><span className="font-medium">Photo quality:</span> {item.qualityWarning}.</p>
+          {item.qualityTip && (
+            <p className="text-[10px] text-amber-700 font-light">{item.qualityTip}</p>
+          )}
         </div>
       )}
 
@@ -305,13 +317,25 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         const mediaType = match ? match[1] : 'image/jpeg';
         const base64Data = match ? match[2] : dataUrl;
 
-        const tagRes = await fetch('/api/tag', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base64Data, mediaType }),
-        });
+        const [tagRes, qualityRes] = await Promise.all([
+          fetch('/api/tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data, mediaType }),
+          }),
+          fetch('/api/assess-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ base64Data, mediaType }),
+          }),
+        ]);
         const tagData = await tagRes.json() as { tags?: TagForm; error?: string };
         const form = tagRes.ok && tagData.tags ? tagData.tags : EMPTY_FORM;
+        const qualityData = qualityRes.ok ? await qualityRes.json() as { quality: string; issues: string[]; tip: string } : null;
+        const qualityWarning = qualityData && qualityData.quality !== 'good' && qualityData.issues?.length
+          ? qualityData.issues.join('. ')
+          : undefined;
+        const qualityTip = qualityData?.tip || undefined;
 
         // Check duplicates against existing items + already-queued ready items
         setQueue((q) => {
@@ -329,6 +353,8 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
             ...it,
             imageDataUrl: dataUrl,
             form,
+            qualityWarning,
+            qualityTip,
             status: dupes.length > 0 ? 'duplicate' : 'ready',
             duplicateOf: dupes,
             expanded: false,

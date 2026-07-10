@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getSetting, setSetting } from '@/lib/db';
+import { getSetting, setSetting, getSavedLooks } from '@/lib/db';
+import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
   getLifestyleContext, getStyleDirectives, getStyleThesisContext,
@@ -70,6 +71,7 @@ async function runSpecialist(
   message: string,
   itemListText: string,
   contextBlock: string,
+  images?: Array<{ base64: string }>,
 ): Promise<SpecialistBrief> {
   const prompt = `${persona}
 
@@ -110,7 +112,7 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
   try {
-    const raw = await callClaude({ prompt, maxTokens: 400, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
+    const raw = await callClaude({ prompt, images, maxTokens: 400, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
     const parsed = parseJSON(raw) as Omit<SpecialistBrief, 'role'>;
     return { role, ...parsed };
   } catch {
@@ -311,9 +313,10 @@ Respond with ONLY the thesis text — no JSON, no heading, no preamble.`;
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, items, weather, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
+    const { message, items, bodyProfile, weather, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
       message: string;
       items?: WardrobeItem[];
+      bodyProfile?: BodyProfile;
       weather?: { locationName: string; tempF: number; condition: string; summary: string };
       wardrobeGrid?: string;
       wardrobeGridMapping?: string;
@@ -323,7 +326,7 @@ export async function POST(req: NextRequest) {
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
     // Load all context in parallel
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
@@ -332,9 +335,27 @@ export async function POST(req: NextRequest) {
       getStyleDirectives(),
       getStyleThesisContext(),
       getSetting('style_thesis'),
+      getSavedLooks(),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+    // Body profile context for Fit specialist
+    const bodyProfileCtx = bodyProfile
+      ? `\nCLIENT BODY PROFILE:\n${profileToContext(bodyProfile)}\nAll proportion and fit recommendations must be assessed against this profile.\n`
+      : '';
+
+    // Saved look history for Wardrobe Intelligence
+    const workedLooks = savedLooks.filter((l) => l.feedback === 'worked');
+    const didntWorkLooks = savedLooks.filter((l) => l.feedback === 'didnt_work');
+    const savedLooksCtx = savedLooks.length ? [
+      workedLooks.length ? `Looks worn and rated as working: ${workedLooks.map((l) => l.title).join('; ')}` : '',
+      didntWorkLooks.length ? `Looks worn and rated as not working: ${didntWorkLooks.map((l) => l.title).join('; ')}` : '',
+      savedLooks.filter((l) => !l.feedback).length ? `Looks saved but not yet worn: ${savedLooks.filter((l) => !l.feedback).map((l) => l.title).join('; ')}` : '',
+    ].filter(Boolean).join('\n') : '';
+    const savedLooksBlock = savedLooksCtx
+      ? `\nCLIENT LOOK HISTORY (what has actually been worn and how it landed):\n${savedLooksCtx}\nUse this as behavioural evidence — what the client reaches for, what works on them in practice, what doesn't.\n`
+      : '';
 
     const existingDirectivesText = existing.length
       ? `CLIENT DIRECTIVES (from previous sessions — apply to every recommendation):\n${existing.map((d) => `- ${d.instruction}`).join('\n')}\n`
@@ -371,7 +392,9 @@ export async function POST(req: NextRequest) {
     const sharedContext = [
       thesisCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
+      bodyProfileCtx,
       lifestyleCtx,
+      savedLooksBlock,
       weatherBlock,
       styleDirectives,
       existingDirectivesText,
@@ -394,23 +417,25 @@ export async function POST(req: NextRequest) {
     const runFashionEditor = isOutfitRequest || isColourQuestion || isFitQuestion || (!isWardrobeQuestion && !isOccasionQuestion);
     const runOccasion = isOccasionQuestion || isOutfitRequest;
 
+    const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
+
     const specialistCalls: Promise<SpecialistBrief>[] = [
       runSpecialist(
         'Fit & Proportion',
         FIT_SPECIALIST_PERSONA,
-        'Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. Propose combinations that pass all structural tests. Flag any proportion problem you see.',
-        message, itemListText, sharedContext,
+        `Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. The client body profile is in your context — apply it specifically. Propose combinations that pass all structural tests for this body. Flag any proportion problem you see.${wardrobeImages ? ' A visual wardrobe grid is attached — use it to assess actual silhouette and drape, not just the text descriptions.' : ''}`,
+        message, itemListText, sharedContext, wardrobeImages,
       ),
       runSpecialist(
         'Colour Analysis',
         COLOUR_ANALYST_PERSONA,
-        'Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.',
-        message, itemListText, sharedContext,
+        `Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.${wardrobeImages ? ' A visual wardrobe grid is attached — verify actual colours visually rather than relying solely on colour name text fields.' : ''}`,
+        message, itemListText, sharedContext, wardrobeImages,
       ),
       runSpecialist(
         'Wardrobe Intelligence',
         WARDROBE_INTELLIGENCE_PERSONA,
-        'Read the wear patterns, category clusters, aspiration-reality gap, and brand projection. Provide the behavioural and identity context the head stylist needs to make a recommendation that serves the client\'s real situation, not just their stated request. Flag the most important pattern or gap you observe.',
+        'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person, not just what they aspire to. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
         message, itemListText, sharedContext,
       ),
       ...(runFashionEditor ? [runSpecialist(
@@ -431,10 +456,9 @@ export async function POST(req: NextRequest) {
 
     // ── STEP 2: Head stylist synthesizes ────────────────────────────────────
 
-    const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
-      styleBriefCtx, thesisCtx + lifestyleCtx, weatherBlock,
+      styleBriefCtx, thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock, weatherBlock,
       wardrobeBlock, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
