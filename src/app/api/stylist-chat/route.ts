@@ -61,28 +61,22 @@ type ChatOutfit = {
 };
 
 type PackingPiece = { itemId: string; role: string };
-type PackingList = { logic: string; pieces: PackingPiece[]; outfitCount: number };
-
-type FocusPairing = { itemIds: string[]; note: string };
-type FocusResponse = { focusItemId: string; analysis: string; styling: string; pairings: FocusPairing[] };
-
-type VerdictResponse = { verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] };
-
-type StrategyResponse = { direction: string; principles: string[]; immediateAction: string };
-
 type GapItem = { description: string; why: string; priority: 'high' | 'medium' | 'low' };
-type GapResponse = { gaps: GapItem[]; unlockPiece: string };
+
+export type Block =
+  | { type: 'text'; label?: string; content: string }
+  | { type: 'outfits'; label?: string; outfits: ChatOutfit[] }
+  | { type: 'packingList'; label?: string; logic: string; outfitCount: number; pieces: PackingPiece[] }
+  | { type: 'focus'; label?: string; focusItemId: string; analysis: string; styling: string; pairings: Array<{ itemIds: string[]; note: string }> }
+  | { type: 'verdict'; label?: string; verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] }
+  | { type: 'principles'; label?: string; items: string[] }
+  | { type: 'gaps'; label?: string; gaps: GapItem[]; unlockPiece?: string }
+  | { type: 'itemList'; label: string; itemIds: string[] };
 
 type StylistResponse = {
-  mode: 'outfit' | 'capsule' | 'focus' | 'verdict' | 'strategy' | 'gap';
   directives: string[];
   acknowledgment: string;
-  outfits?: ChatOutfit[];
-  packingList?: PackingList;
-  focus?: FocusResponse;
-  verdictData?: VerdictResponse;
-  strategy?: StrategyResponse;
-  gap?: GapResponse;
+  blocks: Block[];
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -215,48 +209,46 @@ EXTRACT: "avoids heels", "prefers loose fits", "needs workwear", "dislikes showi
 DO NOT EXTRACT: "wants outfits with the beige blazer", "asked for 3 looks", "wants something for Tuesday"
 Return an empty array if nothing permanent was revealed.
 
-STEP 2 — CHOOSE A RESPONSE MODE: Pick whichever mode best serves what the client actually needs. Do not default to outfit mode when a different mode is more useful.
+STEP 2 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
-— "outfit": they want complete looks to wear. Return 3 outfits.
-— "capsule": packing for a trip, multi-day wardrobe, minimise luggage. Return packing list + 3 sample outfits.
-— "focus": "what goes with X", "how do I wear X", asking about one specific piece. Return pairing options for that item.
-— "verdict": "can I wear X to Y", "does this work", asking for a yes/no on a specific combination or choice. Return a direct verdict + reasoning.
-— "strategy": "I want to look more X", "how do I dress for Y role/context", "help me build a wardrobe for Z". Return directional advice and principles.
-— "gap": "what am I missing", "what should I buy", "what's lacking". Return a gap analysis and priority purchases.
+STEP 3 — BUILD YOUR BLOCKS: Compose a response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks. A simple question might need only a text block. Choose the structure that would be most useful to this client for this specific request.
 
-STEP 3 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks.
+AVAILABLE BLOCK TYPES:
 
-STEP 4 — BUILD THE MODE-SPECIFIC CONTENT (see format below).
+"text" — a paragraph of analysis, reasoning, or advice. Use when the content is discursive.
+  {"type":"text","label":"optional heading","content":"your text here"}
 
-OUTFIT COMPLETENESS RULE (applies to outfit and capsule modes): Every outfit requires a base layer top (shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit) OR a dress/jumpsuit. Plus a bottom OR the dress/jumpsuit. Layering pieces (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt) require a base layer top underneath. Never return an incomplete outfit.
+"outfits" — one or more complete outfit combinations. Use for specific looks to wear.
+  {"type":"outfits","label":"optional e.g. 'Day 1' or 'For the dinner'","outfits":[{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear"}]}
 
-Respond with ONLY valid JSON, no markdown. Include only the fields relevant to the chosen mode:
+"packingList" — a travel capsule: minimum pieces, maximum outfit combinations.
+  {"type":"packingList","logic":"max 20 words — pieces count, outfit count, what it covers","outfitCount":14,"pieces":[{"itemId":"id1","role":"max 8 words — why this earns its place"}]}
+
+"focus" — analysis of one specific piece and how to wear it.
+  {"type":"focus","focusItemId":"exact item id","analysis":"max 25 words — what this piece is and how it works","styling":"max 20 words — proportion, tuck, occasion guidance","pairings":[{"itemIds":["id1","id2"],"note":"max 15 words — why this works"}]}
+
+"verdict" — a direct yes/no/with-modifications on a specific question.
+  {"type":"verdict","verdict":"yes|no|with-modifications","reasoning":"max 25 words","modification":"max 20 words — what would make it work","alternativeItemIds":["id1","id2","id3"]}
+
+"principles" — a list of specific styling rules or guidelines for this client.
+  {"type":"principles","label":"optional heading","items":["specific principle max 20 words","..."]}
+
+"gaps" — wardrobe gap analysis with priority-ordered missing pieces.
+  {"type":"gaps","gaps":[{"description":"specific gap max 10 words","why":"max 15 words","priority":"high|medium|low"}],"unlockPiece":"max 20 words — best single purchase"}
+
+"itemList" — a labelled selection of specific items from the wardrobe.
+  {"type":"itemList","label":"heading e.g. 'Best pieces for this'","itemIds":["id1","id2","id3"]}
+
+OUTFIT COMPLETENESS RULE: Every outfit in an "outfits" or "packingList" block requires a base layer top (shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit) OR a dress/jumpsuit. Plus a bottom OR the dress/jumpsuit. Layering pieces (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt) always require a base layer top underneath.
+
+Respond with ONLY valid JSON, no markdown:
 {
-  "mode": "outfit|capsule|focus|verdict|strategy|gap",
   "directives": [],
   "acknowledgment": "1-2 sentences to the client",
-
-  // OUTFIT mode:
-  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear"}],
-
-  // CAPSULE mode:
-  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear"}],
-  "packingList": {"logic":"max 20 words — pieces count, outfit count, what it covers","outfitCount":14,"pieces":[{"itemId":"id1","role":"max 8 words — why this earns its place"}]},
-
-  // FOCUS mode:
-  "focus": {"focusItemId":"id of the item being asked about","analysis":"max 25 words — what this piece is and how it works","styling":"max 20 words — proportion, tuck, occasion guidance","pairings":[{"itemIds":["id1","id2"],"note":"max 15 words — why this combination works"}]},
-
-  // VERDICT mode:
-  "verdictData": {"verdict":"yes|no|with-modifications","reasoning":"max 25 words — specific explanation","modification":"max 20 words — what would make it work, if applicable","alternativeItemIds":["id1","id2","id3"]},
-
-  // STRATEGY mode:
-  "strategy": {"direction":"max 20 words — the core shift","principles":["max 3 specific principles for this person and wardrobe"],"immediateAction":"max 20 words — one thing they can do right now with what they own"},
-
-  // GAP mode:
-  "gap": {"gaps":[{"description":"specific missing piece max 10 words","why":"max 15 words — what it would unlock","priority":"high|medium|low"}],"unlockPiece":"max 20 words — the single purchase that would unlock the most new outfits"}
+  "blocks": [ ...your chosen blocks in order... ]
 }`;
 
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1800, route: 'head-stylist' });
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000, route: 'head-stylist' });
   return parseJSON(raw) as StylistResponse;
 }
 
@@ -515,16 +507,40 @@ export async function POST(req: NextRequest) {
       specialistBriefs, wardrobeImages,
     );
 
-    // ── STEP 3: Accessories director finishes the outfits ────────────────────
+    // ── STEP 3: Post-process blocks ──────────────────────────────────────────
+    // Run completeness check + accessories director on all outfit blocks
 
-    let finalOutfits = synthesis.outfits;
-    if (finalOutfits?.length && items?.length) {
-      // Filter incomplete outfits before sending to accessories director
-      finalOutfits = finalOutfits.filter((o) => isCompleteOutfit(o.itemIds, items));
-      if (finalOutfits.length) {
-        finalOutfits = await runAccessoriesDirector(
-          finalOutfits, items, styleBriefCtx, lifestyleCtx,
-        );
+    let finalBlocks = synthesis.blocks ?? [];
+
+    if (items?.length) {
+      // Collect all outfit blocks that have outfits
+      const outfitBlockIndices: number[] = [];
+      const allOutfits: ChatOutfit[] = [];
+      finalBlocks.forEach((b, i) => {
+        if (b.type === 'outfits' && b.outfits?.length) {
+          outfitBlockIndices.push(i);
+          allOutfits.push(...b.outfits);
+        }
+      });
+
+      if (allOutfits.length) {
+        const completeOutfits = allOutfits.filter((o) => isCompleteOutfit(o.itemIds, items));
+        const enriched = completeOutfits.length
+          ? await runAccessoriesDirector(completeOutfits, items, styleBriefCtx, lifestyleCtx)
+          : [];
+
+        // Map enriched outfits back into their blocks
+        let enrichedIdx = 0;
+        finalBlocks = finalBlocks.map((b, i) => {
+          if (b.type !== 'outfits' || !outfitBlockIndices.includes(i)) return b;
+          const blockOutfits: ChatOutfit[] = [];
+          (b.outfits ?? []).forEach((o) => {
+            if (isCompleteOutfit(o.itemIds, items)) {
+              if (enriched[enrichedIdx]) blockOutfits.push(enriched[enrichedIdx++]);
+            }
+          });
+          return blockOutfits.length ? { ...b, outfits: blockOutfits } : null;
+        }).filter((b): b is Block => b !== null);
       }
     }
 
@@ -552,15 +568,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       acknowledgment: synthesis.acknowledgment,
-      mode: synthesis.mode,
+      blocks: finalBlocks,
       directives: newDirectives,
       allDirectives: updated,
-      outfits: finalOutfits ?? undefined,
-      packingList: synthesis.packingList ?? undefined,
-      focus: synthesis.focus ?? undefined,
-      verdictData: synthesis.verdictData ?? undefined,
-      strategy: synthesis.strategy ?? undefined,
-      gap: synthesis.gap ?? undefined,
       consultedSpecialists: specialistBriefs.map((b) => b.role),
     });
 

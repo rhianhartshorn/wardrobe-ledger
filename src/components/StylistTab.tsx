@@ -27,24 +27,22 @@ type ChatOutfit = {
 };
 
 type PackingPiece = { itemId: string; role: string };
-type PackingList = { logic: string; outfitCount: number; pieces: PackingPiece[] };
-type FocusPairing = { itemIds: string[]; note: string };
-type FocusResponse = { focusItemId: string; analysis: string; styling: string; pairings: FocusPairing[] };
-type VerdictResponse = { verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] };
-type StrategyResponse = { direction: string; principles: string[]; immediateAction: string };
 type GapItem = { description: string; why: string; priority: 'high' | 'medium' | 'low' };
-type GapResponse = { gaps: GapItem[]; unlockPiece: string };
+
+type Block =
+  | { type: 'text'; label?: string; content: string }
+  | { type: 'outfits'; label?: string; outfits: ChatOutfit[] }
+  | { type: 'packingList'; label?: string; logic: string; outfitCount: number; pieces: PackingPiece[] }
+  | { type: 'focus'; label?: string; focusItemId: string; analysis: string; styling: string; pairings: Array<{ itemIds: string[]; note: string }> }
+  | { type: 'verdict'; label?: string; verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] }
+  | { type: 'principles'; label?: string; items: string[] }
+  | { type: 'gaps'; label?: string; gaps: GapItem[]; unlockPiece?: string }
+  | { type: 'itemList'; label: string; itemIds: string[] };
 
 type Message = {
   role: 'user' | 'stylist';
   text: string;
-  mode?: string;
-  outfits?: ChatOutfit[];
-  packingList?: PackingList;
-  focus?: FocusResponse;
-  verdictData?: VerdictResponse;
-  strategy?: StrategyResponse;
-  gap?: GapResponse;
+  blocks?: Block[];
   consultedSpecialists?: string[];
 };
 
@@ -198,6 +196,166 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
   );
 }
 
+function BlockRenderer({ block, items, hasProfilePhoto, onLearnMore }: {
+  block: Block;
+  items: WardrobeItem[];
+  hasProfilePhoto: boolean;
+  onLearnMore: (props: LearnMoreProps) => void;
+}) {
+  const label = block.label ? (
+    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">{block.label}</p>
+  ) : null;
+
+  if (block.type === 'text') return (
+    <div className="border border-[#E5DDD0] bg-white px-3 py-2.5">
+      {label}
+      <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{block.content}</p>
+    </div>
+  );
+
+  if (block.type === 'outfits') return (
+    <div className="space-y-2">
+      {label && <div className="px-1">{label}</div>}
+      {block.outfits.map((outfit, i) => (
+        <OutfitMini key={i} outfit={outfit} items={items} hasProfilePhoto={hasProfilePhoto} onLearnMore={onLearnMore} />
+      ))}
+    </div>
+  );
+
+  if (block.type === 'packingList') return (
+    <div className="border border-[#E5DDD0] bg-white">
+      <div className="px-3 py-2 border-b border-[#E5DDD0] flex items-center justify-between">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">{block.label ?? 'Packing list'}</p>
+        <p className="text-[10px] text-[#A89F96] font-light">{block.outfitCount}+ outfits</p>
+      </div>
+      <p className="px-3 pt-2 pb-1 text-[11px] text-[#6B6058] font-light leading-relaxed">{block.logic}</p>
+      <div className="px-3 pb-3 space-y-1.5 mt-1">
+        {block.pieces.map((p, k) => {
+          const item = items.find((i) => i.id === p.itemId);
+          if (!item) return null;
+          return (
+            <div key={k} className="flex items-center gap-2.5">
+              {item.imageUrl
+                ? <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover shrink-0 border border-[#E5DDD0]" />
+                : <div className="w-8 h-8 shrink-0 bg-[#F5F2EC] border border-[#E5DDD0]" />}
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] text-[#1A1714] font-light truncate">{item.name}</p>
+                <p className="text-[10px] text-[#A89F96] font-light truncate">{p.role}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  if (block.type === 'focus') {
+    const focusItem = items.find((i) => i.id === block.focusItemId);
+    return (
+      <div className="border border-[#E5DDD0] bg-white">
+        {focusItem && (
+          <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[#E5DDD0]">
+            {focusItem.imageUrl && <img src={focusItem.imageUrl} alt="" className="w-10 h-10 object-cover border border-[#E5DDD0] shrink-0" />}
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">{block.label ?? 'Focus piece'}</p>
+              <p className="text-xs text-[#1A1714] font-light">{focusItem.name}</p>
+            </div>
+          </div>
+        )}
+        <div className="px-3 py-2 space-y-1 border-b border-[#E5DDD0]">
+          <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{block.analysis}</p>
+          {block.styling && <p className="text-[11px] text-[#9B7B3A] font-light italic">{block.styling}</p>}
+        </div>
+        {block.pairings.length > 0 && (
+          <div className="px-3 py-2.5 space-y-2">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Pairings</p>
+            {block.pairings.map((p, k) => (
+              <OutfitMini key={k} outfit={{ title: p.note, itemIds: p.itemIds }} items={items} hasProfilePhoto={hasProfilePhoto} onLearnMore={onLearnMore} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (block.type === 'verdict') return (
+    <div className="border border-[#E5DDD0] bg-white">
+      <div className={`px-3 py-2.5 border-b border-[#E5DDD0] ${block.verdict === 'yes' ? 'bg-green-50' : block.verdict === 'no' ? 'bg-red-50' : 'bg-amber-50'}`}>
+        <span className={`text-sm font-light ${block.verdict === 'yes' ? 'text-green-700' : block.verdict === 'no' ? 'text-red-700' : 'text-amber-700'}`}>
+          {block.verdict === 'yes' ? '✓ Yes' : block.verdict === 'no' ? '✗ No' : '~ With modifications'}
+        </span>
+      </div>
+      <div className="px-3 py-2 space-y-1.5">
+        <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{block.reasoning}</p>
+        {block.modification && <p className="text-[11px] text-[#9B7B3A] font-light">{block.modification}</p>}
+      </div>
+      {block.alternativeItemIds?.length && (
+        <div className="px-3 pb-3 border-t border-[#E5DDD0] pt-2">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Alternative</p>
+          <OutfitMini outfit={{ title: 'Alternative look', itemIds: block.alternativeItemIds }} items={items} hasProfilePhoto={hasProfilePhoto} onLearnMore={onLearnMore} />
+        </div>
+      )}
+    </div>
+  );
+
+  if (block.type === 'principles') return (
+    <div className="border border-[#E5DDD0] bg-white px-3 py-2.5 space-y-1.5">
+      {label ?? <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Principles</p>}
+      {block.items.map((p, k) => (
+        <p key={k} className="text-[11px] text-[#6B6058] font-light leading-relaxed">— {p}</p>
+      ))}
+    </div>
+  );
+
+  if (block.type === 'gaps') return (
+    <div className="border border-[#E5DDD0] bg-white">
+      <div className="px-3 py-2 border-b border-[#E5DDD0]">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">{block.label ?? "What's missing"}</p>
+      </div>
+      <div className="divide-y divide-[#F0EBE4]">
+        {block.gaps.map((g, k) => (
+          <div key={k} className="px-3 py-2.5 flex items-start gap-2">
+            <span className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${g.priority === 'high' ? 'bg-red-400' : g.priority === 'medium' ? 'bg-amber-400' : 'bg-[#D6CFC0]'}`} />
+            <div>
+              <p className="text-[11px] text-[#1A1714] font-light">{g.description}</p>
+              <p className="text-[10px] text-[#A89F96] font-light mt-0.5">{g.why}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {block.unlockPiece && (
+        <div className="px-3 py-2.5 border-t border-[#E5DDD0] bg-[#F9F7F4]">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Best single purchase</p>
+          <p className="text-[11px] text-[#6B6058] font-light mt-1 leading-relaxed">{block.unlockPiece}</p>
+        </div>
+      )}
+    </div>
+  );
+
+  if (block.type === 'itemList') return (
+    <div className="border border-[#E5DDD0] bg-white px-3 py-2.5">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">{block.label}</p>
+      <div className="space-y-1.5">
+        {block.itemIds.map((id) => {
+          const item = items.find((i) => i.id === id);
+          if (!item) return null;
+          return (
+            <div key={id} className="flex items-center gap-2.5">
+              {item.imageUrl
+                ? <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover shrink-0 border border-[#E5DDD0]" />
+                : <div className="w-8 h-8 shrink-0 bg-[#F5F2EC] border border-[#E5DDD0]" />}
+              <p className="text-[11px] text-[#1A1714] font-light truncate">{item.name}</p>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // Unknown block type — render as text if possible
+  return null;
+}
+
 export default function StylistTab({
   items,
   bodyProfile,
@@ -336,13 +494,7 @@ export default function StylistTab({
       });
       const data = await res.json() as {
         acknowledgment?: string;
-        mode?: string;
-        outfits?: ChatOutfit[];
-        packingList?: PackingList;
-        focus?: FocusResponse;
-        verdictData?: VerdictResponse;
-        strategy?: StrategyResponse;
-        gap?: GapResponse;
+        blocks?: Block[];
         allDirectives?: StyleDirective[];
         consultedSpecialists?: string[];
         error?: string;
@@ -351,13 +503,7 @@ export default function StylistTab({
       setMessages((prev) => [...prev, {
         role: 'stylist',
         text: data.acknowledgment ?? '',
-        mode: data.mode,
-        outfits: data.outfits,
-        packingList: data.packingList,
-        focus: data.focus,
-        verdictData: data.verdictData,
-        strategy: data.strategy,
-        gap: data.gap,
+        blocks: data.blocks,
         consultedSpecialists: data.consultedSpecialists,
       }]);
       setDirectives(data.allDirectives ?? []);
@@ -480,150 +626,11 @@ export default function StylistTab({
                   Consulted · {msg.consultedSpecialists.join(' · ')}
                 </p>
               )}
-              {msg.packingList && (
-                <div className="mt-3 border border-[#E5DDD0] bg-white">
-                  <div className="px-3 py-2 border-b border-[#E5DDD0] flex items-center justify-between">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Packing list</p>
-                    <p className="text-[10px] text-[#A89F96] font-light">{msg.packingList.outfitCount}+ outfits</p>
-                  </div>
-                  <p className="px-3 pt-2 pb-1 text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.packingList.logic}</p>
-                  <div className="px-3 pb-3 space-y-1.5 mt-1">
-                    {msg.packingList.pieces.map((p, k) => {
-                      const item = items.find((i) => i.id === p.itemId);
-                      if (!item) return null;
-                      return (
-                        <div key={k} className="flex items-center gap-2.5">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover shrink-0 border border-[#E5DDD0]" />
-                          ) : (
-                            <div className="w-8 h-8 shrink-0 bg-[#F5F2EC] border border-[#E5DDD0]" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[11px] text-[#1A1714] font-light truncate">{item.name}</p>
-                            <p className="text-[10px] text-[#A89F96] font-light truncate">{p.role}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {msg.outfits && msg.outfits.length > 0 && (
-                    <div className="border-t border-[#E5DDD0] px-3 py-2">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Sample outfits</p>
-                      <div className="space-y-2">
-                        {msg.outfits.map((outfit, j) => (
-                          <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {!msg.packingList && msg.outfits && msg.outfits.length > 0 && (
-                <div className="space-y-2 mt-2">
-                  {msg.outfits.map((outfit, j) => (
-                    <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
+              {msg.blocks && msg.blocks.length > 0 && (
+                <div className="mt-2 space-y-2">
+                  {msg.blocks.map((block, k) => (
+                    <BlockRenderer key={k} block={block} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
                   ))}
-                </div>
-              )}
-
-              {/* FOCUS mode — item-specific pairings */}
-              {msg.focus && (() => {
-                const focusItem = items.find((i) => i.id === msg.focus!.focusItemId);
-                return (
-                  <div className="mt-3 border border-[#E5DDD0] bg-white">
-                    {focusItem && (
-                      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[#E5DDD0]">
-                        {focusItem.imageUrl && <img src={focusItem.imageUrl} alt="" className="w-10 h-10 object-cover border border-[#E5DDD0] shrink-0" />}
-                        <div>
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Focus piece</p>
-                          <p className="text-xs text-[#1A1714] font-light">{focusItem.name}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="px-3 py-2 space-y-1 border-b border-[#E5DDD0]">
-                      <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.focus.analysis}</p>
-                      {msg.focus.styling && <p className="text-[11px] text-[#9B7B3A] font-light italic">{msg.focus.styling}</p>}
-                    </div>
-                    {msg.focus.pairings.length > 0 && (
-                      <div className="px-3 py-2.5 space-y-2">
-                        <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Pairings</p>
-                        {msg.focus.pairings.map((p, k) => (
-                          <OutfitMini key={k} outfit={{ title: p.note, itemIds: p.itemIds }} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* VERDICT mode — yes/no/with-modifications */}
-              {msg.verdictData && (
-                <div className="mt-3 border border-[#E5DDD0] bg-white">
-                  <div className={`px-3 py-2.5 border-b border-[#E5DDD0] flex items-center gap-2 ${msg.verdictData.verdict === 'yes' ? 'bg-green-50' : msg.verdictData.verdict === 'no' ? 'bg-red-50' : 'bg-amber-50'}`}>
-                    <span className={`text-sm font-light ${msg.verdictData.verdict === 'yes' ? 'text-green-700' : msg.verdictData.verdict === 'no' ? 'text-red-700' : 'text-amber-700'}`}>
-                      {msg.verdictData.verdict === 'yes' ? '✓ Yes' : msg.verdictData.verdict === 'no' ? '✗ No' : '~ With modifications'}
-                    </span>
-                  </div>
-                  <div className="px-3 py-2 space-y-1.5">
-                    <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.verdictData.reasoning}</p>
-                    {msg.verdictData.modification && (
-                      <p className="text-[11px] text-[#9B7B3A] font-light">{msg.verdictData.modification}</p>
-                    )}
-                  </div>
-                  {msg.verdictData.alternativeItemIds?.length && (
-                    <div className="px-3 pb-3 border-t border-[#E5DDD0] pt-2">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Alternative</p>
-                      <OutfitMini outfit={{ title: 'Alternative look', itemIds: msg.verdictData.alternativeItemIds }} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* STRATEGY mode — directional advice */}
-              {msg.strategy && (
-                <div className="mt-3 border border-[#E5DDD0] bg-white">
-                  <div className="px-3 py-2.5 border-b border-[#E5DDD0]">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Direction</p>
-                    <p className="text-sm text-[#1A1714] font-light mt-1 leading-relaxed">{msg.strategy.direction}</p>
-                  </div>
-                  {msg.strategy.principles.length > 0 && (
-                    <div className="px-3 py-2.5 border-b border-[#E5DDD0] space-y-1.5">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Principles</p>
-                      {msg.strategy.principles.map((p, k) => (
-                        <p key={k} className="text-[11px] text-[#6B6058] font-light leading-relaxed">— {p}</p>
-                      ))}
-                    </div>
-                  )}
-                  <div className="px-3 py-2.5">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Do this now</p>
-                    <p className="text-[11px] text-[#6B6058] font-light mt-1 leading-relaxed">{msg.strategy.immediateAction}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* GAP mode — wardrobe analysis */}
-              {msg.gap && (
-                <div className="mt-3 border border-[#E5DDD0] bg-white">
-                  <div className="px-3 py-2 border-b border-[#E5DDD0]">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">What's missing</p>
-                  </div>
-                  <div className="divide-y divide-[#F0EBE4]">
-                    {msg.gap.gaps.map((g, k) => (
-                      <div key={k} className="px-3 py-2.5 flex items-start gap-2">
-                        <span className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${g.priority === 'high' ? 'bg-red-400' : g.priority === 'medium' ? 'bg-amber-400' : 'bg-[#D6CFC0]'}`} />
-                        <div>
-                          <p className="text-[11px] text-[#1A1714] font-light">{g.description}</p>
-                          <p className="text-[10px] text-[#A89F96] font-light mt-0.5">{g.why}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {msg.gap.unlockPiece && (
-                    <div className="px-3 py-2.5 border-t border-[#E5DDD0] bg-[#F9F7F4]">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Best single purchase</p>
-                      <p className="text-[11px] text-[#6B6058] font-light mt-1 leading-relaxed">{msg.gap.unlockPiece}</p>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
