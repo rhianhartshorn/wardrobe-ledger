@@ -60,15 +60,29 @@ type ChatOutfit = {
   accessories?: string;
 };
 
-type PackingPiece = {
-  itemId: string;
-  role: string;
-};
+type PackingPiece = { itemId: string; role: string };
+type PackingList = { logic: string; pieces: PackingPiece[]; outfitCount: number };
 
-type PackingList = {
-  logic: string;
-  pieces: PackingPiece[];
-  outfitCount: number;
+type FocusPairing = { itemIds: string[]; note: string };
+type FocusResponse = { focusItemId: string; analysis: string; styling: string; pairings: FocusPairing[] };
+
+type VerdictResponse = { verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] };
+
+type StrategyResponse = { direction: string; principles: string[]; immediateAction: string };
+
+type GapItem = { description: string; why: string; priority: 'high' | 'medium' | 'low' };
+type GapResponse = { gaps: GapItem[]; unlockPiece: string };
+
+type StylistResponse = {
+  mode: 'outfit' | 'capsule' | 'focus' | 'verdict' | 'strategy' | 'gap';
+  directives: string[];
+  acknowledgment: string;
+  outfits?: ChatOutfit[];
+  packingList?: PackingList;
+  focus?: FocusResponse;
+  verdictData?: VerdictResponse;
+  strategy?: StrategyResponse;
+  gap?: GapResponse;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -196,53 +210,54 @@ ${briefsBlock}
 ━━━ YOUR TASK ━━━
 The client has said: "${message}"
 
-1. INTENT: Classify the client's request as one of three types:
-— "outfit": they want 1–3 specific outfit suggestions for right now or a defined occasion
-— "capsule": they want to pack for a trip, plan a multi-day wardrobe, or maximise outfits from minimum pieces (keywords: holiday, trip, travel, packing, days away, weekend away, minimise luggage, how many outfits)
-— "conversation": strategic question, wardrobe analysis, shopping advice, or general styling discussion
+STEP 1 — DIRECTIVES: Extract only permanent styling preferences or constraints revealed. A directive is a stable truth about how this person dresses — not a one-time request.
+EXTRACT: "avoids heels", "prefers loose fits", "needs workwear", "dislikes showing arms", "stays neutral palette"
+DO NOT EXTRACT: "wants outfits with the beige blazer", "asked for 3 looks", "wants something for Tuesday"
+Return an empty array if nothing permanent was revealed.
 
-2. DIRECTIVES: Extract only permanent styling preferences or constraints the client has revealed — things that should change every future recommendation. A directive must describe a stable truth about how this person dresses, not a one-time request.
+STEP 2 — CHOOSE A RESPONSE MODE: Pick whichever mode best serves what the client actually needs. Do not default to outfit mode when a different mode is more useful.
 
-EXTRACT: "avoids heels", "prefers loose fits over the hip", "needs workwear options", "dislikes showing arms", "colour palette should stay neutral", "wants to look less formal day-to-day"
-DO NOT EXTRACT: "wants outfits featuring the beige blazer", "asked for 3 looks today", "requested something for Tuesday", "asked what goes with a specific item", "wanted a casual option this time"
+— "outfit": they want complete looks to wear. Return 3 outfits.
+— "capsule": packing for a trip, multi-day wardrobe, minimise luggage. Return packing list + 3 sample outfits.
+— "focus": "what goes with X", "how do I wear X", asking about one specific piece. Return pairing options for that item.
+— "verdict": "can I wear X to Y", "does this work", asking for a yes/no on a specific combination or choice. Return a direct verdict + reasoning.
+— "strategy": "I want to look more X", "how do I dress for Y role/context", "help me build a wardrobe for Z". Return directional advice and principles.
+— "gap": "what am I missing", "what should I buy", "what's lacking". Return a gap analysis and priority purchases.
 
-If the message contains no permanent preference — only a one-time request or contextual ask — return an empty directives array. Never log transient requests as directives.
+STEP 3 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
-3. RESPONSE: Write 1-2 sentences direct to the client. Specific, warm, declarative. No hedging, no hollow words, no exclamation marks. If tension class is FATAL or DOMINANT, address the core issue head-on — do not paper over it with outfit suggestions.
+STEP 4 — BUILD THE MODE-SPECIFIC CONTENT (see format below).
 
-4. If intent is OUTFIT: Synthesize the specialist candidates above into the best 3 outfits. Where specialists conflict, make a clear call — explain the trade-off in the rationale. Use ONLY items from the wardrobe. Each outfit must be COMPLETE — a wearable look a person could walk out the door in.
+OUTFIT COMPLETENESS RULE (applies to outfit and capsule modes): Every outfit requires a base layer top (shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit) OR a dress/jumpsuit. Plus a bottom OR the dress/jumpsuit. Layering pieces (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt) require a base layer top underneath. Never return an incomplete outfit.
 
-COMPLETENESS RULE (mandatory): Every outfit requires (a) a base layer top — shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit — OR a dress/jumpsuit that covers both top and bottom; AND (b) a bottom — trousers, jeans, skirt — OR the dress/jumpsuit. If a layering piece is included (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt), the base layer top MUST also be included in itemIds.
-
-Each rationale: max 20 words, begins with Try or Wear, explains the specific logic.
-
-5. If intent is CAPSULE: Build a travel capsule from this wardrobe.
-— Select the minimum number of pieces that create the maximum number of complete, appropriate outfits for the activities the client described.
-— Prioritise pieces that work across multiple outfit combinations (high versatility-per-item).
-— Cover every activity or context the client mentioned — if they said beach, dinner, and sightseeing, the capsule must have appropriate options for all three.
-— Aim for 8–12 pieces creating 12–18 outfits. If the wardrobe is limited, use what exists.
-— Each piece must earn its place: if a piece only works in one outfit, it probably shouldn't be in the capsule.
-— Also show 3–4 specific sample outfit combinations from the capsule to illustrate how the pieces combine.
-
-Respond with ONLY valid JSON, no markdown:
+Respond with ONLY valid JSON, no markdown. Include only the fields relevant to the chosen mode:
 {
-  "intent": "outfit|conversation|capsule",
-  "directives": ["directive 1"],
-  "acknowledgment": "your 1-2 sentence response to the client",
-  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}],
-  "packingList": {
-    "logic": "max 20 words — the capsule strategy: how many pieces, how many outfits, what it covers",
-    "outfitCount": 14,
-    "pieces": [{"itemId": "id1", "role": "max 8 words — why this piece earns its place"}]
-  }
-}
+  "mode": "outfit|capsule|focus|verdict|strategy|gap",
+  "directives": [],
+  "acknowledgment": "1-2 sentences to the client",
 
-If intent is "outfit": include outfits, omit packingList.
-If intent is "capsule": include both outfits (3–4 sample combinations) and packingList.
-If intent is "conversation": omit both outfits and packingList.`;
+  // OUTFIT mode:
+  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear"}],
+
+  // CAPSULE mode:
+  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear"}],
+  "packingList": {"logic":"max 20 words — pieces count, outfit count, what it covers","outfitCount":14,"pieces":[{"itemId":"id1","role":"max 8 words — why this earns its place"}]},
+
+  // FOCUS mode:
+  "focus": {"focusItemId":"id of the item being asked about","analysis":"max 25 words — what this piece is and how it works","styling":"max 20 words — proportion, tuck, occasion guidance","pairings":[{"itemIds":["id1","id2"],"note":"max 15 words — why this combination works"}]},
+
+  // VERDICT mode:
+  "verdictData": {"verdict":"yes|no|with-modifications","reasoning":"max 25 words — specific explanation","modification":"max 20 words — what would make it work, if applicable","alternativeItemIds":["id1","id2","id3"]},
+
+  // STRATEGY mode:
+  "strategy": {"direction":"max 20 words — the core shift","principles":["max 3 specific principles for this person and wardrobe"],"immediateAction":"max 20 words — one thing they can do right now with what they own"},
+
+  // GAP mode:
+  "gap": {"gaps":[{"description":"specific missing piece max 10 words","why":"max 15 words — what it would unlock","priority":"high|medium|low"}],"unlockPiece":"max 20 words — the single purchase that would unlock the most new outfits"}
+}`;
 
   const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1800, route: 'head-stylist' });
-  return parseJSON(raw) as { intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[]; packingList?: PackingList };
+  return parseJSON(raw) as StylistResponse;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -444,8 +459,12 @@ export async function POST(req: NextRequest) {
     // Always include: Fit (structure), Colour (hard filter), Wardrobe Intelligence (identity context)
     // Conditionally include: Fashion Editor (all outfit requests + general aesthetic questions)
     //                        Occasion (when context/event is relevant)
-    const runFashionEditor = isOutfitRequest || isCapsuleRequest || isColourQuestion || isFitQuestion || (!isWardrobeQuestion && !isOccasionQuestion);
-    const runOccasion = isOccasionQuestion || isOutfitRequest || isCapsuleRequest;
+    const isFocusRequest = /\b(what goes with|go with|wear with|pair with|style with|how (do|should|can) i wear|how to wear|works? with)\b/.test(msgLower);
+    const isVerdictRequest = /\b(can i wear|does this work|would this work|is this (ok|okay|appropriate|right)|too (formal|casual|much))\b/.test(msgLower);
+    const isStrategyRequest = /\b(look more|dress more|build a wardrobe|dress for|style for|want to (look|dress|appear)|wardrobe for)\b/.test(msgLower);
+
+    const runFashionEditor = isOutfitRequest || isCapsuleRequest || isFocusRequest || isColourQuestion || isFitQuestion || isStrategyRequest || (!isWardrobeQuestion && !isOccasionQuestion && !isVerdictRequest);
+    const runOccasion = isOccasionQuestion || isOutfitRequest || isCapsuleRequest || isVerdictRequest;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
 
@@ -533,10 +552,15 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       acknowledgment: synthesis.acknowledgment,
+      mode: synthesis.mode,
       directives: newDirectives,
       allDirectives: updated,
       outfits: finalOutfits ?? undefined,
       packingList: synthesis.packingList ?? undefined,
+      focus: synthesis.focus ?? undefined,
+      verdictData: synthesis.verdictData ?? undefined,
+      strategy: synthesis.strategy ?? undefined,
+      gap: synthesis.gap ?? undefined,
       consultedSpecialists: specialistBriefs.map((b) => b.role),
     });
 

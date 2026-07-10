@@ -28,12 +28,23 @@ type ChatOutfit = {
 
 type PackingPiece = { itemId: string; role: string };
 type PackingList = { logic: string; outfitCount: number; pieces: PackingPiece[] };
+type FocusPairing = { itemIds: string[]; note: string };
+type FocusResponse = { focusItemId: string; analysis: string; styling: string; pairings: FocusPairing[] };
+type VerdictResponse = { verdict: 'yes' | 'no' | 'with-modifications'; reasoning: string; modification?: string; alternativeItemIds?: string[] };
+type StrategyResponse = { direction: string; principles: string[]; immediateAction: string };
+type GapItem = { description: string; why: string; priority: 'high' | 'medium' | 'low' };
+type GapResponse = { gaps: GapItem[]; unlockPiece: string };
 
 type Message = {
   role: 'user' | 'stylist';
   text: string;
+  mode?: string;
   outfits?: ChatOutfit[];
   packingList?: PackingList;
+  focus?: FocusResponse;
+  verdictData?: VerdictResponse;
+  strategy?: StrategyResponse;
+  gap?: GapResponse;
   consultedSpecialists?: string[];
 };
 
@@ -325,8 +336,13 @@ export default function StylistTab({
       });
       const data = await res.json() as {
         acknowledgment?: string;
+        mode?: string;
         outfits?: ChatOutfit[];
         packingList?: PackingList;
+        focus?: FocusResponse;
+        verdictData?: VerdictResponse;
+        strategy?: StrategyResponse;
+        gap?: GapResponse;
         allDirectives?: StyleDirective[];
         consultedSpecialists?: string[];
         error?: string;
@@ -335,8 +351,13 @@ export default function StylistTab({
       setMessages((prev) => [...prev, {
         role: 'stylist',
         text: data.acknowledgment ?? '',
+        mode: data.mode,
         outfits: data.outfits,
         packingList: data.packingList,
+        focus: data.focus,
+        verdictData: data.verdictData,
+        strategy: data.strategy,
+        gap: data.gap,
         consultedSpecialists: data.consultedSpecialists,
       }]);
       setDirectives(data.allDirectives ?? []);
@@ -502,6 +523,107 @@ export default function StylistTab({
                   {msg.outfits.map((outfit, j) => (
                     <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
                   ))}
+                </div>
+              )}
+
+              {/* FOCUS mode — item-specific pairings */}
+              {msg.focus && (() => {
+                const focusItem = items.find((i) => i.id === msg.focus!.focusItemId);
+                return (
+                  <div className="mt-3 border border-[#E5DDD0] bg-white">
+                    {focusItem && (
+                      <div className="flex items-center gap-3 px-3 py-2.5 border-b border-[#E5DDD0]">
+                        {focusItem.imageUrl && <img src={focusItem.imageUrl} alt="" className="w-10 h-10 object-cover border border-[#E5DDD0] shrink-0" />}
+                        <div>
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Focus piece</p>
+                          <p className="text-xs text-[#1A1714] font-light">{focusItem.name}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="px-3 py-2 space-y-1 border-b border-[#E5DDD0]">
+                      <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.focus.analysis}</p>
+                      {msg.focus.styling && <p className="text-[11px] text-[#9B7B3A] font-light italic">{msg.focus.styling}</p>}
+                    </div>
+                    {msg.focus.pairings.length > 0 && (
+                      <div className="px-3 py-2.5 space-y-2">
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Pairings</p>
+                        {msg.focus.pairings.map((p, k) => (
+                          <OutfitMini key={k} outfit={{ title: p.note, itemIds: p.itemIds }} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* VERDICT mode — yes/no/with-modifications */}
+              {msg.verdictData && (
+                <div className="mt-3 border border-[#E5DDD0] bg-white">
+                  <div className={`px-3 py-2.5 border-b border-[#E5DDD0] flex items-center gap-2 ${msg.verdictData.verdict === 'yes' ? 'bg-green-50' : msg.verdictData.verdict === 'no' ? 'bg-red-50' : 'bg-amber-50'}`}>
+                    <span className={`text-sm font-light ${msg.verdictData.verdict === 'yes' ? 'text-green-700' : msg.verdictData.verdict === 'no' ? 'text-red-700' : 'text-amber-700'}`}>
+                      {msg.verdictData.verdict === 'yes' ? '✓ Yes' : msg.verdictData.verdict === 'no' ? '✗ No' : '~ With modifications'}
+                    </span>
+                  </div>
+                  <div className="px-3 py-2 space-y-1.5">
+                    <p className="text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.verdictData.reasoning}</p>
+                    {msg.verdictData.modification && (
+                      <p className="text-[11px] text-[#9B7B3A] font-light">{msg.verdictData.modification}</p>
+                    )}
+                  </div>
+                  {msg.verdictData.alternativeItemIds?.length && (
+                    <div className="px-3 pb-3 border-t border-[#E5DDD0] pt-2">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Alternative</p>
+                      <OutfitMini outfit={{ title: 'Alternative look', itemIds: msg.verdictData.alternativeItemIds }} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STRATEGY mode — directional advice */}
+              {msg.strategy && (
+                <div className="mt-3 border border-[#E5DDD0] bg-white">
+                  <div className="px-3 py-2.5 border-b border-[#E5DDD0]">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Direction</p>
+                    <p className="text-sm text-[#1A1714] font-light mt-1 leading-relaxed">{msg.strategy.direction}</p>
+                  </div>
+                  {msg.strategy.principles.length > 0 && (
+                    <div className="px-3 py-2.5 border-b border-[#E5DDD0] space-y-1.5">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Principles</p>
+                      {msg.strategy.principles.map((p, k) => (
+                        <p key={k} className="text-[11px] text-[#6B6058] font-light leading-relaxed">— {p}</p>
+                      ))}
+                    </div>
+                  )}
+                  <div className="px-3 py-2.5">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Do this now</p>
+                    <p className="text-[11px] text-[#6B6058] font-light mt-1 leading-relaxed">{msg.strategy.immediateAction}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* GAP mode — wardrobe analysis */}
+              {msg.gap && (
+                <div className="mt-3 border border-[#E5DDD0] bg-white">
+                  <div className="px-3 py-2 border-b border-[#E5DDD0]">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">What's missing</p>
+                  </div>
+                  <div className="divide-y divide-[#F0EBE4]">
+                    {msg.gap.gaps.map((g, k) => (
+                      <div key={k} className="px-3 py-2.5 flex items-start gap-2">
+                        <span className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${g.priority === 'high' ? 'bg-red-400' : g.priority === 'medium' ? 'bg-amber-400' : 'bg-[#D6CFC0]'}`} />
+                        <div>
+                          <p className="text-[11px] text-[#1A1714] font-light">{g.description}</p>
+                          <p className="text-[10px] text-[#A89F96] font-light mt-0.5">{g.why}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {msg.gap.unlockPiece && (
+                    <div className="px-3 py-2.5 border-t border-[#E5DDD0] bg-[#F9F7F4]">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Best single purchase</p>
+                      <p className="text-[11px] text-[#6B6058] font-light mt-1 leading-relaxed">{msg.gap.unlockPiece}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
