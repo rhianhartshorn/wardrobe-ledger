@@ -378,7 +378,21 @@ export async function POST(req: NextRequest) {
       trimmedConversationBlock,
     ].filter(Boolean).join('\n');
 
-    // ── STEP 1: Run 5 specialists in parallel ────────────────────────────────
+    // ── STEP 1: Route to relevant specialists ────────────────────────────────
+    // Classify the request to avoid running specialists who cannot contribute.
+
+    const msgLower = message.toLowerCase();
+    const isOutfitRequest = /\b(wear|outfit|look|dress|style me|what (should|do) i wear|what('s| is) (a good|the right)|suggest|recommend|put together|combine|combination)\b/.test(msgLower);
+    const isColourQuestion = /\b(colour|color|palette|tone|clash|match|go with)\b/.test(msgLower);
+    const isFitQuestion = /\b(fit|proportion|shape|tuck|hem|length|size|silhouette)\b/.test(msgLower);
+    const isOccasionQuestion = /\b(occasion|work|office|interview|wedding|event|formal|casual|weekend|smart|dress code|meeting|date|party|travel)\b/.test(msgLower);
+    const isWardrobeQuestion = /\b(missing|gap|need|buy|shopping|capsule|wardrobe|collection|have enough|what do i (have|own))\b/.test(msgLower);
+
+    // Always include: Fit (structure), Colour (hard filter), Wardrobe Intelligence (identity context)
+    // Conditionally include: Fashion Editor (all outfit requests + general aesthetic questions)
+    //                        Occasion (when context/event is relevant)
+    const runFashionEditor = isOutfitRequest || isColourQuestion || isFitQuestion || (!isWardrobeQuestion && !isOccasionQuestion);
+    const runOccasion = isOccasionQuestion || isOutfitRequest;
 
     const specialistCalls: Promise<SpecialistBrief>[] = [
       runSpecialist(
@@ -394,23 +408,23 @@ export async function POST(req: NextRequest) {
         message, itemListText, sharedContext,
       ),
       runSpecialist(
-        'Fashion Editor',
-        FASHION_EDITOR_PERSONA,
-        'Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated.',
-        message, itemListText, sharedContext,
-      ),
-      runSpecialist(
-        'Occasion & Context',
-        OCCASION_SPECIALIST_PERSONA,
-        'Assess the occasion or context the client is dressing for against your four axes: formality level, sector/industry culture, geography, and what they are trying to signal. Provide the contextual brief the head stylist needs. Flag any combination that would misread for this context.',
-        message, itemListText, sharedContext,
-      ),
-      runSpecialist(
         'Wardrobe Intelligence',
         WARDROBE_INTELLIGENCE_PERSONA,
         'Read the wear patterns, category clusters, aspiration-reality gap, and brand projection. Provide the behavioural and identity context the head stylist needs to make a recommendation that serves the client\'s real situation, not just their stated request. Flag the most important pattern or gap you observe.',
         message, itemListText, sharedContext,
       ),
+      ...(runFashionEditor ? [runSpecialist(
+        'Fashion Editor',
+        FASHION_EDITOR_PERSONA,
+        'Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated.',
+        message, itemListText, sharedContext,
+      )] : []),
+      ...(runOccasion ? [runSpecialist(
+        'Occasion & Context',
+        OCCASION_SPECIALIST_PERSONA,
+        'Assess the occasion or context the client is dressing for against your four axes: formality level, sector/industry culture, geography, and what they are trying to signal. Provide the contextual brief the head stylist needs. Flag any combination that would misread for this context.',
+        message, itemListText, sharedContext,
+      )] : []),
     ];
 
     const specialistBriefs = await Promise.all(specialistCalls);
