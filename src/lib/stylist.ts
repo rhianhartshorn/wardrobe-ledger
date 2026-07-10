@@ -308,6 +308,16 @@ export async function getLifestyleContext(): Promise<string> {
   }
 }
 
+export async function getStyleThesisContext(): Promise<string> {
+  try {
+    const raw = await getSetting('style_thesis');
+    if (!raw) return '';
+    return `\nCLIENT STYLE THESIS (living summary — highest-authority context, maintained by Wardrobe Intelligence):\n${raw}\n`;
+  } catch {
+    return '';
+  }
+}
+
 export async function getStyleBriefContext(): Promise<string> {
   try {
     const raw = await getSetting('style_brief');

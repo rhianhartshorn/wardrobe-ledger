@@ -3,7 +3,7 @@ import { callClaude, parseJSON } from '@/lib/claude';
 import { getSetting, setSetting } from '@/lib/db';
 import {
   getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
-  getLifestyleContext, getStyleDirectives,
+  getLifestyleContext, getStyleDirectives, getStyleThesisContext,
   FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
   OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA, ACCESSORIES_DIRECTOR_PERSONA,
   STYLIST_2026_LENS, BRAND_VOICE_RULES, SHARED_OPERATING_PRINCIPLES,
@@ -267,6 +267,45 @@ Respond with ONLY valid JSON, no markdown:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STYLE THESIS UPDATER — runs in background after each conversation turn
+// Maintains a living ~150-word client profile in Redis.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function updateStyleThesisInBackground(
+  existingThesis: string,
+  wardrobeBlock: string,
+  conversationTurn: { message: string; response: string },
+  existingDirectivesText: string,
+  lifestyleCtx: string,
+  styleBriefCtx: string,
+): Promise<void> {
+  try {
+    const prompt = `${WARDROBE_INTELLIGENCE_PERSONA}
+
+You maintain a living client style thesis — a concise, factual summary of who this client is as a dresser, updated after every conversation.
+
+${styleBriefCtx ? 'COLOUR PROFILE:\n' + styleBriefCtx + '\n' : ''}${lifestyleCtx}${existingDirectivesText}${wardrobeBlock}
+
+MOST RECENT EXCHANGE:
+CLIENT: "${conversationTurn.message}"
+STYLIST RESPONSE: "${conversationTurn.response}"
+
+${existingThesis ? 'CURRENT THESIS:\n' + existingThesis + '\n\nUpdate the thesis to reflect what you now know. Preserve what is still true. Replace or add where the new exchange changes or adds to the picture.' : 'No thesis exists yet. Write the initial thesis based on what is available.'}
+
+Write a 100-150 word style thesis. Cover: what this client actually wears and reaches for; their real aesthetic identity (not aspirational); their fit and colour preferences; occasions they dress for; the gap between what they own and what they need; and the one or two truths about this client that a stylist must never forget. Be specific. No generalities, no hollow observations.
+
+Respond with ONLY the thesis text — no JSON, no heading, no preamble.`;
+
+    const thesis = await callClaude({ prompt, maxTokens: 300, route: 'style-thesis-update' });
+    if (thesis?.trim()) {
+      await setSetting('style_thesis', thesis.trim());
+    }
+  } catch {
+    // Background update — never propagate errors to the client
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MAIN POST HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -284,13 +323,15 @@ export async function POST(req: NextRequest) {
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
     // Load all context in parallel
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
       getSetting('style_directives'),
       getBrandVoiceContext(),
       getStyleDirectives(),
+      getStyleThesisContext(),
+      getSetting('style_thesis'),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -328,6 +369,7 @@ export async function POST(req: NextRequest) {
 
     // Context block passed to all specialists (shared context, no specialist personas)
     const sharedContext = [
+      thesisCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
       lifestyleCtx,
       weatherBlock,
@@ -378,7 +420,7 @@ export async function POST(req: NextRequest) {
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
-      styleBriefCtx, lifestyleCtx, weatherBlock,
+      styleBriefCtx, thesisCtx + lifestyleCtx, weatherBlock,
       wardrobeBlock, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
@@ -408,6 +450,16 @@ export async function POST(req: NextRequest) {
     try {
       await setSetting('style_directives', JSON.stringify(updated));
     } catch { /* storage failure — still return the AI response */ }
+
+    // Fire thesis update in background — non-blocking
+    updateStyleThesisInBackground(
+      existingThesisRaw ?? '',
+      wardrobeBlock,
+      { message, response: synthesis.acknowledgment },
+      existingDirectivesText,
+      lifestyleCtx,
+      styleBriefCtx,
+    );
 
     return NextResponse.json({
       acknowledgment: synthesis.acknowledgment,
