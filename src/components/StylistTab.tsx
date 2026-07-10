@@ -26,10 +26,14 @@ type ChatOutfit = {
   accessories?: string;
 };
 
+type PackingPiece = { itemId: string; role: string };
+type PackingList = { logic: string; outfitCount: number; pieces: PackingPiece[] };
+
 type Message = {
   role: 'user' | 'stylist';
   text: string;
   outfits?: ChatOutfit[];
+  packingList?: PackingList;
   consultedSpecialists?: string[];
 };
 
@@ -322,6 +326,7 @@ export default function StylistTab({
       const data = await res.json() as {
         acknowledgment?: string;
         outfits?: ChatOutfit[];
+        packingList?: PackingList;
         allDirectives?: StyleDirective[];
         consultedSpecialists?: string[];
         error?: string;
@@ -331,6 +336,7 @@ export default function StylistTab({
         role: 'stylist',
         text: data.acknowledgment ?? '',
         outfits: data.outfits,
+        packingList: data.packingList,
         consultedSpecialists: data.consultedSpecialists,
       }]);
       setDirectives(data.allDirectives ?? []);
@@ -453,7 +459,45 @@ export default function StylistTab({
                   Consulted · {msg.consultedSpecialists.join(' · ')}
                 </p>
               )}
-              {msg.outfits && msg.outfits.length > 0 && (
+              {msg.packingList && (
+                <div className="mt-3 border border-[#E5DDD0] bg-white">
+                  <div className="px-3 py-2 border-b border-[#E5DDD0] flex items-center justify-between">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light">Packing list</p>
+                    <p className="text-[10px] text-[#A89F96] font-light">{msg.packingList.outfitCount}+ outfits</p>
+                  </div>
+                  <p className="px-3 pt-2 pb-1 text-[11px] text-[#6B6058] font-light leading-relaxed">{msg.packingList.logic}</p>
+                  <div className="px-3 pb-3 space-y-1.5 mt-1">
+                    {msg.packingList.pieces.map((p, k) => {
+                      const item = items.find((i) => i.id === p.itemId);
+                      if (!item) return null;
+                      return (
+                        <div key={k} className="flex items-center gap-2.5">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt="" className="w-8 h-8 object-cover shrink-0 border border-[#E5DDD0]" />
+                          ) : (
+                            <div className="w-8 h-8 shrink-0 bg-[#F5F2EC] border border-[#E5DDD0]" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[11px] text-[#1A1714] font-light truncate">{item.name}</p>
+                            <p className="text-[10px] text-[#A89F96] font-light truncate">{p.role}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {msg.outfits && msg.outfits.length > 0 && (
+                    <div className="border-t border-[#E5DDD0] px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[#9B7B3A] font-light mb-2">Sample outfits</p>
+                      <div className="space-y-2">
+                        {msg.outfits.map((outfit, j) => (
+                          <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!msg.packingList && msg.outfits && msg.outfits.length > 0 && (
                 <div className="space-y-2 mt-2">
                   {msg.outfits.map((outfit, j) => (
                     <OutfitMini key={j} outfit={outfit} items={items} hasProfilePhoto={Boolean(profileImageFilename)} onLearnMore={(props) => setLearnMore({ ...props, onClose: () => setLearnMore(null) })} />

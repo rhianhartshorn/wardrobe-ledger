@@ -60,6 +60,17 @@ type ChatOutfit = {
   accessories?: string;
 };
 
+type PackingPiece = {
+  itemId: string;
+  role: string;
+};
+
+type PackingList = {
+  logic: string;
+  pieces: PackingPiece[];
+  outfitCount: number;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // SPECIALIST CALL — runs one member of the style team
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,7 +196,10 @@ ${briefsBlock}
 ━━━ YOUR TASK ━━━
 The client has said: "${message}"
 
-1. INTENT: Determine if the client wants outfit suggestions or a strategic/conversational response.
+1. INTENT: Classify the client's request as one of three types:
+— "outfit": they want 1–3 specific outfit suggestions for right now or a defined occasion
+— "capsule": they want to pack for a trip, plan a multi-day wardrobe, or maximise outfits from minimum pieces (keywords: holiday, trip, travel, packing, days away, weekend away, minimise luggage, how many outfits)
+— "conversation": strategic question, wardrobe analysis, shopping advice, or general styling discussion
 
 2. DIRECTIVES: Extract only permanent styling preferences or constraints the client has revealed — things that should change every future recommendation. A directive must describe a stable truth about how this person dresses, not a one-time request.
 
@@ -198,22 +212,37 @@ If the message contains no permanent preference — only a one-time request or c
 
 4. If intent is OUTFIT: Synthesize the specialist candidates above into the best 3 outfits. Where specialists conflict, make a clear call — explain the trade-off in the rationale. Use ONLY items from the wardrobe. Each outfit must be COMPLETE — a wearable look a person could walk out the door in.
 
-COMPLETENESS RULE (mandatory): Every outfit requires (a) a base layer top — shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit — OR a dress/jumpsuit that covers both top and bottom; AND (b) a bottom — trousers, jeans, skirt — OR the dress/jumpsuit. If a layering piece is included (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt), the base layer top MUST also be included in itemIds. A cardigan + trousers with no top is not a complete outfit. A blazer + skirt with no blouse is not complete.
+COMPLETENESS RULE (mandatory): Every outfit requires (a) a base layer top — shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit — OR a dress/jumpsuit that covers both top and bottom; AND (b) a bottom — trousers, jeans, skirt — OR the dress/jumpsuit. If a layering piece is included (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt), the base layer top MUST also be included in itemIds.
 
 Each rationale: max 20 words, begins with Try or Wear, explains the specific logic.
 
+5. If intent is CAPSULE: Build a travel capsule from this wardrobe.
+— Select the minimum number of pieces that create the maximum number of complete, appropriate outfits for the activities the client described.
+— Prioritise pieces that work across multiple outfit combinations (high versatility-per-item).
+— Cover every activity or context the client mentioned — if they said beach, dinner, and sightseeing, the capsule must have appropriate options for all three.
+— Aim for 8–12 pieces creating 12–18 outfits. If the wardrobe is limited, use what exists.
+— Each piece must earn its place: if a piece only works in one outfit, it probably shouldn't be in the capsule.
+— Also show 3–4 specific sample outfit combinations from the capsule to illustrate how the pieces combine.
+
 Respond with ONLY valid JSON, no markdown:
 {
-  "intent": "outfit|conversation",
+  "intent": "outfit|conversation|capsule",
   "directives": ["directive 1"],
   "acknowledgment": "your 1-2 sentence response to the client",
-  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}]
+  "outfits": [{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"specific 2026 aesthetic max 6 words","rationale":"max 20 words — coaching nudge, start with Try or Wear"}],
+  "packingList": {
+    "logic": "max 20 words — the capsule strategy: how many pieces, how many outfits, what it covers",
+    "outfitCount": 14,
+    "pieces": [{"itemId": "id1", "role": "max 8 words — why this piece earns its place"}]
+  }
 }
 
-If intent is "conversation", omit the outfits field.`;
+If intent is "outfit": include outfits, omit packingList.
+If intent is "capsule": include both outfits (3–4 sample combinations) and packingList.
+If intent is "conversation": omit both outfits and packingList.`;
 
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1200, route: 'head-stylist' });
-  return parseJSON(raw) as { intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] };
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1800, route: 'head-stylist' });
+  return parseJSON(raw) as { intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[]; packingList?: PackingList };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -406,16 +435,17 @@ export async function POST(req: NextRequest) {
 
     const msgLower = message.toLowerCase();
     const isOutfitRequest = /\b(wear|outfit|look|dress|style me|what (should|do) i wear|what('s| is) (a good|the right)|suggest|recommend|put together|combine|combination)\b/.test(msgLower);
+    const isCapsuleRequest = /\b(holiday|trip|travel|packing|pack|days away|weekend away|minimis|suitcase|luggage|capsule|how many outfits)\b/.test(msgLower);
     const isColourQuestion = /\b(colour|color|palette|tone|clash|match|go with)\b/.test(msgLower);
     const isFitQuestion = /\b(fit|proportion|shape|tuck|hem|length|size|silhouette)\b/.test(msgLower);
     const isOccasionQuestion = /\b(occasion|work|office|interview|wedding|event|formal|casual|weekend|smart|dress code|meeting|date|party|travel)\b/.test(msgLower);
-    const isWardrobeQuestion = /\b(missing|gap|need|buy|shopping|capsule|wardrobe|collection|have enough|what do i (have|own))\b/.test(msgLower);
+    const isWardrobeQuestion = /\b(missing|gap|need|buy|shopping|wardrobe|collection|have enough|what do i (have|own))\b/.test(msgLower);
 
     // Always include: Fit (structure), Colour (hard filter), Wardrobe Intelligence (identity context)
     // Conditionally include: Fashion Editor (all outfit requests + general aesthetic questions)
     //                        Occasion (when context/event is relevant)
-    const runFashionEditor = isOutfitRequest || isColourQuestion || isFitQuestion || (!isWardrobeQuestion && !isOccasionQuestion);
-    const runOccasion = isOccasionQuestion || isOutfitRequest;
+    const runFashionEditor = isOutfitRequest || isCapsuleRequest || isColourQuestion || isFitQuestion || (!isWardrobeQuestion && !isOccasionQuestion);
+    const runOccasion = isOccasionQuestion || isOutfitRequest || isCapsuleRequest;
 
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
 
@@ -435,7 +465,9 @@ export async function POST(req: NextRequest) {
       runSpecialist(
         'Wardrobe Intelligence',
         WARDROBE_INTELLIGENCE_PERSONA,
-        'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person, not just what they aspire to. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
+        isCapsuleRequest
+          ? 'Identify the most versatile pieces in this wardrobe — items that work across multiple outfit combinations, multiple formality levels, and multiple activity types. Rank the top 8–12 pieces by versatility-per-item for a travel capsule. Flag any category gaps (e.g. no lightweight layer, no smart-casual option) that would leave the client without an outfit for a likely occasion.'
+          : 'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
         message, itemListText, sharedContext,
       ),
       ...(runFashionEditor ? [runSpecialist(
@@ -504,6 +536,7 @@ export async function POST(req: NextRequest) {
       directives: newDirectives,
       allDirectives: updated,
       outfits: finalOutfits ?? undefined,
+      packingList: synthesis.packingList ?? undefined,
       consultedSpecialists: specialistBriefs.map((b) => b.role),
     });
 
