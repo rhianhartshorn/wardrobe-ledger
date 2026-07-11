@@ -41,12 +41,12 @@ function safeDate(val: unknown, opts: Intl.DateTimeFormatOptions): string {
 }
 
 export default async function AdminPage() {
-  let log, s, maxRouteCost: number, maxDayCost: number;
   try {
-    log = await getUsageLog();
-    s = summarise(log);
-    maxRouteCost = s.byRoute.length > 0 ? Math.max(...s.byRoute.map((r) => r.costUsd)) : 0.000001;
-    maxDayCost = s.byDay.length > 0 ? Math.max(...s.byDay.map((d) => d.costUsd)) : 0.000001;
+    const log = await getUsageLog();
+    const s = summarise(log);
+    const maxRouteCost = s.byRoute.length > 0 ? Math.max(...s.byRoute.map((r) => r.costUsd)) : 0.000001;
+    const maxDayCost = s.byDay.length > 0 ? Math.max(...s.byDay.map((d) => d.costUsd)) : 0.000001;
+    return renderDashboard(log, s, maxRouteCost, maxDayCost);
   } catch (err) {
     return (
       <div style={{ padding: 40, fontFamily: 'monospace' }}>
@@ -57,7 +57,14 @@ export default async function AdminPage() {
       </div>
     );
   }
+}
 
+function renderDashboard(
+  log: Awaited<ReturnType<typeof getUsageLog>>,
+  s: ReturnType<typeof summarise>,
+  maxRouteCost: number,
+  maxDayCost: number,
+) {
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#1A1714] px-4 py-8 max-w-3xl mx-auto">
       <div className="mb-8">

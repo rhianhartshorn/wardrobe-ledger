@@ -79,10 +79,29 @@ export async function logUsage(entry: Omit<UsageEntry, 'costUsd'>): Promise<void
   }
 }
 
+// Older or partially-written entries may be missing fields, non-numeric, or
+// not even objects — normalize everything to a safe shape so a single bad
+// record from an earlier schema can never crash the dashboard render.
+function sanitizeEntry(e: unknown): UsageEntry | null {
+  if (!e || typeof e !== 'object') return null;
+  const r = e as Partial<UsageEntry>;
+  return {
+    ts: typeof r.ts === 'number' && !isNaN(r.ts) ? r.ts : 0,
+    route: typeof r.route === 'string' ? r.route : 'unknown',
+    model: typeof r.model === 'string' ? r.model : 'unknown',
+    inputTokens: typeof r.inputTokens === 'number' && !isNaN(r.inputTokens) ? r.inputTokens : 0,
+    outputTokens: typeof r.outputTokens === 'number' && !isNaN(r.outputTokens) ? r.outputTokens : 0,
+    costUsd: typeof r.costUsd === 'number' && !isNaN(r.costUsd) ? r.costUsd : 0,
+  };
+}
+
 export async function getUsageLog(): Promise<UsageEntry[]> {
   try {
     const raw = await redisGet(LOG_KEY);
-    return raw ? (JSON.parse(raw) as UsageEntry[]) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as unknown[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(sanitizeEntry).filter((e): e is UsageEntry => e !== null);
   } catch { return []; }
 }
 
