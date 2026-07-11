@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
-import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import {
+  getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext,
+  FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
+} from '@/lib/stylist';
 import { searchInspirationImages } from '@/lib/image-search';
+import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock } from '@/lib/specialist-team';
 import type { InspirationImage } from '@/lib/style-types';
 
 type WardrobeItem = {
@@ -47,13 +51,60 @@ export async function POST(req: NextRequest) {
       ? `\nThe client's style aspiration is: "${goal}"\nAnalyse how close their current wardrobe already is to this reference, accounting for their body and colouring. Which specific pieces (by id) already work toward it, what is missing, and 3 concrete tips to bridge the gap using what they own.`
       : '';
 
-    const prompt = `${personaCtx} ${FASHION_EDITOR_VOICE} ${FIT_SPECIALIST_VOICE} ${COLOUR_ANALYST_VOICE} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
+    const sharedContext = [
+      styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
+      profileBlock,
+      behaviourBlock,
+      styleDirectives,
+    ].filter(Boolean).join('\n');
+
+    // ── STEP 1: The specialist team assesses the match / gap ─────────────────
+
+    const task = goal
+      ? `Identify the 3 real people whose style this wardrobe most resembles, AND assess how close this wardrobe is to the client's stated goal: "${goal}".`
+      : 'Identify the 3 real people (celebrities, models, style icons, designers) whose personal style this wardrobe most closely resembles.';
+
+    const specialistBriefs = await Promise.all([
+      runSpecialist(
+        'Fit & Proportion',
+        FIT_SPECIALIST_PERSONA,
+        `Assess whether this wardrobe's proportions and silhouettes genuinely suit the client's body profile. A style match or goal reference that doesn't work for this specific frame is not a real match.${goalSection}`,
+        task, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Colour Analysis',
+        COLOUR_ANALYST_PERSONA,
+        `Assess whether this wardrobe's palette genuinely suits the client's colour profile. A style match or goal reference built on colours that don't flatter this client's undertone is not a real match.${goalSection}`,
+        task, itemListText, sharedContext,
+      ),
+      runSpecialist(
+        'Fashion Editor',
+        FASHION_EDITOR_PERSONA,
+        `Identify the real people, style icons, or designers this wardrobe's actual pieces most closely resemble — grounded in specific garments owned, not aspiration. ${goal ? `Assess concretely how close this wardrobe already is to "${goal}" and what's missing.` : ''}`,
+        task, itemListText, sharedContext,
+      ),
+    ]);
+
+    const finalBriefs = briefsHaveDisagreement(specialistBriefs)
+      ? await runRoundTable(task, specialistBriefs)
+      : specialistBriefs;
+
+    // ── STEP 2: Head stylist synthesizes the team's briefs ───────────────────
+
+    const prompt = `${personaCtx} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${profileBlock}${behaviourBlock}
+
+━━━ SPECIALIST TEAM BRIEFS ━━━
+Tension classification: ${classifyTension(finalBriefs)}
+
+${formatBriefsBlock(finalBriefs)}
+
+━━━ YOUR TASK ━━━
 Wardrobe:
 ${itemListText}
 ${goalSection}
 
-Based on this wardrobe, identify the 3 real people (celebrities, models, style icons, designers — real named individuals) whose personal style this wardrobe most closely resembles. Be specific and accurate — consider the actual clothes, colours, formality level, and how they work with this client's body and colouring. A style match that doesn't flatter this person's specific frame and undertone is not a genuine match.
+Synthesize your team's briefs above. Be specific and accurate — consider the actual clothes, colours, formality level, and how they work with this client's body and colouring. A style match that doesn't flatter this person's specific frame and undertone is not a genuine match, even if a specialist proposed it — resolve any disagreement yourself before finalizing.
 
 Respond with ONLY valid JSON, no markdown:
 {
@@ -73,7 +124,8 @@ Respond with ONLY valid JSON, no markdown:
   }` : ''}
 }`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1200, route: 'style-match' });
+    // Taste-critical synthesis — same standard as the head stylist elsewhere.
+    const raw = await callClaude({ prompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'style-match' });
     const parsed = parseJSON(raw) as {
       closestMatches?: Array<{ name: string; why: string; matchStrength: string }>;
       goalAnalysis?: { goal: string; images?: InspirationImage[] } & Record<string, unknown>;
