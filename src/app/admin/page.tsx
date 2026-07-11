@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { getUsageLog, summarise } from '@/lib/usage';
 
 export const dynamic = 'force-dynamic';
@@ -60,7 +61,10 @@ export default async function AdminPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#1A1714] px-4 py-8 max-w-3xl mx-auto">
       <div className="mb-8">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light">Wardrobe Ledger</p>
+        <Link href="/" className="text-[10px] text-[#A89F96] hover:text-[#9B7B3A] font-light tracking-wide transition-colors">
+          ← Back to app
+        </Link>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mt-3">Wardrobe Ledger</p>
         <h1 className="font-serif text-3xl mt-1">Cost dashboard</h1>
         <p className="text-xs text-[#A89F96] font-light mt-1">Anthropic API usage · last {log.length} calls logged</p>
       </div>

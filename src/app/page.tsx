@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
 import TodayTab from '@/components/TodayTab';
@@ -238,6 +239,11 @@ export default function WardrobeApp() {
 
         <p className="text-center text-[11px] text-[#A89F96] mt-12 font-light tracking-wide">
           Your wardrobe data stays private — stored only on this server.
+        </p>
+        <p className="text-center mt-1">
+          <Link href="/admin" className="text-[10px] text-[#D6CFC0] hover:text-[#A89F96] font-light tracking-wide transition-colors">
+            Usage &amp; cost
+          </Link>
         </p>
       </main>
     </div>
