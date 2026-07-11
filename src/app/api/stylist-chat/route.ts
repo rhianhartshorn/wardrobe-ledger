@@ -81,10 +81,14 @@ ${briefsBlock}
 ━━━ YOUR TASK ━━━
 The client has said: "${message}"
 
-STEP 1 — DIRECTIVES: Extract only permanent styling preferences or constraints revealed. A directive is a stable truth about how this person dresses — not a one-time request.
-EXTRACT: "avoids heels", "prefers loose fits", "needs workwear", "dislikes showing arms", "stays neutral palette"
-DO NOT EXTRACT: "wants outfits with the beige blazer", "asked for 3 looks", "wants something for Tuesday"
-Return an empty array if nothing permanent was revealed.
+STEP 1 — DIRECTIVES: Extract only permanent styling preferences or constraints revealed — a stable truth about how this person dresses in general, true regardless of occasion, trip, or which request prompted it.
+EXTRACT: "avoids heels", "prefers loose fits", "dislikes showing arms", "stays neutral palette" — traits that hold true across every future request, no matter the context.
+NEVER EXTRACT — these look permanent but are not, and extracting them corrupts every future recommendation:
+— Anything scoped to a specific occasion, trip, or event ("needs work-appropriate outfits", "wants business casual for the office", "holiday packing must serve beach and dinner") — these are true for THAT request, not a standing rule to apply when the client asks for something completely different later.
+— Anything about how many options to show ("wants one outfit not several") — this is a response-format preference for one message, not permanent; the VARIETY rule below always governs how many options to give unless the client repeats this in the current message.
+— Anything referencing a specific past outfit, piece, or "prior sequence" that isn't in front of you right now.
+— Vague or uncertain inferences. When in doubt, do not extract — a missed directive costs nothing; a wrong one actively misdirects every future conversation.
+Return an empty array if nothing genuinely permanent was revealed. Most turns should return an empty array — this is intentionally rare.
 
 STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the team's verdicts:
 — Any combination flagged BLOCKING by any specialist must be excluded. No exceptions.
@@ -92,6 +96,7 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — Favour outfit candidates that multiple specialists have endorsed. If a specialist proposed specific item IDs that pass their tests, prefer those combinations.
 — If the tension class is FATAL or DOMINANT, lead with the problem before offering alternatives.
 — You have consulted the full team. Your response must reflect their collective input — do not arrive at a recommendation that contradicts a specialist who gave high-confidence input.
+— EXPLICIT REQUEST OVERRIDES STORED DIRECTIVES: What the client says in THIS message about occasion, formality, or setting always wins over a stored directive from a previous session. If a directive says "needs work-appropriate outfits" but this message asks for something casual or informal, honour informal — the stored directive was scoped to whatever prompted it, not a permanent formality lock. Never let old context override what the client is explicitly asking for right now.
 — VARIETY: If the client is asking for outfit ideas or options for an occasion (not a narrow single-item verdict), propose at least 2 genuinely different combinations built around different anchor pieces. Do not let the specialists' shared preference for high-wear-count pieces collapse your answer onto the same 1-2 items every time — a client asking "what should I wear" wants her wardrobe's range explored, not her go-to pairing recycled back at her.
 — REPETITION CHECK: Look at the recent conversation history above. If you already proposed a specific combination earlier in this conversation, do not propose the identical combination again — the client has either already seen it or has told you it doesn't fit. Offer something genuinely different.
 — QUALITY GATE: Variety and underused-piece candidates are not exempt from scrutiny. Before finalizing ANY combination — whether it came from a specialist's candidate list or your own synthesis — check it against Fit & Proportion's structure rules, Colour Analysis's palette test, and Fashion Editor's pattern-mixing and coherence test yourself. A pairing surfaced because it's underused, or because a single specialist proposed it, still has to actually work as a whole outfit. Two competing bold prints with no coordinating logic, a proportion clash, or a palette miss must be excluded even if no specialist explicitly called it BLOCKING — you are the final check, not a pass-through.
@@ -457,5 +462,18 @@ export async function GET() {
     return NextResponse.json({ directives });
   } catch {
     return NextResponse.json({ directives: [] });
+  }
+}
+
+// Clears accumulated client directives without touching the wardrobe, saved
+// looks, or style thesis — useful when over-eager extraction has stored a
+// one-off request as if it were a permanent rule.
+export async function DELETE() {
+  try {
+    await setSetting('style_directives', '[]');
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to clear directives';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
