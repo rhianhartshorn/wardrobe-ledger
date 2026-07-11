@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getSetting, setSetting, getSavedLooks } from '@/lib/db';
+import { getSetting, setSetting, getSavedLooks, getItem } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
@@ -38,7 +38,7 @@ type WardrobeItem = {
   primaryColor: string; secondaryColor: string;
   pattern: string; formality: string; season: string;
   material?: string; fit?: string; length?: string;
-  accessoryType?: string; wearCount?: number; styleNote?: string;
+  accessoryType?: string; wearCount?: number; styleNote?: string; visualNotes?: string;
 };
 
 type SpecialistBrief = {
@@ -325,7 +325,8 @@ Respond with ONLY valid JSON, no markdown:
   "blocks": [ ...your chosen blocks in order... ]
 }`;
 
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, route: 'head-stylist' });
+  // The head stylist is the taste-critical call — it runs on the strongest model.
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, model: 'claude-opus-4-8', route: 'head-stylist' });
   return parseJSON(raw) as StylistResponse;
 }
 
@@ -379,6 +380,68 @@ Respond with ONLY valid JSON, no markdown:
   } catch {
     return outfits;
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VISUAL GATE — the final look at the rail.
+// Everything upstream reasons largely from text. This is the one step where
+// someone actually LOOKS at the proposed outfit: the real garment photos are
+// pulled from storage and judged together as an assembled look. Catches the
+// clashes text tags can never encode. Runs one vision call per outfit, in
+// parallel; on any failure it passes the outfit through rather than blocking.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function runVisualGate(
+  outfits: ChatOutfit[],
+  items: WardrobeItem[],
+): Promise<Set<ChatOutfit>> {
+  const survivors = new Set<ChatOutfit>();
+
+  await Promise.all(outfits.map(async (outfit) => {
+    try {
+      const images: Array<{ base64: string; mediaType?: string }> = [];
+      for (const id of outfit.itemIds.slice(0, 4)) {
+        const row = await getItem(id);
+        const dataUrl = row?.image_data_url;
+        if (dataUrl?.startsWith('data:')) {
+          const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+          if (match) images.push({ mediaType: match[1], base64: match[2] });
+        }
+      }
+
+      // Fewer than 2 photos — nothing to judge visually, pass through
+      if (images.length < 2) { survivors.add(outfit); return; }
+
+      const pieceNames = outfit.itemIds
+        .map((id) => items.find((i) => i.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+
+      const prompt = `You are the final visual quality check at a styling atelier. The attached photos are the actual garments proposed as ONE outfit: ${pieceNames}.
+
+Look at them TOGETHER as an assembled look — the way the pieces would read worn at the same time.
+
+FAIL only for a genuine visual problem a stranger would notice on the street:
+— two bold patterns clashing with no shared colour family and no scale hierarchy
+— colours that visibly fight each other
+— an obvious formality mismatch between pieces (e.g. athletic piece with formal tailoring)
+— proportions or registers that cannot resolve into one coherent look
+
+Do NOT fail a look for being safe, plain, or conventional. Boring passes. Broken fails.
+
+Respond with ONLY valid JSON, no markdown:
+{"verdict":"pass|fail","reason":"max 15 words — the specific visual problem, or why it holds"}`;
+
+      const raw = await callClaude({ prompt, images, maxTokens: 150, route: 'visual-gate' });
+      const parsed = parseJSON(raw) as { verdict?: string };
+      if (parsed.verdict !== 'fail') survivors.add(outfit);
+    } catch {
+      // Gate must never block a response — pass through on any error
+      survivors.add(outfit);
+    }
+  }));
+
+  return survivors;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -462,9 +525,10 @@ export async function POST(req: NextRequest) {
     // Saved look history for Wardrobe Intelligence
     const workedLooks = savedLooks.filter((l) => l.feedback === 'worked');
     const didntWorkLooks = savedLooks.filter((l) => l.feedback === 'didnt_work');
+    const lookPieces = (ids: string[]) => ids.map((id) => items?.find((i) => i.id === id)?.name).filter(Boolean).join(' + ');
     const savedLooksCtx = savedLooks.length ? [
-      workedLooks.length ? `Looks worn and rated as working: ${workedLooks.map((l) => l.title).join('; ')}` : '',
-      didntWorkLooks.length ? `Looks worn and rated as not working: ${didntWorkLooks.map((l) => l.title).join('; ')}` : '',
+      workedLooks.length ? `CONFIRMED WINS — combinations validated in real life on this client. These are your taste calibration: every new proposal should hold up next to them:\n${workedLooks.map((l) => `- "${l.title}"${lookPieces(l.itemIds) ? ': ' + lookPieces(l.itemIds) : ''}`).join('\n')}` : '',
+      didntWorkLooks.length ? `CONFIRMED MISSES — worn and rated as not working. Understand why before proposing anything similar:\n${didntWorkLooks.map((l) => `- "${l.title}"${lookPieces(l.itemIds) ? ': ' + lookPieces(l.itemIds) : ''}`).join('\n')}` : '',
       savedLooks.filter((l) => !l.feedback).length ? `Looks saved but not yet worn: ${savedLooks.filter((l) => !l.feedback).map((l) => l.title).join('; ')}` : '',
     ].filter(Boolean).join('\n') : '';
     const savedLooksBlock = savedLooksCtx
@@ -477,7 +541,7 @@ export async function POST(req: NextRequest) {
 
     const itemListText = items?.length
       ? items.map((it) =>
-          `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}${it.styleNote ? ' — ' + it.styleNote : ''}`
+          `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${it.visualNotes ? ' [' + it.visualNotes + ']' : ''}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}${it.styleNote ? ' — ' + it.styleNote : ''}`
         ).join('\n')
       : '';
 
@@ -562,8 +626,8 @@ export async function POST(req: NextRequest) {
       ...(runFashionEditor ? [runSpecialist(
         'Fashion Editor',
         FASHION_EDITOR_PERSONA,
-        'Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated. Pay specific attention to pattern mixing: two bold patterns (florals, animal print, houndstooth, plaid, geometric) together only work with a shared colour family or a clear dominant/accent scale hierarchy — flag any pattern-on-pattern combination that lacks that logic as a clash, not a considered choice.',
-        message, itemListText, sharedContext,
+        `Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated. Pay specific attention to pattern mixing: two bold patterns (florals, animal print, houndstooth, plaid, geometric) together only work with a shared colour family or a clear dominant/accent scale hierarchy — flag any pattern-on-pattern combination that lacks that logic as a clash, not a considered choice.${wardrobeImages ? ' A visual wardrobe grid is attached — judge coherence with your eyes on the actual garments, not from the text descriptions alone.' : ''}`,
+        message, itemListText, sharedContext, wardrobeImages,
       )] : []),
       ...(runOccasion ? [runSpecialist(
         'Occasion & Context',
@@ -611,8 +675,16 @@ export async function POST(req: NextRequest) {
 
       if (allOutfits.length) {
         const completeOutfits = allOutfits.filter((o) => isCompleteOutfit(o.itemIds, items));
-        const enriched = completeOutfits.length
-          ? await runAccessoriesDirector(completeOutfits, items, styleBriefCtx, lifestyleCtx)
+
+        // Visual gate: actually look at each proposed outfit's garment photos together
+        // before it ships — kills clashes that text-based reasoning can't see.
+        const gateSurvivors = completeOutfits.length
+          ? await runVisualGate(completeOutfits, items)
+          : new Set<ChatOutfit>();
+        const approvedOutfits = completeOutfits.filter((o) => gateSurvivors.has(o));
+
+        const enriched = approvedOutfits.length
+          ? await runAccessoriesDirector(approvedOutfits, items, styleBriefCtx, lifestyleCtx)
           : [];
 
         // Map enriched outfits back into their blocks
@@ -621,12 +693,21 @@ export async function POST(req: NextRequest) {
           if (b.type !== 'outfits' || !outfitBlockIndices.includes(i)) return b;
           const blockOutfits: ChatOutfit[] = [];
           (b.outfits ?? []).forEach((o) => {
-            if (isCompleteOutfit(o.itemIds, items)) {
+            if (isCompleteOutfit(o.itemIds, items) && gateSurvivors.has(o)) {
               if (enriched[enrichedIdx]) blockOutfits.push(enriched[enrichedIdx++]);
             }
           });
           return blockOutfits.length ? { ...b, outfits: blockOutfits } : null;
         }).filter((b): b is Block => b !== null);
+
+        // Every proposed outfit failed the visual review — be honest rather than silent
+        if (completeOutfits.length > 0 && approvedOutfits.length === 0) {
+          finalBlocks.push({
+            type: 'text',
+            label: 'Final review',
+            content: 'The team assembled options but pulled them at the final visual review — seen together, the combinations did not resolve. Ask again and the team will build from different anchor pieces.',
+          });
+        }
       }
     }
 

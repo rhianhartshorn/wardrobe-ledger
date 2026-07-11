@@ -24,6 +24,7 @@ type TagForm = {
   fit: string;
   length: string;
   price: string;
+  visualNotes?: string;
 };
 
 const EMPTY_FORM: TagForm = {

@@ -36,6 +36,7 @@ export type WardrobeItem = {
   price?: number;
   wearCount?: number;
   styleNote?: string;
+  visualNotes?: string;
 };
 
 type Tab = 'stylist' | 'closet' | 'looks' | 'style';
@@ -93,6 +94,20 @@ export default function WardrobeApp() {
             .then((r) => r.json())
             .then((fresh: StoredFashionCurrency) => { if (fresh.fashionCurrency) setFashionCurrency(fresh.fashionCurrency); })
             .catch(() => {});
+        }
+
+        // Backfill richer visual attributes for items tagged before the schema upgrade —
+        // drains a small batch per round in the background, capped to avoid runaway loops
+        if (loadedItems.some((i) => !i.visualNotes)) {
+          const drain = async (rounds: number): Promise<void> => {
+            if (rounds <= 0) return;
+            try {
+              const r = await fetch('/api/enrich-tags', { method: 'POST' });
+              const d = await r.json() as { remaining?: number };
+              if (r.ok && (d.remaining ?? 0) > 0) await drain(rounds - 1);
+            } catch { /* background — ignore */ }
+          };
+          drain(8);
         }
 
         // Style Discovery only after 10+ items — skip if lifestyle already filled in (Blueprint tab)

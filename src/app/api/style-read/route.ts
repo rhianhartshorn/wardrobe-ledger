@@ -11,7 +11,7 @@ type WardrobeItem = {
   id: string; category: string; name: string;
   primaryColor: string; secondaryColor: string;
   pattern: string; formality: string; season: string;
-  material?: string; fit?: string; length?: string; accessoryType?: string; wearCount?: number;
+  material?: string; fit?: string; length?: string; accessoryType?: string; wearCount?: number; visualNotes?: string;
 };
 
 export type { StyleGroup, StyleTwin, StyleReadResult } from '@/lib/style-types';
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     const itemListText = items
-      .map((it) => `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}`)
+      .map((it) => `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}, ${it.pattern || 'solid'}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${it.visualNotes ? ' [' + it.visualNotes + ']' : ''}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}`)
       .join('\n');
 
     const tasteSignals = [

@@ -22,6 +22,7 @@ function toClient(row: ItemRow) {
     price: row.price,
     wearCount: row.wear_count ?? 0,
     styleNote: row.style_note || undefined,
+    visualNotes: row.visual_notes || undefined,
   };
 }
 
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       primaryColor = '', secondaryColor = '',
       pattern = '', formality = '', season = '', material = '', fit = '', length = '', accessoryType = '',
       imageDataUrl = '',
-      price,
+      price, visualNotes = '',
     } = body as Record<string, string | number | undefined>;
 
     if (!id || !name || !category) {
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
       added_at: Date.now(),
       price: price != null ? Number(price) : undefined,
       wear_count: 0,
+      visual_notes: (visualNotes as string) || undefined,
     };
 
     await insertItem(row);
