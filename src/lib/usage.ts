@@ -38,13 +38,32 @@ async function redisGet(key: string): Promise<string | null> {
   } catch { return null; }
 }
 
-async function redisSet(key: string, value: string): Promise<void> {
+// ENCODING NOTE (matches src/lib/db.ts): Upstash REST stores the raw POST
+// body bytes, so JSON.stringify is called ONCE here on the value. Callers
+// must pass the raw value (array/object), never a pre-stringified string —
+// doing so double-encodes it, and a double-encoded array reads back as a
+// plain string, silently breaking every subsequent read and write.
+async function redisSet(key: string, value: unknown): Promise<void> {
   await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(value),
     cache: 'no-store',
   });
+}
+
+// Parse a raw Redis GET result back to its original value. Handles both
+// correctly-encoded values AND legacy double-encoded values (from the bug
+// above) so historical entries are still readable rather than silently lost.
+function parseVal<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    const once = JSON.parse(raw) as unknown;
+    if (typeof once === 'string') {
+      try { return JSON.parse(once) as T; } catch { return once as T; }
+    }
+    return once as T;
+  } catch { return null; }
 }
 
 // Fixed cost per call for external (non-Anthropic) APIs
@@ -60,10 +79,11 @@ export async function logExternalCall(entry: { ts: number; route: string; model:
 async function appendToLog(full: UsageEntry): Promise<void> {
   try {
     const raw = await redisGet(LOG_KEY);
-    const log: UsageEntry[] = raw ? (JSON.parse(raw) as UsageEntry[]) : [];
+    const parsed = parseVal<unknown[]>(raw);
+    const log: UsageEntry[] = Array.isArray(parsed) ? (parsed as UsageEntry[]) : [];
     log.push(full);
     if (log.length > MAX_ENTRIES) log.splice(0, log.length - MAX_ENTRIES);
-    await redisSet(LOG_KEY, JSON.stringify(log));
+    await redisSet(LOG_KEY, log);
   } catch {
     // Never let logging failures surface to users
   }
@@ -98,8 +118,7 @@ function sanitizeEntry(e: unknown): UsageEntry | null {
 export async function getUsageLog(): Promise<UsageEntry[]> {
   try {
     const raw = await redisGet(LOG_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown[];
+    const parsed = parseVal<unknown[]>(raw);
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeEntry).filter((e): e is UsageEntry => e !== null);
   } catch { return []; }
