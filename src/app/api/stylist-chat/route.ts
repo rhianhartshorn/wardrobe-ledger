@@ -282,10 +282,12 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — Favour outfit candidates that multiple specialists have endorsed. If a specialist proposed specific item IDs that pass their tests, prefer those combinations.
 — If the tension class is FATAL or DOMINANT, lead with the problem before offering alternatives.
 — You have consulted the full team. Your response must reflect their collective input — do not arrive at a recommendation that contradicts a specialist who gave high-confidence input.
+— VARIETY: If the client is asking for outfit ideas or options for an occasion (not a narrow single-item verdict), propose at least 2 genuinely different combinations built around different anchor pieces. Do not let the specialists' shared preference for high-wear-count pieces collapse your answer onto the same 1-2 items every time — a client asking "what should I wear" wants her wardrobe's range explored, not her go-to pairing recycled back at her.
+— REPETITION CHECK: Look at the recent conversation history above. If you already proposed a specific combination earlier in this conversation, do not propose the identical combination again — the client has either already seen it or has told you it doesn't fit. Offer something genuinely different.
 
 STEP 3 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
-STEP 4 — BUILD YOUR BLOCKS: Compose a response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks. A simple question might need only a text block. Choose the structure that would be most useful to this client for this specific request.
+STEP 4 — BUILD YOUR BLOCKS: Compose a response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks, and a simple "what should I wear to X" question deserves 2-3 real options, not one. A narrow verdict question ("does this work") may need only a text or verdict block. Choose the structure that would be most useful to this client for this specific request.
 
 AVAILABLE BLOCK TYPES:
 
@@ -553,7 +555,7 @@ export async function POST(req: NextRequest) {
         WARDROBE_INTELLIGENCE_PERSONA,
         isCapsuleRequest
           ? 'Identify the most versatile pieces in this wardrobe — items that work across multiple outfit combinations, multiple formality levels, and multiple activity types. Rank the top 8–12 pieces by versatility-per-item for a travel capsule. Flag any category gaps (e.g. no lightweight layer, no smart-casual option) that would leave the client without an outfit for a likely occasion.'
-          : 'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
+          : 'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person, not as a script to repeat. If this is a request for outfit ideas (not a narrow single-item verdict), your job is to surface underused pieces worth reactivating — do not propose the same top-worn anchor combination the client already reaches for constantly; that is not new information, it is a rut. High wear count validates that a piece works on this client; it does not mean the same 1-2 pieces should be the candidate every time. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
         message, itemListText, sharedContext,
       ),
       ...(runFashionEditor ? [runSpecialist(
