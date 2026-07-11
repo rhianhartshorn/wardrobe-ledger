@@ -322,7 +322,7 @@ Respond with ONLY valid JSON, no markdown:
   "blocks": [ ...your chosen blocks in order... ]
 }`;
 
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2000, route: 'head-stylist' });
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, route: 'head-stylist' });
   return parseJSON(raw) as StylistResponse;
 }
 
