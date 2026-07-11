@@ -61,6 +61,30 @@ BANNED WORDS — never use these: elevate/elevated/elevating, effortless/effortl
 Use precise language about proportion, colour, texture, silhouette, and context instead.`;
 
 // ---------------------------------------------------------------------------
+// STYLING CRAFT LIBRARY — the technique vocabulary a real stylist reaches for.
+// Injected wherever outfits are assembled so recommendations name a specific
+// move instead of stopping at "wear item A with item B."
+// ---------------------------------------------------------------------------
+
+export const STYLING_CRAFT_LIBRARY = `STYLING CRAFT — every outfit recommendation should name at least one specific technique from this vocabulary, not just list which pieces go together:
+
+TUCKS: Full tuck (defines waist, lengthens leg — use with a defined waistband). Half-tuck, front only (deliberate ease-front attitude, not a hedge — use on a longer torso or to break a monochrome block). French tuck (thumb-and-two-fingers tuck of just the front hem — use sparingly, only when the shirt has enough length to spare). Tucked-and-bloused (tuck then gently pull a little fabric back out for soft volume over the waistband — use with fine or lightweight fabrics only).
+
+SLEEVES: Cuffed once, wide (casual, relaxed register). Cuffed twice, narrow (precise, tailored register). Pushed to three-quarter (softens a structured sleeve, shows the wrist). Sleeves rolled past the elbow (workwear-adjacent, purposeful).
+
+HEMS & LAYERING ORDER: Cropped layer over longer base (jacket/cardigan shorter than the piece beneath — reads intentional, not sized wrong). Longline layer over shorter base (coat or cardigan past the hem of the dress/top beneath — elongates). Asymmetric hem exposure (uneven layering front-to-back or side-to-side used as a deliberate proportion break).
+
+KNOTS & TIES (scarves, shirts, belts): Loose low knot at the sternum (scarf tied low and loose, ends left long — relaxed, undone-on-purpose). Bandana fold at the neck (scarf folded to a triangle, knotted at the nape, worn under a collar). Shirt front-knot at the natural waist (tying shirt tails to crop and define waist — casual register only). Belt worn over rather than through loops (visible cinch on a dress or coat, not functional trouser hold).
+
+NECKLINE MANAGEMENT: Top button undone plus one (opens the neckline without reading undone). Collar popped and pressed flat on one side only (asymmetric, editorial). Layered necklines at different depths (crew under a deep V, or vice versa — creates a frame rather than competing).
+
+WAIST DEFINITION WITHOUT A BELT: Tuck plus one open button at the waistband (soft definition). Blousing fabric slightly at the front only. Cardigan worn open but held at one button only, just below the bust.
+
+FOOTWEAR PROPORTION MOVES: Ankle cuff on trousers (single cuff at the ankle to expose a slice of skin or sock — shortens the visual line intentionally, used to balance a longer top). No-show hem break (trouser hem just grazes the shoe with zero break — lengthens). Full break intentionally loose (relaxed, off-duty register only, never with tailoring).
+
+When you recommend a combination, specify which of these moves (or a clear variant) makes it work — not just which garments are involved.`;
+
+// ---------------------------------------------------------------------------
 // CURRENT SEASON LENS — injected into all routes
 // ---------------------------------------------------------------------------
 

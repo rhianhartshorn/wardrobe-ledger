@@ -64,6 +64,7 @@ export type ItemRow = {
   added_at: number;
   price?: number;
   wear_count?: number;
+  style_note?: string;
 };
 
 export type SavedLook = {

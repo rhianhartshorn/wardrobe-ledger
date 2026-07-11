@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getItem, deleteItem, deleteImage, incrementWear, updateItem } from '@/lib/db';
+import { getItem, deleteItem, deleteImage, incrementWear, updateItem, getAllItems } from '@/lib/db';
+import { updateWardrobeCharacterBriefInBackground } from '@/lib/wardrobe-brain';
 
 export async function DELETE(
   _req: NextRequest,
@@ -8,6 +9,7 @@ export async function DELETE(
   const item = await getItem(params.id).catch(() => undefined);
   await deleteItem(params.id);
   if (item?.image_filename) await deleteImage(item.image_filename).catch(() => {});
+  getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
   return NextResponse.json({ ok: true });
 }
 
@@ -45,6 +47,7 @@ export async function PATCH(
       });
       const updated = await getItem(params.id);
       if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+      getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
       return NextResponse.json({
         id: updated.id, name: updated.name, category: updated.category,
         primaryColor: updated.primary_color, secondaryColor: updated.secondary_color,

@@ -7,8 +7,9 @@ import {
   getLifestyleContext, getStyleDirectives, getStyleThesisContext,
   FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
   OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA, ACCESSORIES_DIRECTOR_PERSONA,
-  STYLIST_2026_LENS, BRAND_VOICE_RULES, SHARED_OPERATING_PRINCIPLES,
+  STYLIST_2026_LENS, BRAND_VOICE_RULES, SHARED_OPERATING_PRINCIPLES, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
+import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
 
 export type StyleDirective = {
   instruction: string;
@@ -37,7 +38,7 @@ type WardrobeItem = {
   primaryColor: string; secondaryColor: string;
   pattern: string; formality: string; season: string;
   material?: string; fit?: string; length?: string;
-  accessoryType?: string; wearCount?: number;
+  accessoryType?: string; wearCount?: number; styleNote?: string;
 };
 
 type SpecialistBrief = {
@@ -58,6 +59,7 @@ type ChatOutfit = {
   styleReference?: string;
   rationale?: string;
   accessories?: string;
+  stylingNote?: string;
 };
 
 type PackingPiece = { itemId: string; role: string };
@@ -140,6 +142,68 @@ Respond with ONLY valid JSON, no markdown:
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ROUND TABLE — one cross-talk pass when specialists disagree.
+// Real teams get quality from friction, not from five monologues stapled
+// together. When verdicts conflict, show each specialist what the others said
+// and let them push back, concede, or sharpen — in a single combined call so
+// the cost stays bounded to one extra round-trip, not N.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function briefsHaveDisagreement(briefs: SpecialistBrief[]): boolean {
+  const live = briefs.filter((b) => !b.abstain);
+  if (live.length < 2) return false;
+  const verdicts = new Set(live.map((b) => b.verdict));
+  const hasBlocking = verdicts.has('blocking');
+  const hasTradeOff = verdicts.has('trade-off');
+  const mixedClearAndConcern = verdicts.has('clear') && verdicts.has('concern');
+  return hasBlocking || hasTradeOff || mixedClearAndConcern;
+}
+
+async function runRoundTable(
+  message: string,
+  briefs: SpecialistBrief[],
+): Promise<SpecialistBrief[]> {
+  const briefsText = briefs.map((b) => {
+    if (b.abstain) return `── ${b.role.toUpperCase()} ── [abstained]`;
+    return [
+      `── ${b.role.toUpperCase()} ──`,
+      `Verdict: ${b.verdict.toUpperCase()} (confidence: ${b.confidence})`,
+      `Observation: ${b.observation}`,
+      `Recommendation: ${b.recommendation}`,
+      b.candidates?.length ? `Candidates: ${b.candidates.map((c) => `[${c.itemIds.join(', ')}] — ${c.note}`).join(' | ')}` : '',
+    ].filter(Boolean).join('\n');
+  }).join('\n\n');
+
+  const prompt = `You are moderating a round-table between styling specialists who gave conflicting or tense initial briefs on the same client request: "${message}"
+
+${SHARED_OPERATING_PRINCIPLES}
+
+INITIAL BRIEFS:
+${briefsText}
+
+Each specialist has now seen every other brief. For each specialist (in the same order, same roles), produce a revised brief: hold their position if it survives the pushback, or concede and sharpen it if a stronger specialist argument overrides theirs. A specialist should update their candidates if another specialist's candidate is objectively stronger against their own criteria. Do not manufacture false consensus — real disagreement should survive if it is genuinely a trade-off, not a lack of information.
+
+Respond with ONLY valid JSON, no markdown — same shape and order as the input, one object per specialist:
+{
+  "briefs": [
+    {"role": "exact role name", "verdict": "clear|concern|trade-off|opportunity|blocking", "confidence": "high|medium|low", "observation": "max 30 words", "mechanism": "one word or phrase", "recommendation": "max 20 words", "trade_off": "max 20 words", "abstain": false, "candidates": [{"itemIds": ["id1","id2"], "note": "max 15 words"}]}
+  ]
+}`;
+
+  try {
+    const raw = await callClaude({ prompt, maxTokens: 700, route: 'round-table' });
+    const parsed = parseJSON(raw) as { briefs: SpecialistBrief[] };
+    if (!parsed.briefs?.length) return briefs;
+    return briefs.map((original) => {
+      const revised = parsed.briefs.find((r) => r.role === original.role);
+      return revised ? { ...original, ...revised } : original;
+    });
+  } catch {
+    return briefs;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HEAD STYLIST SYNTHESIS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -156,6 +220,7 @@ async function runHeadStylist(
   conversationBlock: string,
   specialistBriefs: SpecialistBrief[],
   wardrobeImages?: Array<{ base64: string }>,
+  wardrobeCharacterBriefCtx = '',
 ): Promise<{ intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] }> {
 
   // Classify the tension pattern across briefs
@@ -194,7 +259,9 @@ async function runHeadStylist(
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
+
+${STYLING_CRAFT_LIBRARY}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
 Tension classification: ${tensionClass}
@@ -226,7 +293,7 @@ AVAILABLE BLOCK TYPES:
   {"type":"text","label":"optional heading","content":"your text here"}
 
 "outfits" — one or more complete outfit combinations. Use for specific looks to wear.
-  {"type":"outfits","label":"optional e.g. 'Day 1' or 'For the dinner'","outfits":[{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear"}]}
+  {"type":"outfits","label":"optional e.g. 'Day 1' or 'For the dinner'","outfits":[{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — the specific technique from the STYLING CRAFT vocabulary that makes this combination work, e.g. 'Half-tuck the shirt, cuff twice narrow, ankle-cuff the trouser hem'"}]}
 
 "packingList" — a travel capsule: minimum pieces, maximum outfit combinations.
   {"type":"packingList","logic":"max 20 words — pieces count, outfit count, what it covers","outfitCount":14,"pieces":[{"itemId":"id1","role":"max 8 words — why this earns its place"}]}
@@ -369,7 +436,7 @@ export async function POST(req: NextRequest) {
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
     // Load all context in parallel
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks, wardrobeCharacterBriefCtx] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
@@ -379,6 +446,7 @@ export async function POST(req: NextRequest) {
       getStyleThesisContext(),
       getSetting('style_thesis'),
       getSavedLooks(),
+      getWardrobeCharacterBriefContext(),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -406,7 +474,7 @@ export async function POST(req: NextRequest) {
 
     const itemListText = items?.length
       ? items.map((it) =>
-          `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}`
+          `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}${it.styleNote ? ' — ' + it.styleNote : ''}`
         ).join('\n')
       : '';
 
@@ -502,7 +570,14 @@ export async function POST(req: NextRequest) {
       )] : []),
     ];
 
-    const specialistBriefs = await Promise.all(specialistCalls);
+    let specialistBriefs = await Promise.all(specialistCalls);
+
+    // ── STEP 1.5: Round table — one cross-talk pass if the team disagrees ────
+    // Only pay for the extra call when there's a real tension to resolve.
+
+    if (briefsHaveDisagreement(specialistBriefs)) {
+      specialistBriefs = await runRoundTable(message, specialistBriefs);
+    }
 
     // ── STEP 2: Head stylist synthesizes ────────────────────────────────────
 
@@ -512,6 +587,7 @@ export async function POST(req: NextRequest) {
       wardrobeBlock, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
+      wardrobeCharacterBriefCtx,
     );
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────

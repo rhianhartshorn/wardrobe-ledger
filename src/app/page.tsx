@@ -35,6 +35,7 @@ export type WardrobeItem = {
   addedAt: number;
   price?: number;
   wearCount?: number;
+  styleNote?: string;
 };
 
 type Tab = 'stylist' | 'closet' | 'looks' | 'style';

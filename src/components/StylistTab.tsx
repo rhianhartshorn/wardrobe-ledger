@@ -24,6 +24,7 @@ type ChatOutfit = {
   styleReference?: string;
   rationale?: string;
   accessories?: string;
+  stylingNote?: string;
 };
 
 type PackingPiece = { itemId: string; role: string };
@@ -140,6 +141,9 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
         </div>
         {showWhy && outfit.rationale && (
           <p className="text-[11px] text-[#6B6058] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{outfit.rationale}</p>
+        )}
+        {outfit.stylingNote && (
+          <p className="text-[10px] text-[#9B7B3A] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2">{outfit.stylingNote}</p>
         )}
         {outfit.accessories && (
           <p className="text-[9px] text-[#A89F96] font-light leading-snug mt-1.5 border-l-2 border-[#E5DDD0] pl-2 italic">{outfit.accessories}</p>

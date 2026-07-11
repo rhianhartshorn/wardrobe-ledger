@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllItems, insertItem, clearAllItems, setSetting, type ItemRow } from '@/lib/db';
+import { generateItemDossierInBackground, updateWardrobeCharacterBriefInBackground } from '@/lib/wardrobe-brain';
 
 function toClient(row: ItemRow) {
   return {
@@ -20,6 +21,7 @@ function toClient(row: ItemRow) {
     addedAt: row.added_at,
     price: row.price,
     wearCount: row.wear_count ?? 0,
+    styleNote: row.style_note || undefined,
   };
 }
 
@@ -75,6 +77,12 @@ export async function POST(req: NextRequest) {
     };
 
     await insertItem(row);
+
+    // Fire-and-forget: give this piece a styling dossier, then refresh the wardrobe character brief
+    generateItemDossierInBackground(row).then(() => {
+      getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
+    }).catch(() => {});
+
     return NextResponse.json(toClient(row), { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
