@@ -107,12 +107,19 @@ Respond with ONLY valid JSON, no markdown:
     const raw = await callClaude({ prompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'today-brief' });
     const parsed = parseJSON(raw) as TodayResponse;
 
-    // Post-process: completeness + visual gate + accessories, same bar as any other recommendation
+    // Post-process: completeness + visual gate + accessories, same bar as any other recommendation.
+    // Gate and accessories run concurrently rather than sequentially — a few wasted
+    // accessory calls on rejected looks is cheaper than a second full AI round-trip.
     const candidates = [parsed.primary, parsed.alternative].filter((o): o is ChatOutfit => !!o?.itemIds?.length);
     const complete = candidates.filter((o) => isCompleteOutfit(o.itemIds, items));
-    const gateSurvivors = complete.length ? await runVisualGate(complete, items) : new Set<ChatOutfit>();
+    const [gateSurvivors, accessorised] = complete.length
+      ? await Promise.all([
+          runVisualGate(complete, items),
+          runAccessoriesDirector(complete, items, styleBriefCtx, lifestyleCtx),
+        ])
+      : [new Set<ChatOutfit>(), [] as ChatOutfit[]];
     const approved = complete.filter((o) => gateSurvivors.has(o));
-    const enriched = approved.length ? await runAccessoriesDirector(approved, items, styleBriefCtx, lifestyleCtx) : [];
+    const enriched = approved.map((o) => accessorised[complete.indexOf(o)] ?? o);
 
     const result: TodayResponse = {
       greeting: parsed.greeting || "Here's today.",

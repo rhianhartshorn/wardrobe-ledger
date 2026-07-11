@@ -531,16 +531,23 @@ export async function POST(req: NextRequest) {
       if (allOutfits.length) {
         const completeOutfits = allOutfits.filter((o) => isCompleteOutfit(o.itemIds, items));
 
-        // Visual gate: actually look at each proposed outfit's garment photos together
-        // before it ships — kills clashes that text-based reasoning can't see.
-        const gateSurvivors = completeOutfits.length
-          ? await runVisualGate(completeOutfits, items)
-          : new Set<ChatOutfit>();
+        // Visual gate and accessories direction run concurrently rather than
+        // sequentially — accessories are generated for every complete outfit
+        // in parallel with the gate check, and simply discarded for whichever
+        // outfits fail. Costs a few wasted accessory calls on rejected looks,
+        // saves a full sequential AI round-trip on every request.
+        const [gateSurvivors, accessorised] = completeOutfits.length
+          ? await Promise.all([
+              runVisualGate(completeOutfits, items),
+              runAccessoriesDirector(completeOutfits, items, styleBriefCtx, lifestyleCtx),
+            ])
+          : [new Set<ChatOutfit>(), [] as ChatOutfit[]];
         const approvedOutfits = completeOutfits.filter((o) => gateSurvivors.has(o));
 
-        const enriched = approvedOutfits.length
-          ? await runAccessoriesDirector(approvedOutfits, items, styleBriefCtx, lifestyleCtx)
-          : [];
+        const enriched = approvedOutfits.map((o) => {
+          const idx = completeOutfits.indexOf(o);
+          return accessorised[idx] ?? o;
+        });
 
         // Map enriched outfits back into their blocks
         let enrichedIdx = 0;
