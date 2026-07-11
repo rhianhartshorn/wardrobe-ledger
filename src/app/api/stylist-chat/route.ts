@@ -221,7 +221,7 @@ async function runHeadStylist(
   specialistBriefs: SpecialistBrief[],
   wardrobeImages?: Array<{ base64: string }>,
   wardrobeCharacterBriefCtx = '',
-): Promise<{ intent: string; directives: string[]; acknowledgment: string; outfits?: ChatOutfit[] }> {
+): Promise<StylistResponse> {
 
   // Classify the tension pattern across briefs
   const verdicts = specialistBriefs.filter((b) => !b.abstain).map((b) => b.verdict);

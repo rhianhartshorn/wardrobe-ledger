@@ -168,7 +168,7 @@ function WearIntelligence({ journal, items, onRemoveEntry }: {
   });
 
   // Top items by journal frequency
-  const topItems = [...itemFreq.entries()]
+  const topItems = Array.from(itemFreq.entries())
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
     .map(([id, count]) => ({ item: items.find((i) => i.id === id), count }))
@@ -200,7 +200,7 @@ function WearIntelligence({ journal, items, onRemoveEntry }: {
   journal.forEach((e) => {
     if (e.occasion) occasionFreq.set(e.occasion, (occasionFreq.get(e.occasion) ?? 0) + 1);
   });
-  const topOccasion = [...occasionFreq.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+  const topOccasion = Array.from(occasionFreq.entries()).sort((a, b) => b[1] - a[1])[0] ?? null;
 
   // ── Group history by month ─────────────────────────────────────────────────
 
@@ -300,7 +300,7 @@ function WearIntelligence({ journal, items, onRemoveEntry }: {
 
       {/* History grouped by month — collapsed */}
       <div className="space-y-1">
-        {[...byMonth.entries()].map(([key, entries]) => {
+        {Array.from(byMonth.entries()).map(([key, entries]: [string, JournalEntry[]]) => {
           const open = expandedMonths.has(key);
           return (
             <div key={key} className="border border-[#E5DDD0]">
