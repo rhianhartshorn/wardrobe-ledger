@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import Header from '@/components/Header';
+import TodayTab from '@/components/TodayTab';
 import StylistTab from '@/components/StylistTab';
 import ClosetTab from '@/components/ClosetTab';
 import AddItemTab from '@/components/AddItemTab';
@@ -39,10 +40,10 @@ export type WardrobeItem = {
   visualNotes?: string;
 };
 
-type Tab = 'stylist' | 'closet' | 'looks' | 'style';
+type Tab = 'today' | 'stylist' | 'closet' | 'looks' | 'style';
 
 export default function WardrobeApp() {
-  const [tab, setTab] = useState<Tab>('stylist');
+  const [tab, setTab] = useState<Tab>('today');
   const [showAdd, setShowAdd] = useState(false);
   const [items, setItems] = useState<WardrobeItem[]>([]);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
@@ -201,6 +202,8 @@ export default function WardrobeApp() {
           <div className="flex justify-center py-24">
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
           </div>
+        ) : tab === 'today' ? (
+          <TodayTab items={items} bodyProfile={bodyProfile} onGoToStylist={() => setTab('stylist')} />
         ) : tab === 'stylist' ? (
           <StylistTab
             items={items}

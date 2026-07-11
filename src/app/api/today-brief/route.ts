@@ -1,0 +1,128 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { callClaude, parseJSON } from '@/lib/claude';
+import { getSetting, getSavedLooks, getJournalEntries } from '@/lib/db';
+import { profileToContext, type BodyProfile } from '@/lib/body-profile';
+import {
+  getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
+  getLifestyleContext, getStyleDirectives, getStyleThesisContext,
+  STYLIST_2026_LENS, SHARED_OPERATING_PRINCIPLES, STYLING_CRAFT_LIBRARY,
+} from '@/lib/stylist';
+import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+
+type TodayResponse = {
+  greeting: string;
+  primary?: ChatOutfit;
+  alternative?: ChatOutfit;
+};
+
+export async function POST(req: NextRequest) {
+  try {
+    const { items, bodyProfile, weather } = await req.json() as {
+      items?: WardrobeItemLite[];
+      bodyProfile?: BodyProfile;
+      weather?: { locationName: string; tempF: number; condition: string; summary: string };
+    };
+
+    if (!items?.length || items.length < 3) {
+      return NextResponse.json({ error: 'Add at least 3 items to get a daily brief.' }, { status: 400 });
+    }
+
+    const [personaCtx, styleBriefCtx, lifestyleCtx, brandVoice, styleDirectives, thesisCtx, wardrobeCharacterBriefCtx, savedLooks, journal] = await Promise.all([
+      getPersonaContext(),
+      getStyleBriefContext(),
+      getLifestyleContext(),
+      getBrandVoiceContext(),
+      getStyleDirectives(),
+      getStyleThesisContext(),
+      getWardrobeCharacterBriefContext(),
+      getSavedLooks(),
+      getJournalEntries(),
+    ]);
+
+    const bodyProfileCtx = bodyProfile
+      ? `\nCLIENT BODY PROFILE:\n${profileToContext(bodyProfile)}\n`
+      : '';
+
+    const weatherBlock = weather
+      ? `\nTODAY'S CONDITIONS (${weather.locationName}): ${weather.tempF}°F, ${weather.condition}. ${weather.summary} Factor this directly — fabrics, layering, and weather-appropriateness are hard requirements today, not suggestions.\n`
+      : '';
+
+    // Recently worn — last 3 days of journal entries — avoid repeating as the anchor
+    const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
+    const recentIds = new Set(
+      journal.filter((e) => Date.now() - e.loggedAt < THREE_DAYS_MS).flatMap((e) => e.itemIds)
+    );
+    const recentNames = items.filter((i) => recentIds.has(i.id)).map((i) => i.name);
+    const recentBlock = recentNames.length
+      ? `\nWORN IN THE LAST 3 DAYS (avoid making these the anchor piece today — the client has already reached for them recently): ${recentNames.join(', ')}\n`
+      : '';
+
+    const workedLooks = savedLooks.filter((l) => l.feedback === 'worked');
+    const lookPieces = (ids: string[]) => ids.map((id) => items.find((i) => i.id === id)?.name).filter(Boolean).join(' + ');
+    const savedLooksBlock = workedLooks.length
+      ? `\nCONFIRMED WINS — combinations validated in real life on this client, your taste calibration:\n${workedLooks.map((l) => `- "${l.title}"${lookPieces(l.itemIds) ? ': ' + lookPieces(l.itemIds) : ''}`).join('\n')}\n`
+      : '';
+
+    const itemListText = items.map((it) =>
+      `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${it.visualNotes ? ' [' + it.visualNotes + ']' : ''}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}${it.styleNote ? ' — ' + it.styleNote : ''}`
+    ).join('\n');
+
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+    const prompt = `${personaCtx}
+
+${STYLIST_2026_LENS}
+${brandVoice}
+Today is ${today}.
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}
+
+${SHARED_OPERATING_PRINCIPLES}
+
+${STYLING_CRAFT_LIBRARY}
+
+CLIENT'S WARDROBE (${items.length} pieces):
+${itemListText}
+
+━━━ YOUR TASK ━━━
+This is the client's morning brief — the one thing your styling atelier proactively prepares before she even asks. Show up the way a real stylist would: dressed, resolved, ready.
+
+Propose exactly ONE primary look for today and ONE genuinely different alternative (different anchor piece, not a minor variation). Both must:
+— be weather-appropriate for today's conditions if given
+— avoid the pieces worn in the last 3 days as the anchor
+— pass proportion, colour, and pattern-mixing rules exactly like any other recommendation — an underused piece only earns a place if it actually coordinates
+— include a specific styling technique from the craft vocabulary above, not just which pieces go together
+
+Write one short, warm greeting sentence for today — direct, no hedging, no hollow words.
+
+OUTFIT COMPLETENESS RULE: Every outfit requires a base layer top (shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit) OR a dress/jumpsuit, plus a bottom OR the dress/jumpsuit. Layering pieces (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt) always require a base layer top underneath.
+
+Respond with ONLY valid JSON, no markdown:
+{
+  "greeting": "1 sentence for today",
+  "primary": {"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — specific technique"},
+  "alternative": {"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — specific technique"}
+}`;
+
+    const raw = await callClaude({ prompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'today-brief' });
+    const parsed = parseJSON(raw) as TodayResponse;
+
+    // Post-process: completeness + visual gate + accessories, same bar as any other recommendation
+    const candidates = [parsed.primary, parsed.alternative].filter((o): o is ChatOutfit => !!o?.itemIds?.length);
+    const complete = candidates.filter((o) => isCompleteOutfit(o.itemIds, items));
+    const gateSurvivors = complete.length ? await runVisualGate(complete, items) : new Set<ChatOutfit>();
+    const approved = complete.filter((o) => gateSurvivors.has(o));
+    const enriched = approved.length ? await runAccessoriesDirector(approved, items, styleBriefCtx, lifestyleCtx) : [];
+
+    const result: TodayResponse = {
+      greeting: parsed.greeting || "Here's today.",
+      primary: enriched.find((o) => o.title === parsed.primary?.title) ?? enriched[0],
+      alternative: enriched.find((o) => o.title === parsed.alternative?.title && o !== enriched[0]),
+    };
+
+    return NextResponse.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Could not build today\'s brief';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
