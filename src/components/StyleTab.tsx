@@ -18,8 +18,23 @@ const GOAL_SUGGESTIONS = [
 ];
 
 type FashionCurrency = FashionCurrencyItem;
-type GoalAnalysis = { goal: string; howClose: string; workingPieces: string[]; missingPieces: string[]; bridgeTips: string[] };
+type InspirationImage = { thumbnailUrl: string; sourceUrl: string };
+type GoalAnalysis = { goal: string; howClose: string; workingPieces: string[]; missingPieces: string[]; bridgeTips: string[]; images?: InspirationImage[] };
 type MatchResult = { closestMatches?: Array<{ name: string; why: string; matchStrength: string }>; goalAnalysis?: GoalAnalysis };
+
+function InspirationStrip({ images, dark }: { images?: InspirationImage[]; dark?: boolean }) {
+  if (!images?.length) return null;
+  return (
+    <div className="flex gap-1.5 mt-2">
+      {images.map((img, i) => (
+        <a key={i} href={img.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+          className={`shrink-0 w-14 h-14 overflow-hidden hover:opacity-80 transition-opacity border ${dark ? 'bg-white/10 border-white/20' : 'bg-[#F5F2EC] border-[#E5DDD0]'}`}>
+          <img src={img.thumbnailUrl} alt="Style inspiration" className="w-full h-full object-cover" />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 type GapPriorityStyles = { border: string; badge: string; label: string };
 function GapCard({ gap, priorityStyles, onLearnMore }: { gap: import('@/lib/gap-types').WardrobeGap; priorityStyles: GapPriorityStyles; onLearnMore: (ctx: string) => void }) {
@@ -236,6 +251,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
                         style={{ width: m.matchStrength === 'high' ? '100%' : m.matchStrength === 'medium' ? '60%' : '30%' }} />
                     </div>
                     <p className="text-xs text-[#6B6058] font-light mt-1.5 leading-snug">{m.why}</p>
+                    <InspirationStrip images={m.images} />
                     <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light mt-1.5 flex items-center gap-1 group-hover:opacity-70 transition-opacity">
                       Learn about their style <ChevronRight size={11} />
                     </p>
@@ -428,6 +444,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
               <p className="text-[10px] uppercase tracking-[0.25em] text-[#9B7B3A] font-light">Your goal</p>
               <p className="font-serif text-2xl italic mt-1">{matchResult.goalAnalysis.goal}</p>
               <p className="text-sm text-white/60 font-light mt-2 leading-relaxed">{matchResult.goalAnalysis.howClose}</p>
+              <InspirationStrip images={matchResult.goalAnalysis.images} dark />
             </div>
 
             {matchResult.goalAnalysis.workingPieces?.length > 0 && (

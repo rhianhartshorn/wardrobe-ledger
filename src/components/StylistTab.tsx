@@ -58,6 +58,10 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
   const [tryOnLoading, setTryOnLoading] = useState(false);
   const [tryOnErr, setTryOnErr] = useState('');
   const [showTryOn, setShowTryOn] = useState(false);
+  const [inspoUrl, setInspoUrl] = useState<string | null>(null);
+  const [inspoLoading, setInspoLoading] = useState(false);
+  const [inspoErr, setInspoErr] = useState('');
+  const [showInspo, setShowInspo] = useState(false);
 
   const save = async () => {
     if (saved || saving || pieces.length === 0) return;
@@ -100,6 +104,30 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
       setShowTryOn(true);
     } catch (e) { setTryOnErr(e instanceof Error ? e.message : 'Could not generate try-on'); }
     finally { setTryOnLoading(false); }
+  };
+
+  const getInspiration = async () => {
+    if (inspoUrl) { setShowInspo(true); return; }
+    setInspoLoading(true); setInspoErr('');
+    try {
+      const slimItems = pieces.map((p) => ({ id: p.id, name: p.name, category: p.category, primaryColor: p.primaryColor }));
+      const res = await fetch('/api/outfit-inspiration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: slimItems, styleReference: outfit.styleReference, stylingNote: outfit.stylingNote }),
+      });
+      const data = await res.json() as { outputUrl?: string; error?: string };
+      if (!res.ok) {
+        const msg = data.error ?? 'Failed';
+        if (msg.toLowerCase().includes('quota') || msg.toLowerCase().includes('billing')) {
+          throw new Error('Inspiration images need Google AI billing enabled on the API key.');
+        }
+        throw new Error(msg);
+      }
+      setInspoUrl(data.outputUrl ?? null);
+      setShowInspo(true);
+    } catch (e) { setInspoErr(e instanceof Error ? e.message : 'Could not generate inspiration image'); }
+    finally { setInspoLoading(false); }
   };
 
   if (pieces.length === 0) return null;
@@ -154,19 +182,27 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
         >
           Deep dive <ChevronRight size={10} />
         </button>
-        {hasProfilePhoto && (
-          <div className="pt-2 mt-1 border-t border-[#F5F2EC]">
+        <div className="pt-2 mt-1 border-t border-[#F5F2EC] flex gap-1.5">
+          {hasProfilePhoto && (
             <button
               onClick={getTryOn}
               disabled={tryOnLoading}
-              className="w-full flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+              className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
             >
               {tryOnLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
               Try on full look
             </button>
-            {tryOnErr && <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">{tryOnErr}</p>}
-          </div>
-        )}
+          )}
+          <button
+            onClick={getInspiration}
+            disabled={inspoLoading}
+            className="flex-1 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+          >
+            {inspoLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+            See the look
+          </button>
+        </div>
+        {(tryOnErr || inspoErr) && <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">{tryOnErr || inspoErr}</p>}
       </div>
     </div>
 
@@ -187,6 +223,33 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
         <div className="px-4 pb-6 pt-3 border-t border-white/10">
           <button
             onClick={() => { save(); setShowTryOn(false); }}
+            disabled={saving || saved}
+            className="w-full py-3 text-xs tracking-[0.15em] uppercase font-light flex items-center justify-center gap-2 transition-colors disabled:opacity-40 border border-white/30 text-white hover:bg-white/10"
+          >
+            <Heart size={13} className={saved ? 'fill-[#9B7B3A] text-[#9B7B3A]' : 'text-white'} />
+            {saved ? 'Saved to your looks' : 'Save this look'}
+          </button>
+        </div>
+      </div>
+    )}
+
+    {showInspo && inspoUrl && (
+      <div className="fixed inset-0 z-50 bg-[#1A1714] flex flex-col">
+        <div className="flex items-center gap-3 px-4 pt-5 pb-4 border-b border-white/10">
+          <p className="flex-1 text-sm text-white font-light">Style inspiration</p>
+          <a href={inspoUrl} download="outfit-inspiration.jpg" className="text-white/40 hover:text-white transition-colors" aria-label="Download">
+            <Download size={16} />
+          </a>
+          <button onClick={() => setShowInspo(false)} className="text-white/40 hover:text-white transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+          <img src={inspoUrl} alt="Style inspiration for this outfit" className="max-w-full max-h-full object-contain" />
+        </div>
+        <div className="px-4 pb-6 pt-3 border-t border-white/10">
+          <button
+            onClick={() => { save(); setShowInspo(false); }}
             disabled={saving || saved}
             className="w-full py-3 text-xs tracking-[0.15em] uppercase font-light flex items-center justify-center gap-2 transition-colors disabled:opacity-40 border border-white/30 text-white hover:bg-white/10"
           >

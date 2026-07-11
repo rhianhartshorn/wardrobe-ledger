@@ -3,6 +3,7 @@ import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
+import { searchInspirationImages } from '@/lib/image-search';
 import { auditInBackground } from '@/lib/editorial';
 import type { StyleReadResult } from '@/lib/style-types';
 
@@ -99,6 +100,17 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
     const wardrobeImages = wardrobeGrid ? [{ base64: wardrobeGrid }] : undefined;
     const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000, route: 'style-read' });
     const parsed = parseJSON(raw) as StyleReadResult;
+
+    // Real inspiration photos for each style twin — never blocks the reading if unavailable
+    if (parsed.styleTwins?.length) {
+      const withImages = await Promise.all(
+        parsed.styleTwins.map(async (twin) => ({
+          ...twin,
+          images: await searchInspirationImages(`${twin.name} style outfit`, 3),
+        }))
+      );
+      parsed.styleTwins = withImages;
+    }
 
     const auditText = [
       parsed.archetypeDescription,

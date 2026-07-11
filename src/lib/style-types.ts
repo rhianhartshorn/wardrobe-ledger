@@ -1,5 +1,7 @@
+export type InspirationImage = { thumbnailUrl: string; sourceUrl: string };
+
 export type StyleGroup = { groupName: string; mood: string; itemIds: string[] };
-export type StyleTwin = { name: string; why: string; matchStrength: 'high' | 'medium' | 'low' };
+export type StyleTwin = { name: string; why: string; matchStrength: 'high' | 'medium' | 'low'; images?: InspirationImage[] };
 
 export type StyleReadResult = {
   archetype: string;

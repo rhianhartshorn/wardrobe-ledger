@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import { getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, FASHION_EDITOR_VOICE, FIT_SPECIALIST_VOICE, COLOUR_ANALYST_VOICE, getStyleBriefContext, getBrandVoiceContext } from '@/lib/stylist';
+import { searchInspirationImages } from '@/lib/image-search';
+import type { InspirationImage } from '@/lib/style-types';
 
 type WardrobeItem = {
   id: string; name: string; category: string;
@@ -72,7 +74,16 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
     const raw = await callClaude({ prompt, maxTokens: 1200, route: 'style-match' });
-    const parsed = parseJSON(raw);
+    const parsed = parseJSON(raw) as {
+      closestMatches?: Array<{ name: string; why: string; matchStrength: string }>;
+      goalAnalysis?: { goal: string; images?: InspirationImage[] } & Record<string, unknown>;
+    };
+
+    // Real inspiration photos for the goal aesthetic — never blocks the analysis if unavailable
+    if (parsed.goalAnalysis?.goal) {
+      parsed.goalAnalysis.images = await searchInspirationImages(`${parsed.goalAnalysis.goal} outfit style`, 3);
+    }
+
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Analysis failed';
