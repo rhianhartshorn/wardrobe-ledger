@@ -144,7 +144,7 @@ Respond with ONLY valid JSON, no markdown:
 {"summary":"one sentence honest assessment of the wardrobe's biggest structural challenge","gaps":[{"priority":"high|medium|low","gap":"what's missing — max 8 words","why":"specific data-backed reason referencing actual items or patterns","suggestion":"specific piece to buy: cut, colour, fabric, and why it integrates — max 25 words"}],"dontBuy":[{"category":"max 5 words — what NOT to buy","reason":"max 20 words — direct reason referencing actual wardrobe counts or patterns"}]}`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 1500, model: 'claude-opus-4-8', route: 'wardrobe-gaps' });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2200, model: 'claude-opus-4-8', route: 'wardrobe-gaps' });
     const parsed = parseJSON(raw) as GapAnalysisResult;
 
     return NextResponse.json(parsed);

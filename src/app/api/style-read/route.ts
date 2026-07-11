@@ -156,7 +156,7 @@ Respond with ONLY valid JSON, no markdown:
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 4000, model: 'claude-opus-4-8', route: 'style-read' });
+    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 5000, model: 'claude-opus-4-8', route: 'style-read' });
     const parsed = parseJSON(raw) as StyleReadResult;
 
     // Real inspiration photos for each style twin — never blocks the reading if unavailable

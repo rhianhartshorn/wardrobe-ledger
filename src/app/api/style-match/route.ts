@@ -125,7 +125,7 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'style-match' });
+    const raw = await callClaude({ prompt, maxTokens: 1800, model: 'claude-opus-4-8', route: 'style-match' });
     const parsed = parseJSON(raw) as {
       closestMatches?: Array<{ name: string; why: string; matchStrength: string }>;
       goalAnalysis?: { goal: string; images?: InspirationImage[] } & Record<string, unknown>;
