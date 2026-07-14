@@ -116,14 +116,14 @@ export default function TodayTab({ items, bodyProfile, onGoToStylist }: { items:
     });
   };
 
-  const runBrief = async (w?: Weather | null) => {
+  const runBrief = async (w?: Weather | null, force = false) => {
     if (items.length < 3) return;
     setLoading(true); setErr('');
     try {
       const res = await fetch('/api/today-brief', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: slim(items), bodyProfile, weather: (w ?? weather) ?? undefined }),
+        body: JSON.stringify({ items: slim(items), bodyProfile, weather: (w ?? weather) ?? undefined, force }),
       });
       const data = await res.json() as TodayResponse & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Could not build today\'s brief.');
@@ -158,7 +158,7 @@ export default function TodayTab({ items, bodyProfile, onGoToStylist }: { items:
           <h2 className="font-serif text-2xl mt-0.5 text-[#1A1714]">Today</h2>
         </div>
         <button
-          onClick={() => runBrief()}
+          onClick={() => runBrief(undefined, true)}
           disabled={loading}
           className="flex items-center gap-1.5 text-[9px] uppercase tracking-widest text-[#6B6058] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
         >

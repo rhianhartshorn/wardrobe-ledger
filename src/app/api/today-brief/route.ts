@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
-import { getSetting, getSavedLooks, getJournalEntries } from '@/lib/db';
+import { getSetting, setSetting, getSavedLooks, getJournalEntries } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
@@ -16,16 +16,34 @@ type TodayResponse = {
   alternative?: ChatOutfit;
 };
 
+type CachedBrief = { date: string; response: TodayResponse };
+
 export async function POST(req: NextRequest) {
   try {
-    const { items, bodyProfile, weather } = await req.json() as {
+    const { items, bodyProfile, weather, force } = await req.json() as {
       items?: WardrobeItemLite[];
       bodyProfile?: BodyProfile;
       weather?: { locationName: string; tempF: number; condition: string; summary: string };
+      force?: boolean;
     };
 
     if (!items?.length || items.length < 3) {
       return NextResponse.json({ error: 'Add at least 3 items to get a daily brief.' }, { status: 400 });
+    }
+
+    const todayDate = new Date().toISOString().slice(0, 10);
+
+    // The wardrobe and weather rarely change meaningfully between two opens
+    // on the same day — reuse the day's brief instead of regenerating a full
+    // Opus outfit pass every single time the app is opened.
+    if (!force) {
+      try {
+        const cachedRaw = await getSetting('today_brief_cache');
+        const cached = cachedRaw ? (JSON.parse(cachedRaw) as CachedBrief) : null;
+        if (cached?.date === todayDate) {
+          return NextResponse.json(cached.response);
+        }
+      } catch { /* fall through to regenerate */ }
     }
 
     const [personaCtx, styleBriefCtx, lifestyleCtx, brandVoice, styleDirectives, thesisCtx, wardrobeCharacterBriefCtx, savedLooks, journal] = await Promise.all([
@@ -126,6 +144,10 @@ Respond with ONLY valid JSON, no markdown:
       primary: enriched.find((o) => o.title === parsed.primary?.title) ?? enriched[0],
       alternative: enriched.find((o) => o.title === parsed.alternative?.title && o !== enriched[0]),
     };
+
+    try {
+      await setSetting('today_brief_cache', JSON.stringify({ date: todayDate, response: result } satisfies CachedBrief));
+    } catch { /* cache write failure — still return the fresh result */ }
 
     return NextResponse.json(result);
   } catch (err) {

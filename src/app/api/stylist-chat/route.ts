@@ -60,6 +60,7 @@ async function runHeadStylist(
   specialistBriefs: SpecialistBrief[],
   wardrobeImages?: Array<{ base64: string }>,
   wardrobeCharacterBriefCtx = '',
+  model: string = 'claude-opus-4-8',
 ): Promise<StylistResponse> {
 
   const tensionClass = classifyTension(specialistBriefs);
@@ -141,7 +142,7 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
   // The head stylist is the taste-critical call — it runs on the strongest model.
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, model: 'claude-opus-4-8', route: 'head-stylist' });
+  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, model, route: 'head-stylist' });
   return parseJSON(raw) as StylistResponse;
 }
 
@@ -178,6 +179,7 @@ Respond with ONLY the thesis text — no JSON, no heading, no preamble.`;
     const thesis = await callClaude({ prompt, maxTokens: 300, route: 'style-thesis-update' });
     if (thesis?.trim()) {
       await setSetting('style_thesis', thesis.trim());
+      await setSetting('style_thesis_updated_at', String(Date.now()));
     }
   } catch {
     // Background update — never propagate errors to the client
@@ -203,7 +205,7 @@ export async function POST(req: NextRequest) {
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
     // Load all context in parallel
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks, wardrobeCharacterBriefCtx] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks, wardrobeCharacterBriefCtx, thesisUpdatedAtRaw] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
@@ -214,6 +216,7 @@ export async function POST(req: NextRequest) {
       getSetting('style_thesis'),
       getSavedLooks(),
       getWardrobeCharacterBriefContext(),
+      getSetting('style_thesis_updated_at'),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -348,6 +351,14 @@ export async function POST(req: NextRequest) {
     }
 
     // ── STEP 2: Head stylist synthesizes ────────────────────────────────────
+    // Opus is reserved for turns that actually assemble outfit combinations —
+    // that's the taste-critical judgment it was brought in to fix. A text
+    // question or narrow verdict doesn't need that premium; Sonnet handles
+    // it fine, especially with the visual gate and quality-gate rules still
+    // enforcing the same bar underneath.
+
+    const needsTasteJudgment = isOutfitRequest || isCapsuleRequest || isFocusRequest || isStrategyRequest;
+    const headStylistModel = needsTasteJudgment ? 'claude-opus-4-8' : 'claude-sonnet-4-6';
 
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
@@ -355,7 +366,7 @@ export async function POST(req: NextRequest) {
       wardrobeBlock, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
-      wardrobeCharacterBriefCtx,
+      wardrobeCharacterBriefCtx, headStylistModel,
     );
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────
@@ -431,15 +442,25 @@ export async function POST(req: NextRequest) {
       await setSetting('style_directives', JSON.stringify(updated));
     } catch { /* storage failure — still return the AI response */ }
 
-    // Fire thesis update in background — non-blocking
-    updateStyleThesisInBackground(
-      existingThesisRaw ?? '',
-      wardrobeBlock,
-      { message, response: synthesis.acknowledgment },
-      existingDirectivesText,
-      lifestyleCtx,
-      styleBriefCtx,
-    );
+    // Fire thesis update in background — non-blocking. The client's underlying
+    // style only shifts slowly, so this doesn't need to run after every single
+    // trivial message. Only regenerate if genuinely new information showed up
+    // (a new permanent directive, or an actual outfit was proposed) or if
+    // enough time has passed that a routine refresh is due anyway.
+    const THESIS_THROTTLE_MS = 20 * 60 * 1000; // 20 minutes
+    const lastThesisUpdate = thesisUpdatedAtRaw ? Number(thesisUpdatedAtRaw) : 0;
+    const hasNewSignal = newDirectives.length > 0 || finalBlocks.some((b) => b.type === 'outfits' || b.type === 'packingList');
+    const thesisIsStale = Date.now() - lastThesisUpdate > THESIS_THROTTLE_MS;
+    if (hasNewSignal || thesisIsStale) {
+      updateStyleThesisInBackground(
+        existingThesisRaw ?? '',
+        wardrobeBlock,
+        { message, response: synthesis.acknowledgment },
+        existingDirectivesText,
+        lifestyleCtx,
+        styleBriefCtx,
+      );
+    }
 
     return NextResponse.json({
       acknowledgment: synthesis.acknowledgment,
