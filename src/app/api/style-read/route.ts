@@ -170,7 +170,7 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
       const withImages = await Promise.all(
         parsed.styleTwins.map(async (twin) => ({
           ...twin,
-          images: await searchInspirationImages(`${twin.name} style outfit`, 3),
+          images: await searchInspirationImages(`${twin.name} style outfit`, 3, 'style-read'),
         }))
       );
       parsed.styleTwins = withImages;

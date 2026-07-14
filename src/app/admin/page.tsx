@@ -184,10 +184,13 @@ function renderDashboard(
       </div>
 
       <div className="mt-6 space-y-1 text-[10px] text-[#C4BAB0] font-light">
-        <p>Anthropic: Sonnet 4.6 $3.00/MTok in · $15.00/MTok out · Haiku 4.5 $0.80/MTok in · $4.00/MTok out</p>
-        <p>Try-on: Google Gemini Flash image ~$0.04/image (outfit-try-on) — estimate, verify at Google Cloud console</p>
+        <p>Anthropic: Sonnet 4.6 $3.00/MTok in · $15.00/MTok out · Opus 4.8 $15.00/MTok in · $75.00/MTok out · Haiku 4.5 $0.80/MTok in · $4.00/MTok out</p>
+        <p>Prompt cache (ephemeral, ~5min): writes billed at 1.25x input rate, reads at 0.1x input rate — priced per call, not estimated</p>
+        <p>Gemini 3.1 Flash Image (try-on, "see the look"): $0.067/image at 1024px output — verified against Google's published rate, July 2026</p>
+        <p>Google Custom Search (real-photo search on Style DNA and Style Goals): $0.005/query, priced at the paid rate — first 100/day may be free depending on account tier</p>
+        <p>Weather (Open-Meteo + OpenStreetMap Nominatim): genuinely free, no API key — not logged since there is nothing to log</p>
         <p>Log capped at 1,000 entries. Upstash Redis storage cost not included (typically &lt;$1/mo on free tier).</p>
-        <p>Vercel hosting: free on Hobby plan for this traffic level.</p>
+        <p>Railway hosting cost not included in this dashboard.</p>
       </div>
     </div>
   );

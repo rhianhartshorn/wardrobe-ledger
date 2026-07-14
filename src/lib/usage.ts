@@ -83,7 +83,17 @@ function parseVal<T>(raw: string | null): T | null {
 
 // Fixed cost per call for external (non-Anthropic) APIs
 export const EXTERNAL_PRICING: Record<string, number> = {
-  'gemini-flash-image': 0.04,     // Google Gemini Flash image gen: ~$0.04/image (estimate)
+  // Google Gemini 3.1 Flash Image (the actual model this app calls, via
+  // generativelanguage.googleapis.com): $60/M output tokens, 1120 tokens per
+  // 1024px output image = $0.067/image. Input garment images (~1120 tokens
+  // each, up to 4 per call) add well under a cent more — folded in here
+  // rather than tracked separately since it's marginal against the output cost.
+  // Source: verified against Google's published per-image rates, July 2026.
+  'gemini-flash-image': 0.067,
+  // Google Custom Search JSON API, image mode: free for the first 100
+  // queries/day, then $5 per 1,000 queries ($0.005/query) — priced at the
+  // paid rate since we can't know from here whether the free quota is used.
+  'google-custom-search': 0.005,
 };
 
 export async function logExternalCall(entry: { ts: number; route: string; model: string }): Promise<void> {

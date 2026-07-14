@@ -138,7 +138,7 @@ Respond with ONLY valid JSON, no markdown:
 
     // Real inspiration photos for the goal aesthetic — never blocks the analysis if unavailable
     if (parsed.goalAnalysis?.goal) {
-      parsed.goalAnalysis.images = await searchInspirationImages(`${parsed.goalAnalysis.goal} outfit style`, 3);
+      parsed.goalAnalysis.images = await searchInspirationImages(`${parsed.goalAnalysis.goal} outfit style`, 3, 'style-match');
     }
 
     return NextResponse.json(parsed);

@@ -1,5 +1,6 @@
 import 'server-only';
 import type { InspirationImage } from './style-types';
+import { logExternalCall } from './usage';
 
 const CSE_API_KEY = process.env.GOOGLE_CSE_API_KEY;
 const CSE_ID = process.env.GOOGLE_CSE_ID;
@@ -11,11 +12,12 @@ const CSE_ID = process.env.GOOGLE_CSE_ID;
 // source, the same way a search engine results page would.
 // ---------------------------------------------------------------------------
 
-export async function searchInspirationImages(query: string, count = 3): Promise<InspirationImage[]> {
+export async function searchInspirationImages(query: string, count = 3, route = 'image-search'): Promise<InspirationImage[]> {
   if (!CSE_API_KEY || !CSE_ID) return [];
   try {
     const url = `https://www.googleapis.com/customsearch/v1?key=${CSE_API_KEY}&cx=${CSE_ID}&searchType=image&num=${count}&safe=active&q=${encodeURIComponent(query)}`;
     const res = await fetch(url, { cache: 'no-store' });
+    logExternalCall({ ts: Date.now(), route, model: 'google-custom-search' }).catch(() => {});
     if (!res.ok) return [];
     const data = await res.json() as {
       items?: Array<{ link: string; image?: { thumbnailLink?: string; contextLink?: string } }>;
