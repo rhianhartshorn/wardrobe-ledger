@@ -11,6 +11,14 @@ interface ClaudeOptions {
   imageBase64?: string;
   mediaType?: string;
   images?: ClaudeImage[];
+  // Large, stable text blocks that stay byte-identical across many calls
+  // (persona-independent context: shared principles, wardrobe list) — each
+  // gets its own Anthropic cache breakpoint, so repeat calls within the ~5
+  // minute cache window reuse them at a fraction of normal input cost
+  // instead of reprocessing them every time. Order matters and must be
+  // consistent between calls that should share a cache hit. Blocks under
+  // roughly 1024 tokens are silently not cached (no error, just no discount).
+  cacheableSections?: string[];
   useWebSearch?: boolean;
   maxTokens?: number;
   model?: string;
@@ -22,12 +30,21 @@ export async function callClaude({
   imageBase64,
   mediaType = 'image/jpeg',
   images,
+  cacheableSections,
   useWebSearch = false,
   maxTokens = 1000,
   model = 'claude-sonnet-4-6',
   route = 'unknown',
 }: ClaudeOptions): Promise<string> {
   const content: unknown[] = [];
+
+  for (const section of cacheableSections ?? []) {
+    content.push({
+      type: 'text',
+      text: section,
+      cache_control: { type: 'ephemeral' },
+    });
+  }
 
   if (imageBase64) {
     content.push({
@@ -75,7 +92,12 @@ export async function callClaude({
 
   const data = await res.json() as {
     content?: Array<{ type: string; text?: string }>;
-    usage?: { input_tokens?: number; output_tokens?: number };
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      cache_creation_input_tokens?: number;
+      cache_read_input_tokens?: number;
+    };
   };
 
   if (!data?.content || !Array.isArray(data.content)) {
@@ -85,8 +107,10 @@ export async function callClaude({
   // Fire-and-forget usage log — never blocks the response
   const inputTokens = data.usage?.input_tokens ?? 0;
   const outputTokens = data.usage?.output_tokens ?? 0;
-  if (inputTokens || outputTokens) {
-    logUsage({ ts: Date.now(), route, model, inputTokens, outputTokens }).catch(() => {});
+  const cacheCreationTokens = data.usage?.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = data.usage?.cache_read_input_tokens ?? 0;
+  if (inputTokens || outputTokens || cacheCreationTokens || cacheReadTokens) {
+    logUsage({ ts: Date.now(), route, model, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens }).catch(() => {});
   }
 
   return data.content

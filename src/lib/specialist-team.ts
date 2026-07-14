@@ -15,6 +15,24 @@ export type SpecialistBrief = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CACHEABLE PREFIX — the shared operating principles plus the wardrobe list,
+// identical across every specialist call in a single request (and across
+// calls within the ~5 minute cache window as long as the wardrobe hasn't
+// changed). Anthropic caches this at a fraction of normal input cost on
+// every call after the first that sends the exact same prefix. Exported so
+// the head-stylist-equivalent synthesis call in each route can build the
+// SAME prefix (given the same itemListText) and piggyback on the cache the
+// specialist calls already wrote in that request.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildWardrobeCachePrefix(itemListText: string): string {
+  return `${SHARED_OPERATING_PRINCIPLES}
+
+CLIENT'S WARDROBE:
+${itemListText || '(No wardrobe items yet)'}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SPECIALIST CALL — runs one member of the style team on any request type
 // (outfit request, style reading, goal analysis, etc.) — the remit determines
 // what the specialist is actually being asked to judge.
@@ -29,16 +47,13 @@ export async function runSpecialist(
   contextBlock: string,
   images?: Array<{ base64: string }>,
 ): Promise<SpecialistBrief> {
-  const prompt = `${persona}
+  const cacheablePrefix = buildWardrobeCachePrefix(itemListText);
 
-${SHARED_OPERATING_PRINCIPLES}
+  const prompt = `${persona}
 
 You are one specialist on a private styling team. The head stylist synthesizes all specialist briefs into the final recommendation — the client never sees your brief directly.
 
 ${contextBlock}
-
-CLIENT'S WARDROBE:
-${itemListText || '(No wardrobe items yet)'}
 
 TASK: "${task}"
 
@@ -68,7 +83,13 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
   try {
-    const raw = await callClaude({ prompt, images, maxTokens: 400, route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}` });
+    const raw = await callClaude({
+      prompt,
+      cacheableSections: [cacheablePrefix],
+      images,
+      maxTokens: 400,
+      route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}`,
+    });
     const parsed = parseJSON(raw) as Omit<SpecialistBrief, 'role'>;
     return { role, ...parsed };
   } catch {

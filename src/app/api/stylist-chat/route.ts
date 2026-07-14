@@ -7,13 +7,13 @@ import {
   getLifestyleContext, getStyleDirectives, getStyleThesisContext,
   FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
   OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA,
-  STYLIST_2026_LENS, SHARED_OPERATING_PRINCIPLES, STYLING_CRAFT_LIBRARY,
+  STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
 import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
-  type SpecialistBrief,
+  buildWardrobeCachePrefix, type SpecialistBrief,
 } from '@/lib/specialist-team';
 
 export type StyleDirective = {
@@ -53,7 +53,7 @@ async function runHeadStylist(
   styleBriefCtx: string,
   lifestyleCtx: string,
   weatherBlock: string,
-  wardrobeBlock: string,
+  itemListText: string,
   gridBlock: string,
   existingDirectivesText: string,
   conversationBlock: string,
@@ -65,14 +65,15 @@ async function runHeadStylist(
 
   const tensionClass = classifyTension(specialistBriefs);
   const briefsBlock = formatBriefsBlock(specialistBriefs);
+  // Same prefix the specialist calls just wrote to cache — reusing it here
+  // is billed at a fraction of normal input cost instead of full price.
+  const cacheablePrefix = buildWardrobeCachePrefix(itemListText);
 
   const prompt = `${personaCtx}
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${wardrobeBlock}${gridBlock}${existingDirectivesText}${conversationBlock}
-
-${STYLING_CRAFT_LIBRARY}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${gridBlock}${existingDirectivesText}${conversationBlock}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
 Tension classification: ${tensionClass}
@@ -141,8 +142,18 @@ Respond with ONLY valid JSON, no markdown:
   "blocks": [ ...your chosen blocks in order... ]
 }`;
 
-  // The head stylist is the taste-critical call — it runs on the strongest model.
-  const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 3500, model, route: 'head-stylist' });
+  // The head stylist is the taste-critical call — it runs on the strongest model
+  // when the request needs one. Two cache breakpoints: the first (principles +
+  // wardrobe) is shared with every specialist call in this same request; the
+  // second (craft library) is head-stylist-specific but still cacheable on its own.
+  const raw = await callClaude({
+    prompt,
+    cacheableSections: [cacheablePrefix, STYLING_CRAFT_LIBRARY],
+    images: wardrobeImages,
+    maxTokens: 3500,
+    model,
+    route: 'head-stylist',
+  });
   return parseJSON(raw) as StylistResponse;
 }
 
@@ -363,7 +374,7 @@ export async function POST(req: NextRequest) {
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
       styleBriefCtx, thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock, weatherBlock,
-      wardrobeBlock, gridBlock,
+      itemListText, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
       wardrobeCharacterBriefCtx, headStylistModel,

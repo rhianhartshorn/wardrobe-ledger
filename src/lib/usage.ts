@@ -19,12 +19,27 @@ export type UsageEntry = {
   model: string;
   inputTokens: number;
   outputTokens: number;
+  cacheCreationTokens?: number; // written to a new 5-min ephemeral cache — billed 1.25x input rate
+  cacheReadTokens?: number;     // served from cache — billed 0.1x input rate
   costUsd: number;
 };
 
-export function computeCost(model: string, inputTokens: number, outputTokens: number): number {
+// Anthropic prompt caching multipliers on the base input rate (5-min ephemeral cache)
+const CACHE_WRITE_MULTIPLIER = 1.25;
+const CACHE_READ_MULTIPLIER = 0.1;
+
+export function computeCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cacheCreationTokens = 0,
+  cacheReadTokens = 0,
+): number {
   const price = PRICING[model] ?? PRICING['claude-sonnet-4-6'];
-  return (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
+  return (inputTokens / 1_000_000) * price.input
+    + (outputTokens / 1_000_000) * price.output
+    + (cacheCreationTokens / 1_000_000) * price.input * CACHE_WRITE_MULTIPLIER
+    + (cacheReadTokens / 1_000_000) * price.input * CACHE_READ_MULTIPLIER;
 }
 
 async function redisGet(key: string): Promise<string | null> {
@@ -91,7 +106,7 @@ async function appendToLog(full: UsageEntry): Promise<void> {
 
 export async function logUsage(entry: Omit<UsageEntry, 'costUsd'>): Promise<void> {
   try {
-    const costUsd = computeCost(entry.model, entry.inputTokens, entry.outputTokens);
+    const costUsd = computeCost(entry.model, entry.inputTokens, entry.outputTokens, entry.cacheCreationTokens, entry.cacheReadTokens);
     const full: UsageEntry = { ...entry, costUsd };
     await appendToLog(full);
   } catch {
@@ -111,6 +126,8 @@ function sanitizeEntry(e: unknown): UsageEntry | null {
     model: typeof r.model === 'string' ? r.model : 'unknown',
     inputTokens: typeof r.inputTokens === 'number' && !isNaN(r.inputTokens) ? r.inputTokens : 0,
     outputTokens: typeof r.outputTokens === 'number' && !isNaN(r.outputTokens) ? r.outputTokens : 0,
+    cacheCreationTokens: typeof r.cacheCreationTokens === 'number' && !isNaN(r.cacheCreationTokens) ? r.cacheCreationTokens : 0,
+    cacheReadTokens: typeof r.cacheReadTokens === 'number' && !isNaN(r.cacheReadTokens) ? r.cacheReadTokens : 0,
     costUsd: typeof r.costUsd === 'number' && !isNaN(r.costUsd) ? r.costUsd : 0,
   };
 }
@@ -145,6 +162,9 @@ export type UsageSummary = {
   totalCalls: number;
   mtdCostUsd: number;
   todayCostUsd: number;
+  totalCacheReadTokens: number;
+  totalCacheCreationTokens: number;
+  estimatedCacheSavingsUsd: number; // vs. paying full input price for the cached reads
   byRoute: RouteStat[];
   byDay: DayStat[];   // last 30 days, ascending
   recentCalls: UsageEntry[]; // last 50
@@ -159,6 +179,9 @@ export function summarise(log: UsageEntry[]): UsageSummary {
   let totalCalls = 0;
   let mtdCostUsd = 0;
   let todayCostUsd = 0;
+  let totalCacheReadTokens = 0;
+  let totalCacheCreationTokens = 0;
+  let estimatedCacheSavingsUsd = 0;
 
   const routeMap = new Map<string, RouteStat>();
   const dayMap = new Map<string, DayStat>();
@@ -167,6 +190,15 @@ export function summarise(log: UsageEntry[]): UsageSummary {
     if (!e.ts || isNaN(new Date(e.ts).getTime())) continue;
     totalCostUsd += e.costUsd;
     totalCalls++;
+
+    const readTokens = e.cacheReadTokens ?? 0;
+    totalCacheReadTokens += readTokens;
+    totalCacheCreationTokens += e.cacheCreationTokens ?? 0;
+    if (readTokens > 0) {
+      const price = PRICING[e.model] ?? PRICING['claude-sonnet-4-6'];
+      // What those tokens would have cost at the full input rate, minus what the cache read actually cost
+      estimatedCacheSavingsUsd += (readTokens / 1_000_000) * price.input * (1 - CACHE_READ_MULTIPLIER);
+    }
 
     const dateStr = new Date(e.ts).toISOString().slice(0, 10);
     if (dateStr === todayStr) todayCostUsd += e.costUsd;
@@ -195,5 +227,9 @@ export function summarise(log: UsageEntry[]): UsageSummary {
   const byDay = Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date));
   const recentCalls = [...log].reverse().slice(0, 50);
 
-  return { totalCostUsd, totalCalls, mtdCostUsd, todayCostUsd, byRoute, byDay, recentCalls };
+  return {
+    totalCostUsd, totalCalls, mtdCostUsd, todayCostUsd,
+    totalCacheReadTokens, totalCacheCreationTokens, estimatedCacheSavingsUsd,
+    byRoute, byDay, recentCalls,
+  };
 }

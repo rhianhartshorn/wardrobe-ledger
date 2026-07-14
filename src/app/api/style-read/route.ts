@@ -7,7 +7,7 @@ import {
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
 import { searchInspirationImages } from '@/lib/image-search';
-import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock } from '@/lib/specialist-team';
+import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock, buildWardrobeCachePrefix } from '@/lib/specialist-team';
 import { auditInBackground } from '@/lib/editorial';
 import type { StyleReadResult } from '@/lib/style-types';
 
@@ -131,9 +131,6 @@ Your response must reflect the team's collective input — do not contradict a s
 
 Be honest and specific throughout. Hollow positivity is useless. A sharp observation is worth more than three vague compliments.
 
-Wardrobe:
-${itemListText}
-
 Respond with ONLY valid JSON, no markdown:
 {
   "archetype": "2–4 word style archetype",
@@ -156,7 +153,16 @@ Respond with ONLY valid JSON, no markdown:
 styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 5000, model: 'claude-opus-4-8', route: 'style-read' });
+    // Shares the same cache prefix (principles + wardrobe) the specialist
+    // calls above just wrote, billed at a fraction of normal input cost.
+    const raw = await callClaude({
+      prompt,
+      cacheableSections: [buildWardrobeCachePrefix(itemListText)],
+      images: wardrobeImages,
+      maxTokens: 5000,
+      model: 'claude-opus-4-8',
+      route: 'style-read',
+    });
     const parsed = parseJSON(raw) as StyleReadResult;
 
     // Real inspiration photos for each style twin — never blocks the reading if unavailable

@@ -5,7 +5,7 @@ import {
   getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext,
   FIT_SPECIALIST_PERSONA, FASHION_EDITOR_PERSONA, WARDROBE_INTELLIGENCE_PERSONA,
 } from '@/lib/stylist';
-import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock } from '@/lib/specialist-team';
+import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock, buildWardrobeCachePrefix } from '@/lib/specialist-team';
 import type { GapAnalysisResult } from '@/lib/gap-types';
 
 type WardrobeItem = {
@@ -126,8 +126,6 @@ Tension classification: ${classifyTension(finalBriefs)}
 ${formatBriefsBlock(finalBriefs)}
 
 ━━━ YOUR TASK ━━━
-FULL WARDROBE:
-${itemListText}
 ${breakdownBlock}
 
 Synthesize your team's briefs above into one wardrobe audit. Your job is to identify specific, actionable gaps — not vague advice like "add more variety", but precise missing pieces that would unlock real daily wearability.
@@ -144,7 +142,15 @@ Respond with ONLY valid JSON, no markdown:
 {"summary":"one sentence honest assessment of the wardrobe's biggest structural challenge","gaps":[{"priority":"high|medium|low","gap":"what's missing — max 8 words","why":"specific data-backed reason referencing actual items or patterns","suggestion":"specific piece to buy: cut, colour, fabric, and why it integrates — max 25 words"}],"dontBuy":[{"category":"max 5 words — what NOT to buy","reason":"max 20 words — direct reason referencing actual wardrobe counts or patterns"}]}`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, images: wardrobeImages, maxTokens: 2200, model: 'claude-opus-4-8', route: 'wardrobe-gaps' });
+    // Shares the same cache prefix the specialist calls above just wrote.
+    const raw = await callClaude({
+      prompt,
+      cacheableSections: [buildWardrobeCachePrefix(itemListText)],
+      images: wardrobeImages,
+      maxTokens: 2200,
+      model: 'claude-opus-4-8',
+      route: 'wardrobe-gaps',
+    });
     const parsed = parseJSON(raw) as GapAnalysisResult;
 
     return NextResponse.json(parsed);

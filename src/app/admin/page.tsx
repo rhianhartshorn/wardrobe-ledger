@@ -91,6 +91,15 @@ function renderDashboard(
         ))}
       </div>
 
+      {/* Prompt cache savings */}
+      {(s.totalCacheReadTokens > 0 || s.totalCacheCreationTokens > 0) && (
+        <div className="border border-[#E5DDD0] bg-white p-4 mb-8">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-[#9B7B3A] font-light">Prompt cache savings</p>
+          <p className="font-serif text-2xl mt-1">{fmt$(s.estimatedCacheSavingsUsd)} <span className="text-xs text-[#A89F96] font-light">saved so far</span></p>
+          <p className="text-[10px] text-[#A89F96] font-light mt-0.5">{fmtTokens(s.totalCacheReadTokens)} tokens served from cache · {fmtTokens(s.totalCacheCreationTokens)} tokens written to cache</p>
+        </div>
+      )}
+
       {/* Cost by route */}
       <div className="border border-[#E5DDD0] bg-white mb-6">
         <div className="p-4 border-b border-[#E5DDD0]">

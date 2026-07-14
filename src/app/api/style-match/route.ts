@@ -6,7 +6,7 @@ import {
   FIT_SPECIALIST_PERSONA, COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA,
 } from '@/lib/stylist';
 import { searchInspirationImages } from '@/lib/image-search';
-import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock } from '@/lib/specialist-team';
+import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock, buildWardrobeCachePrefix } from '@/lib/specialist-team';
 import type { InspirationImage } from '@/lib/style-types';
 
 type WardrobeItem = {
@@ -100,8 +100,6 @@ Tension classification: ${classifyTension(finalBriefs)}
 ${formatBriefsBlock(finalBriefs)}
 
 ━━━ YOUR TASK ━━━
-Wardrobe:
-${itemListText}
 ${goalSection}
 
 Synthesize your team's briefs above. Be specific and accurate — consider the actual clothes, colours, formality level, and how they work with this client's body and colouring. A style match that doesn't flatter this person's specific frame and undertone is not a genuine match, even if a specialist proposed it — resolve any disagreement yourself before finalizing.
@@ -125,7 +123,14 @@ Respond with ONLY valid JSON, no markdown:
 }`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
-    const raw = await callClaude({ prompt, maxTokens: 1800, model: 'claude-opus-4-8', route: 'style-match' });
+    // Shares the same cache prefix the specialist calls above just wrote.
+    const raw = await callClaude({
+      prompt,
+      cacheableSections: [buildWardrobeCachePrefix(itemListText)],
+      maxTokens: 1800,
+      model: 'claude-opus-4-8',
+      route: 'style-match',
+    });
     const parsed = parseJSON(raw) as {
       closestMatches?: Array<{ name: string; why: string; matchStrength: string }>;
       goalAnalysis?: { goal: string; images?: InspirationImage[] } & Record<string, unknown>;

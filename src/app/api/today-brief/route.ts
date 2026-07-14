@@ -5,10 +5,11 @@ import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleBriefContext, getBrandVoiceContext,
   getLifestyleContext, getStyleDirectives, getStyleThesisContext,
-  STYLIST_2026_LENS, SHARED_OPERATING_PRINCIPLES, STYLING_CRAFT_LIBRARY,
+  STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
 import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { buildWardrobeCachePrefix } from '@/lib/specialist-team';
 
 type TodayResponse = {
   greeting: string;
@@ -95,13 +96,6 @@ ${brandVoice}
 Today is ${today}.
 ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}
 
-${SHARED_OPERATING_PRINCIPLES}
-
-${STYLING_CRAFT_LIBRARY}
-
-CLIENT'S WARDROBE (${items.length} pieces):
-${itemListText}
-
 ━━━ YOUR TASK ━━━
 This is the client's morning brief — the one thing your styling atelier proactively prepares before she even asks. Show up the way a real stylist would: dressed, resolved, ready.
 
@@ -122,7 +116,13 @@ Respond with ONLY valid JSON, no markdown:
   "alternative": {"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — specific technique"}
 }`;
 
-    const raw = await callClaude({ prompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'today-brief' });
+    const raw = await callClaude({
+      prompt,
+      cacheableSections: [buildWardrobeCachePrefix(itemListText), STYLING_CRAFT_LIBRARY],
+      maxTokens: 1200,
+      model: 'claude-opus-4-8',
+      route: 'today-brief',
+    });
     const parsed = parseJSON(raw) as TodayResponse;
 
     // Post-process: completeness + visual gate + accessories, same bar as any other recommendation.
