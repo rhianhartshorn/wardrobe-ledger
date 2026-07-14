@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         'Colour Analysis',
         COLOUR_ANALYST_PERSONA,
         'Read this wardrobe\'s overall colour identity — how well the palette actually worn matches the client\'s colour profile, any recurring clashes or misses, and the true colour story (mood and palette) this wardrobe tells. This directly informs the colour story section of the reading.',
-        task, itemListText, sharedContext, wardrobeImages,
+        task, itemListText, sharedContext,
       ),
       runSpecialist(
         'Fashion Editor',

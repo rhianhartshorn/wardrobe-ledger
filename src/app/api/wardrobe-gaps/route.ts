@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         'Fit & Proportion',
         FIT_SPECIALIST_PERSONA,
         'Identify structural gaps — missing silhouettes, rises, or layer weights that would resolve proportion problems this wardrobe currently cannot solve. Reference actual category counts and wear data.',
-        task, itemListText, sharedContext, wardrobeImages,
+        task, itemListText, sharedContext,
       ),
       runSpecialist(
         'Fashion Editor',

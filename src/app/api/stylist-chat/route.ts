@@ -307,14 +307,14 @@ export async function POST(req: NextRequest) {
       runSpecialist(
         'Fit & Proportion',
         FIT_SPECIALIST_PERSONA,
-        `Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. The client body profile is in your context — apply it specifically. Propose combinations that pass all structural tests for this body. Flag any proportion problem you see.${wardrobeImages ? ' A visual wardrobe grid is attached — use it to assess actual silhouette and drape, not just the text descriptions.' : ''}`,
-        message, itemListText, sharedContext, wardrobeImages,
+        'Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. The client body profile is in your context — apply it specifically. Propose combinations that pass all structural tests for this body. Flag any proportion problem you see.',
+        message, itemListText, sharedContext,
       ),
       runSpecialist(
         'Colour Analysis',
         COLOUR_ANALYST_PERSONA,
-        `Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.${wardrobeImages ? ' A visual wardrobe grid is attached — verify actual colours visually rather than relying solely on colour name text fields.' : ''}`,
-        message, itemListText, sharedContext, wardrobeImages,
+        'Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.',
+        message, itemListText, sharedContext,
       ),
       runSpecialist(
         'Wardrobe Intelligence',
