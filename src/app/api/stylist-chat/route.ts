@@ -104,9 +104,9 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — QUALITY GATE: Variety and underused-piece candidates are not exempt from scrutiny. Before finalizing ANY combination — whether it came from a specialist's candidate list or your own synthesis — check it against Fit & Proportion's structure rules, Colour Analysis's palette test, and Fashion Editor's pattern-mixing and coherence test yourself. A pairing surfaced because it's underused, or because a single specialist proposed it, still has to actually work as a whole outfit. Two competing bold prints with no coordinating logic, a proportion clash, or a palette miss must be excluded even if no specialist explicitly called it BLOCKING — you are the final check, not a pass-through.
 — COVERAGE: If a SPOTLIGHT block appears above, those pieces have been conspicuously absent from recent recommendations — genuinely consider each one before falling back to familiar anchors. This is not about forcing an awkward piece in; it's about actually evaluating the full wardrobe instead of unconsciously defaulting to the same 10-15 pieces every time, which is a failure of the job, not a sign of taste. If a spotlighted piece doesn't work, that's a legitimate outcome — but it must be because you assessed it, not because a 75-item list made it easy to skip past.
 
-STEP 3 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks. Do not reference a specific number of options, a specific piece, or a specific outfit in this text unless it is actually present in the blocks you build in STEP 4 — the client reads both together, and a mismatch (e.g. promising "two routes" but delivering one) reads as broken, not as an oversight.
+STEP 3 — BUILD YOUR BLOCKS FIRST: Compose the response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks, and a simple "what should I wear to X" question deserves 2-3 real options, not one. A narrow verdict question ("does this work") may need only a text or verdict block. Choose the structure that would be most useful to this client for this specific request. Decide and finalize this before you write a single word of the acknowledgment — the acknowledgment in STEP 4 must describe what you actually built here, not what you intend to build.
 
-STEP 4 — BUILD YOUR BLOCKS: Compose a response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks, and a simple "what should I wear to X" question deserves 2-3 real options, not one. A narrow verdict question ("does this work") may need only a text or verdict block. Choose the structure that would be most useful to this client for this specific request. Before finalizing, re-read your own acknowledgment text and verify every option, piece, or count it references actually appears in the blocks below — if you described two routes, there must be two outfit blocks (or two outfits in one block), not one.
+STEP 4 — WRITE YOUR RESPONSE LAST: 1-2 sentences to the client, written only after STEP 3 is finalized. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks. Describe exactly what is in the blocks you just built — if you built one outfit, say "here's what to wear," not "here are two routes." Never describe a plan; describe the delivered result. A number, piece, or option mentioned here that isn't actually in the blocks above reads as broken to the client, not as an oversight.
 
 AVAILABLE BLOCK TYPES:
 
@@ -137,11 +137,11 @@ AVAILABLE BLOCK TYPES:
 
 OUTFIT COMPLETENESS RULE: Every outfit in an "outfits" or "packingList" block requires a base layer top (shirt, blouse, t-shirt, tank, bodysuit, camisole, or fine knit) OR a dress/jumpsuit. Plus a bottom OR the dress/jumpsuit. Layering pieces (cardigan, blazer, jacket, coat, hoodie, jumper, overshirt) always require a base layer top underneath.
 
-Respond with ONLY valid JSON, no markdown:
+Respond with ONLY valid JSON, no markdown, fields IN THIS ORDER — blocks before acknowledgment, so you write the acknowledgment already knowing exactly what you built:
 {
   "directives": [],
-  "acknowledgment": "1-2 sentences to the client",
-  "blocks": [ ...your chosen blocks in order... ]
+  "blocks": [ ...your chosen blocks in order... ],
+  "acknowledgment": "1-2 sentences describing exactly what's in the blocks above — written last, after blocks are finalized"
 }`;
 
   // The head stylist is the taste-critical call — it runs on the strongest model
