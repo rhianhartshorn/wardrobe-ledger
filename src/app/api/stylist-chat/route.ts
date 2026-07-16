@@ -43,58 +43,30 @@ type StylistResponse = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STATEMENT-REACH ENFORCEMENT — prompt-only instructions to "reach for
-// statement pieces" were measured and failed twice: maximisation stayed flat
-// at 3.0/10 even with an explicit roster and anti-monotony rules in the
-// prompt. This is the code-level backstop: check what the response actually
-// used, and if a rich wardrobe's outfits used zero statement pieces, force
-// ONE targeted revision naming specific unused pieces by ID — a hard
-// constraint instead of a persuasion attempt. Only fires on the failure
-// case, so it costs nothing on requests that already reach correctly.
+// HEAD STYLIST SYNTHESIS
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function enforceStatementReach(
-  synthesis: StylistResponse,
-  message: string,
-  items: WardrobeItemLite[],
-  model: string,
-): Promise<StylistResponse> {
+// Given a produced response, returns a hard-constraint instruction to force a
+// re-generation IF a rich wardrobe's outfits used zero statement pieces —
+// naming specific unused pieces by ID — or empty string if reach was fine.
+// A stripped-down "revise this JSON" call was tried first and made things
+// WORSE (2.7 vs 3.0 baseline): it bypassed the proportion/colour/pattern-mixing
+// reasoning that only lives in the full head-stylist prompt, so the revision
+// produced combinations the visual gate then correctly rejected, sometimes
+// wiping the response to zero outfits. The fix is to re-run the FULL
+// head-stylist call (same specialist briefs, same quality-gate rules, cached
+// prefix so it's still cheap) with this constraint appended — never a
+// stripped mini-prompt that has to reinvent the rules.
+function buildStatementConstraint(synthesis: StylistResponse, items: WardrobeItemLite[]): string {
   const usedIds = synthesis.blocks.flatMap((b) => (b.type === 'outfits' ? b.outfits.flatMap((o) => o.itemIds) : []));
-  if (!usedIds.length || usedAnyStatementPiece(usedIds, items)) return synthesis;
-
+  if (!usedIds.length || usedAnyStatementPiece(usedIds, items)) return '';
   const unused = getStatementPieces(items).filter((it) => !usedIds.includes(it.id));
-  if (!unused.length) return synthesis;
-
+  if (!unused.length) return '';
   const picks = unused.slice(0, 4).map((it) =>
     `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
   );
-
-  const prompt = `You are revising your own styling response. The client asked: "${message}"
-
-Your prior response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals when characterful pieces were available. A real stylist maximises what's actually in the wardrobe, not the safest overlap.
-
-Rebuild your outfit block(s) so that AT LEAST ONE complete outfit is anchored around one of these specific pieces:
-${picks.join('\n')}
-
-Keep the same structure and quality bar — proportion, colour, and pattern-mixing rules still apply exactly. Do not force a piece in if it genuinely clashes; pick whichever of the above actually coordinates.
-
-PRIOR RESPONSE (revise this, keep the same JSON schema):
-${JSON.stringify(synthesis)}
-
-Respond with ONLY the corrected valid JSON, no markdown, same schema as the prior response.`;
-
-  try {
-    const raw = await callClaude({ prompt, maxTokens: 2000, model, route: 'stylist-chat-reach-enforce' });
-    const revised = parseJSON(raw) as StylistResponse;
-    return revised?.blocks?.length ? revised : synthesis;
-  } catch {
-    return synthesis;
-  }
+  return `\nHARD CONSTRAINT — MANDATORY: Your first attempt at this response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. This attempt MUST include at least one complete outfit anchored around one of these specific pieces, still passing every proportion/colour/pattern-mixing rule above exactly:\n${picks.join('\n')}\nIf, after genuinely trying, none of the above pieces can be made to coordinate with anything else in the wardrobe for this specific request, say so explicitly in your response rather than silently reverting to a neutral default.\n`;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HEAD STYLIST SYNTHESIS
-// ─────────────────────────────────────────────────────────────────────────────
 
 async function runHeadStylist(
   message: string,
@@ -111,6 +83,7 @@ async function runHeadStylist(
   wardrobeImages?: Array<{ base64: string }>,
   model: string = 'claude-opus-4-8',
   statementRoster = '',
+  hardConstraint = '',
 ): Promise<StylistResponse> {
 
   const tensionClass = classifyTension(specialistBriefs);
@@ -132,7 +105,7 @@ ${briefsBlock}
 
 ━━━ YOUR TASK ━━━
 The client has said: "${message}"
-
+${hardConstraint}
 STEP 1 — DIRECTIVES: Extract only permanent styling preferences or constraints revealed — a stable truth about how this person dresses in general, true regardless of occasion, trip, or which request prompted it.
 EXTRACT: "avoids heels", "prefers loose fits", "dislikes showing arms", "stays neutral palette" — traits that hold true across every future request, no matter the context.
 NEVER EXTRACT — these look permanent but are not, and extracting them corrupts every future recommendation:
@@ -494,7 +467,17 @@ export async function POST(req: NextRequest) {
     );
 
     if (statementRoster && items?.length) {
-      synthesis = await enforceStatementReach(synthesis, message, items, headStylistModel);
+      const constraint = buildStatementConstraint(synthesis, items);
+      if (constraint) {
+        synthesis = await runHeadStylist(
+          message, personaCtx, brandVoice,
+          styleBriefCtx, stableClientContext, weatherBlock,
+          itemListText, gridBlock,
+          spotlightBlock, conversationBlock,
+          specialistBriefs, wardrobeImages,
+          headStylistModel, statementRoster, constraint,
+        );
+      }
     }
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────

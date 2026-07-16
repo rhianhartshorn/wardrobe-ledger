@@ -92,7 +92,14 @@ export async function POST(req: NextRequest) {
     const spotlightBlock = buildSpotlightBlock(items);
     const statementRoster = buildStatementRoster(items);
 
-    const prompt = `${personaCtx}
+    // Extracted so the statement-reach backstop below can re-run the FULL
+    // prompt with an added hard constraint rather than a stripped "revise this
+    // JSON" call. A stripped revision was tried first for stylist-chat and
+    // made things WORSE — it bypassed the proportion/colour/pattern-mixing
+    // reasoning that only lives in this full prompt, producing combinations
+    // the visual gate then correctly rejected. Re-running the full prompt
+    // keeps that reasoning intact; the cached prefix keeps the retry cheap.
+    const buildPrompt = (hardConstraint: string) => `${personaCtx}
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
@@ -101,7 +108,7 @@ ${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${ward
 
 ━━━ YOUR TASK ━━━
 This is the client's morning brief — the one thing your styling atelier proactively prepares before she even asks. Show up the way a real stylist would: dressed, resolved, ready.
-
+${hardConstraint}
 Propose exactly ONE primary look for today and ONE genuinely different alternative (different anchor piece, not a minor variation). Both must:
 — be weather-appropriate for today's conditions if given
 — avoid the pieces worn in the last 3 days as the anchor
@@ -121,19 +128,19 @@ Respond with ONLY valid JSON, no markdown:
   "alternative": {"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — specific technique"}
 }`;
 
-    const raw = await callClaude({
-      prompt,
+    const runBrief = (hardConstraint: string) => callClaude({
+      prompt: buildPrompt(hardConstraint),
       cacheableSections: [buildWardrobeCachePrefix(itemListText), STYLING_CRAFT_LIBRARY],
       maxTokens: 1200,
       model: 'claude-opus-4-8',
       route: 'today-brief',
     });
-    let parsed = parseJSON(raw) as TodayResponse;
 
-    // Same code-level backstop as stylist-chat: prompt-only "reach for statement
-    // pieces" instructions were measured and failed to move the needle. If a
-    // rich wardrobe's primary/alternative used zero statement pieces, force one
-    // targeted revision naming specific unused pieces by ID.
+    let parsed = parseJSON(await runBrief('')) as TodayResponse;
+
+    // Code-level backstop: if a rich wardrobe's primary/alternative used zero
+    // statement pieces, force ONE full re-generation with a hard constraint
+    // naming specific unused pieces by ID.
     if (statementRoster) {
       const usedIds = [parsed.primary, parsed.alternative].filter(Boolean).flatMap((o) => o!.itemIds);
       if (usedIds.length && !usedAnyStatementPiece(usedIds, items)) {
@@ -142,20 +149,9 @@ Respond with ONLY valid JSON, no markdown:
           const picks = unused.slice(0, 4).map((it) =>
             `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
           );
-          const revisePrompt = `You are revising your own daily brief. Your prior response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals when characterful pieces were available.
-
-Rebuild so that AT LEAST ONE of the two looks (primary or alternative) is anchored around one of these specific pieces:
-${picks.join('\n')}
-
-Keep the same structure and quality bar — weather-appropriateness, proportion, and colour rules still apply exactly. Do not force a piece in if it genuinely clashes.
-
-PRIOR RESPONSE (revise this, keep the same JSON schema):
-${JSON.stringify(parsed)}
-
-Respond with ONLY the corrected valid JSON, no markdown, same schema as the prior response.`;
+          const hardConstraint = `\nHARD CONSTRAINT — MANDATORY: Your first attempt used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. This attempt MUST make either the primary or alternative look anchored around one of these specific pieces, still passing every proportion/colour/pattern-mixing rule above exactly:\n${picks.join('\n')}\nIf, after genuinely trying, none of the above pieces can be made to coordinate with anything else for today, say so rather than silently reverting to a neutral default.\n`;
           try {
-            const revisedRaw = await callClaude({ prompt: revisePrompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'today-brief-reach-enforce' });
-            const revised = parseJSON(revisedRaw) as TodayResponse;
+            const revised = parseJSON(await runBrief(hardConstraint)) as TodayResponse;
             if (revised?.primary || revised?.alternative) parsed = revised;
           } catch { /* keep original on failure */ }
         }
