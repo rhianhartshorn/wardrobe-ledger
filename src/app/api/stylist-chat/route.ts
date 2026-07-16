@@ -10,7 +10,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
   buildWardrobeCachePrefix, type SpecialistBrief,
@@ -447,6 +447,18 @@ export async function POST(req: NextRequest) {
         }
       }
     }
+
+    // Record which pieces actually made it into this response, across every
+    // block type that surfaces specific items — the real, closed-loop signal
+    // the spotlight above is built on.
+    const recommendedIds = finalBlocks.flatMap((b) => {
+      if (b.type === 'outfits') return b.outfits.flatMap((o) => o.itemIds);
+      if (b.type === 'packingList') return b.pieces.map((p) => p.itemId);
+      if (b.type === 'focus') return [b.focusItemId, ...b.pairings.flatMap((p) => p.itemIds)];
+      if (b.type === 'itemList') return b.itemIds;
+      return [];
+    });
+    if (recommendedIds.length) recordRecommendationsInBackground(recommendedIds);
 
     // ── Save directives ──────────────────────────────────────────────────────
 

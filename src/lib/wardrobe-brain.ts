@@ -50,8 +50,9 @@ export async function updateWardrobeCharacterBriefInBackground(items: ItemRow[])
 CURRENT WARDROBE (${items.length} pieces):
 ${itemListText}
 
-Write a max 200-word brief covering:
+Write a max 220-word brief covering:
 — The 3-5 workhorse pieces this wardrobe is actually built around, and why they're load-bearing
+— 3-5 UNDERUSED pieces with real, specific potential that don't get proposed as often as they could — name them and say exactly what combination or register would unlock each one. This section exists specifically so the styling team doesn't unconsciously default to the same workhorses every single time this brief is read.
 — The native styling moves this wardrobe supports well (what combinations and registers it's naturally strong in)
 — The blind spots — formality levels, occasions, or categories this wardrobe currently cannot serve
 — How the wardrobe has shifted recently, if new pieces have changed what's now possible
@@ -60,7 +61,7 @@ Be specific — name actual pieces, not categories. No generalities, no hollow o
 
 Respond with ONLY the brief text — no JSON, no heading, no preamble.`;
 
-    const brief = await callClaude({ prompt, maxTokens: 350, route: 'wardrobe-character-brief' });
+    const brief = await callClaude({ prompt, maxTokens: 400, route: 'wardrobe-character-brief' });
     if (brief?.trim()) {
       await setSetting('wardrobe_character_brief', brief.trim());
     }
@@ -73,7 +74,7 @@ export async function getWardrobeCharacterBriefContext(): Promise<string> {
   try {
     const raw = await getSetting('wardrobe_character_brief');
     if (!raw) return '';
-    return `\nWARDROBE CHARACTER BRIEF (standing knowledge of this wardrobe's identity, maintained by Wardrobe Intelligence — read this instead of re-deriving the wardrobe's character from the raw item list):\n${raw}\n`;
+    return `\nWARDROBE CHARACTER BRIEF (standing knowledge of this wardrobe's identity, maintained by Wardrobe Intelligence — read this instead of re-deriving the wardrobe's character from the raw item list). This brief names both workhorse pieces AND underused pieces with real potential — treat both as equally available starting points. The workhorses are a description of established patterns, not an instruction to keep repeating them; the underused pieces named here are exactly the ones the team should be actively working into new recommendations:\n${raw}\n`;
   } catch {
     return '';
   }

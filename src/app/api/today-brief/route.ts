@@ -8,7 +8,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import { buildWardrobeCachePrefix } from '@/lib/specialist-team';
 
 type TodayResponse = {
@@ -148,6 +148,11 @@ Respond with ONLY valid JSON, no markdown:
       primary: enriched.find((o) => o.title === parsed.primary?.title) ?? enriched[0],
       alternative: enriched.find((o) => o.title === parsed.alternative?.title && o !== enriched[0]),
     };
+
+    // Only real generations count as a recommendation, not repeat reads of
+    // the cached brief later the same day.
+    const recommendedIds = [result.primary, result.alternative].filter(Boolean).flatMap((o) => o!.itemIds);
+    if (recommendedIds.length) recordRecommendationsInBackground(recommendedIds);
 
     try {
       await setSetting('today_brief_cache', JSON.stringify({ date: todayDate, response: result } satisfies CachedBrief));

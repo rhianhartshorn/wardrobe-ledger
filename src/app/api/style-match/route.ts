@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
+import { getSetting, setSetting } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext,
@@ -144,9 +145,29 @@ Respond with ONLY valid JSON, no markdown:
       parsed.goalAnalysis.images = await searchInspirationImages(`${parsed.goalAnalysis.goal} outfit style`, 3, 'style-match');
     }
 
+    // Cache so re-opening the app shows the last goal + result without
+    // needing to retype the goal and re-run the analysis.
+    if (goal) {
+      try {
+        await setSetting('style_goal_cache', JSON.stringify({ goal, result: parsed, savedAt: Date.now() }));
+      } catch { /* cache write failure — still return the fresh result */ }
+    }
+
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Analysis failed';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// Returns the last saved goal + result so re-opening the app shows it
+// without needing to retype and re-run.
+export async function GET() {
+  try {
+    const raw = await getSetting('style_goal_cache');
+    const cached = raw ? JSON.parse(raw) as { goal: string; result: unknown; savedAt: number } : null;
+    return NextResponse.json({ cached });
+  } catch {
+    return NextResponse.json({ cached: null });
   }
 }

@@ -21,6 +21,7 @@ function toClient(row: ItemRow) {
     addedAt: row.added_at,
     price: row.price,
     wearCount: row.wear_count ?? 0,
+    recommendationCount: row.rec_count ?? 0,
     styleNote: row.style_note || undefined,
     visualNotes: row.visual_notes || undefined,
   };

@@ -1,6 +1,6 @@
 import 'server-only';
 import { callClaude, parseJSON } from './claude';
-import { getItem } from './db';
+import { getItem, incrementRecommendation } from './db';
 import { ACCESSORIES_DIRECTOR_PERSONA, BRAND_VOICE_RULES } from './stylist';
 
 export type WardrobeItemLite = {
@@ -8,7 +8,7 @@ export type WardrobeItemLite = {
   primaryColor: string; secondaryColor: string;
   pattern: string; formality: string; season: string;
   material?: string; fit?: string; length?: string;
-  accessoryType?: string; wearCount?: number; styleNote?: string; visualNotes?: string;
+  accessoryType?: string; wearCount?: number; recommendationCount?: number; styleNote?: string; visualNotes?: string;
 };
 
 export type ChatOutfit = {
@@ -32,30 +32,50 @@ const LAYERING_KEYWORDS = [
 // start or end, and that bias compounds across every specialist call that
 // sees the same ordering. Pulling underused pieces into their own small,
 // unmissable block forces them to actually be considered rather than
-// unconsciously skipped past every time. Rotates which slice of the
-// underused pool gets spotlighted so coverage compounds across calls
-// instead of fixating on the same handful forever. Kept OUT of the cached
-// prefix deliberately — it needs to vary, and it's cheap either way.
+// unconsciously skipped past every time.
+//
+// Sorted by recommendationCount — a closed-loop count of how many times the
+// TEAM has actually proposed each piece, incremented by
+// recordRecommendationsInBackground() below every time outfits are returned.
+// This is a genuinely different signal from wearCount (what the CLIENT has
+// reached for): a piece can have low wear because the client hasn't gotten
+// to it yet, or low recommendation count because the TEAM keeps skipping
+// past it — this block targets the second, which is the team's own failure,
+// not the client's. Because the count updates after every real response,
+// the spotlight self-rotates as items actually get proposed — no arbitrary
+// time-based rotation needed. Kept OUT of the cached prefix deliberately —
+// it needs to vary, and it's cheap either way.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function buildSpotlightBlock(items: WardrobeItemLite[]): string {
   if (items.length < 6) return '';
-  const sorted = [...items].sort((a, b) => (a.wearCount ?? 0) - (b.wearCount ?? 0) || a.id.localeCompare(b.id));
-  const poolSize = Math.max(8, Math.ceil(sorted.length * 0.4));
-  const pool = sorted.slice(0, poolSize);
-  if (pool.length === 0) return '';
-
-  const spotlightSize = Math.min(8, pool.length);
-  const rotationWindowMs = 3 * 60 * 60 * 1000; // rotate every 3 hours
-  const windowIndex = Math.floor(Date.now() / rotationWindowMs);
-  const start = (windowIndex * spotlightSize) % pool.length;
-  const spotlight = [...pool.slice(start), ...pool.slice(0, start)].slice(0, spotlightSize);
+  const sorted = [...items].sort((a, b) =>
+    (a.recommendationCount ?? 0) - (b.recommendationCount ?? 0)
+    || (a.wearCount ?? 0) - (b.wearCount ?? 0)
+    || a.id.localeCompare(b.id)
+  );
+  const spotlightSize = Math.min(8, sorted.length);
+  const spotlight = sorted.slice(0, spotlightSize);
+  if (spotlight.length === 0) return '';
 
   const lines = spotlight.map((it) =>
-    `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${(it.wearCount ?? 0) === 0 ? ' — never worn' : `, worn ${it.wearCount}x`}`
+    `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''} — recommended ${it.recommendationCount ?? 0}x${(it.wearCount ?? 0) === 0 ? ', never worn' : `, worn ${it.wearCount}x`}`
   );
 
-  return `\nSPOTLIGHT — pieces conspicuously absent from recent recommendations. A long wardrobe list makes it easy to unconsciously skip past the same pieces every time; these are flagged specifically so that doesn't happen. Before finalizing, actively check whether any of these genuinely serve this request — not as a quota to fill, but as pieces you must actually have considered, not defaulted past:\n${lines.join('\n')}\n`;
+  return `\nSPOTLIGHT — pieces the team has conspicuously never or rarely recommended (tracked, not guessed). A long wardrobe list makes it easy to unconsciously skip past the same pieces every time; these are flagged specifically so that doesn't happen. Before finalizing, actively check whether any of these genuinely serve this request — not as a quota to fill, but as pieces you must actually have considered, not defaulted past:\n${lines.join('\n')}\n`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Records which pieces actually made it into a response's outfit/packingList
+// blocks, so the spotlight above reflects real, closed-loop recommendation
+// history instead of a proxy. Fire-and-forget — never blocks the response.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function recordRecommendationsInBackground(itemIds: string[]): void {
+  const unique = Array.from(new Set(itemIds));
+  for (const id of unique) {
+    incrementRecommendation(id).catch(() => {});
+  }
 }
 
 export function isCompleteOutfit(itemIds: string[], items: WardrobeItemLite[]): boolean {

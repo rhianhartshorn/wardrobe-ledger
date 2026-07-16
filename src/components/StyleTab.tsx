@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Loader2, Gem, RefreshCw, Target, ChevronRight, ShoppingBag } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import { slim, buildWearBehaviourSummary, buildWardrobeGrid } from './utils';
@@ -73,18 +73,73 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
   const [err, setErr] = useState('');
   const [result, setResult] = useState<StyleReadResult | null>(null);
   const [teamPerspective, setTeamPerspective] = useState('');
+  const [readSavedAt, setReadSavedAt] = useState<number | null>(null);
+  const [readItemIds, setReadItemIds] = useState<string[]>([]);
+  const [journalTimestamps, setJournalTimestamps] = useState<number[]>([]);
   const fashionCurrency = fashionCurrencyProp ?? null;
 
   const [goal, setGoal] = useState('');
   const [loadingGoal, setLoadingGoal] = useState(false);
   const [goalErr, setGoalErr] = useState('');
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [goalSavedAt, setGoalSavedAt] = useState<number | null>(null);
 
   const [learnMore, setLearnMore] = useState<LearnMoreProps | null>(null);
 
   const [loadingGaps, setLoadingGaps] = useState(false);
   const [gapErr, setGapErr] = useState('');
   const [gapResult, setGapResult] = useState<GapAnalysisResult | null>(null);
+
+  // Load whatever was last saved, so opening the app never forces a re-run.
+  useEffect(() => {
+    fetch('/api/style-read')
+      .then((r) => r.json())
+      .then((d: { teamPerspective?: string; cached?: { result: StyleReadResult; savedAt: number; itemIds: string[] } | null }) => {
+        if (d.teamPerspective) setTeamPerspective(d.teamPerspective);
+        if (d.cached) {
+          setResult(d.cached.result);
+          setReadSavedAt(d.cached.savedAt);
+          setReadItemIds(d.cached.itemIds);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/style-match')
+      .then((r) => r.json())
+      .then((d: { cached?: { goal: string; result: MatchResult; savedAt: number } | null }) => {
+        if (d.cached) {
+          setGoal(d.cached.goal);
+          setMatchResult(d.cached.result);
+          setGoalSavedAt(d.cached.savedAt);
+        }
+      })
+      .catch(() => {});
+
+    fetch('/api/journal')
+      .then((r) => r.json())
+      .then((entries: Array<{ loggedAt: number }>) => {
+        if (Array.isArray(entries)) setJournalTimestamps(entries.map((e) => e.loggedAt));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Suggest a refresh — new pieces the reading never saw, or enough logged
+  // wears since then that actual behaviour may have diverged from what a
+  // pure inventory read showed. Never auto-runs; just surfaces the nudge.
+  const readRefreshReason = useMemo(() => {
+    if (!result || !readSavedAt) return '';
+    const newItemCount = items.filter((i) => !readItemIds.includes(i.id)).length;
+    const wornSince = journalTimestamps.filter((ts) => ts > readSavedAt).length;
+    const daysSince = Math.floor((Date.now() - readSavedAt) / (24 * 60 * 60 * 1000));
+    if (newItemCount > 0 && wornSince >= 5) {
+      return `${newItemCount} new piece${newItemCount !== 1 ? 's' : ''} added and ${wornSince} outfits logged since this reading — your actual style may have moved on.`;
+    }
+    if (newItemCount >= 3) return `${newItemCount} new pieces added since this reading.`;
+    if (wornSince >= 8) return `You've logged ${wornSince} outfits since this reading — worth checking it still matches how you're actually dressing.`;
+    if (daysSince >= 45) return `This reading is ${daysSince} days old.`;
+    return '';
+  }, [result, readSavedAt, readItemIds, journalTimestamps, items]);
 
   const runGapAnalysis = async () => {
     setLoadingGaps(true); setGapErr(''); setGapResult(null);
@@ -128,6 +183,8 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
       const data = await res.json() as StyleReadResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
       setResult(data);
+      setReadSavedAt(Date.now());
+      setReadItemIds(items.map((i) => i.id));
 
       // The team's note on how their default POV adapts to this archetype
       // generates in the background — poll briefly rather than blocking the reading on it.
@@ -174,6 +231,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
       const data = await res.json() as MatchResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Failed');
       setMatchResult(data);
+      setGoalSavedAt(Date.now());
     } catch (e) { setGoalErr(e instanceof Error ? e.message : 'Could not run analysis.'); }
     finally { setLoadingGoal(false); }
   };
@@ -217,6 +275,19 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
           <p className="text-center text-[10px] text-[#A89F96] font-light mt-2">
             Analysis calibrated to your {bodyProfile.bodyShape} frame{bodyProfile.undertone ? ` · ${bodyProfile.undertone} undertone` : ''}
           </p>
+        )}
+        {readSavedAt && !analyzing && (
+          <p className="text-center text-[10px] text-[#A89F96] font-light mt-2">
+            Last read {new Date(readSavedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </p>
+        )}
+        {readRefreshReason && !analyzing && (
+          <div className="mt-3 border border-[#9B7B3A]/30 bg-[#F5F2EC] px-3 py-2.5 flex items-start gap-2">
+            <p className="text-xs text-[#6B6058] font-light leading-snug flex-1">{readRefreshReason}</p>
+            <button onClick={runAnalysis} className="text-[10px] uppercase tracking-widest text-[#9B7B3A] font-light hover:text-[#1A1714] transition-colors shrink-0 whitespace-nowrap">
+              Refresh
+            </button>
+          </div>
         )}
       </div>
 
@@ -458,6 +529,11 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
             {loadingGoal ? <><Loader2 className="animate-spin" size={13} /> Analysing...</> : 'How do I achieve this?'}
           </button>
           {goalErr && <p className="text-xs text-red-700 mt-3 font-light">{goalErr}</p>}
+          {goalSavedAt && !loadingGoal && (
+            <p className="text-center text-[10px] text-[#A89F96] font-light mt-2">
+              Last checked {new Date(goalSavedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          )}
         </div>
 
         {matchResult?.goalAnalysis && (

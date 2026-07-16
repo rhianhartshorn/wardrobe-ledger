@@ -64,6 +64,7 @@ export type ItemRow = {
   added_at: number;
   price?: number;
   wear_count?: number;
+  rec_count?: number;
   style_note?: string;
   visual_notes?: string;
 };
@@ -182,6 +183,7 @@ const SETTINGS_KEY    = 'wardrobe:settings';
 const itemKey    = (id: string) => `wardrobe:item:${id}`;
 const imgKey     = (id: string) => `wardrobe:img:${id}`;
 const wearKey    = (id: string) => `wardrobe:wear:${id}`;
+const recKey     = (id: string) => `wardrobe:rec:${id}`;
 const lookKey    = (id: string) => `wardrobe:look:${id}`;
 const journalKey = (id: string) => `wardrobe:journal:${id}`;
 
@@ -196,10 +198,11 @@ export async function getAllItems(): Promise<ItemRow[]> {
   const items = await Promise.all(
     ids.map(async (id): Promise<ItemRow | null> => {
       try {
-        const [metaRaw, imgRaw, wearRaw] = await Promise.all([
+        const [metaRaw, imgRaw, wearRaw, recRaw] = await Promise.all([
           redisGet(itemKey(id)),
           redisGet(imgKey(id)),
           redisGet(wearKey(id)),
+          redisGet(recKey(id)),
         ]);
         const item = parseVal<ItemRow>(metaRaw);
         if (!item || typeof item !== 'object') return null;
@@ -208,6 +211,8 @@ export async function getAllItems(): Promise<ItemRow[]> {
         // Prefer the dedicated wear key (atomic INCR); fall back to legacy wear_count in meta
         const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
         item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
+        const recFromKey = recRaw != null ? parseInt(recRaw, 10) : NaN;
+        item.rec_count = !isNaN(recFromKey) ? recFromKey : 0;
         return item;
       } catch { return null; }
     })
@@ -219,10 +224,11 @@ export async function getAllItems(): Promise<ItemRow[]> {
 }
 
 export async function getItem(id: string): Promise<ItemRow | undefined> {
-  const [metaRaw, imgRaw, wearRaw] = await Promise.all([
+  const [metaRaw, imgRaw, wearRaw, recRaw] = await Promise.all([
     redisGet(itemKey(id)),
     redisGet(imgKey(id)),
     redisGet(wearKey(id)),
+    redisGet(recKey(id)),
   ]);
   const item = parseVal<ItemRow>(metaRaw);
   if (!item || typeof item !== 'object') return undefined;
@@ -230,6 +236,8 @@ export async function getItem(id: string): Promise<ItemRow | undefined> {
   if (img && typeof img === 'string') item.image_data_url = img;
   const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
   item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
+  const recFromKey = recRaw != null ? parseInt(recRaw, 10) : NaN;
+  item.rec_count = !isNaN(recFromKey) ? recFromKey : 0;
   return item;
 }
 
@@ -250,6 +258,14 @@ export async function insertItem(item: ItemRow): Promise<void> {
 
 export async function incrementWear(id: string): Promise<number> {
   return redisIncr(wearKey(id));
+}
+
+// How many times the AI team has actually proposed this piece, regardless of
+// whether the client wore or saved it — a closed-loop signal for what the
+// TEAM has been neglecting, distinct from wear_count (what the CLIENT has
+// been neglecting). This is the real fix for recommendation narrowness.
+export async function incrementRecommendation(id: string): Promise<number> {
+  return redisIncr(recKey(id));
 }
 
 export async function updateItem(id: string, patch: Partial<ItemRow>): Promise<void> {

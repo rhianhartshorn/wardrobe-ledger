@@ -37,6 +37,7 @@ export type WardrobeItem = {
   addedAt: number;
   price?: number;
   wearCount?: number;
+  recommendationCount?: number;
   styleNote?: string;
   visualNotes?: string;
 };

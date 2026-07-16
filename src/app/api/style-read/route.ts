@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callClaude, parseJSON } from '@/lib/claude';
+import { getSetting, setSetting } from '@/lib/db';
 import { profileToContext, type BodyProfile } from '@/lib/body-profile';
 import {
   getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext,
@@ -197,6 +198,16 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
     ].filter(Boolean).join('\n');
     if (auditText) auditInBackground('style-read', 'style analysis section', auditText);
 
+    // Cache the full reading so re-opening the app doesn't require re-running
+    // it — surfaced via GET below along with what it's due for a refresh.
+    try {
+      await setSetting('style_read_cache', JSON.stringify({
+        result: parsed,
+        savedAt: Date.now(),
+        itemIds: items.map((i) => i.id),
+      }));
+    } catch { /* cache write failure — still return the fresh result */ }
+
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Style reading failed';
@@ -204,15 +215,18 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
   }
 }
 
-// The team's note on how their default technical POV adapts to this
-// client's declared archetype — generated once in the background after a
-// Read My Style run, fetched separately since it may not be ready the
-// instant the POST above returns.
+// Returns the cached reading (so the app doesn't need to re-run it on every
+// open) plus the team's adaptation note. The client decides whether to
+// suggest a refresh based on savedAt / itemIds vs the current wardrobe.
 export async function GET() {
   try {
-    const teamPerspective = await getTeamPerspective();
-    return NextResponse.json({ teamPerspective });
+    const [teamPerspective, cacheRaw] = await Promise.all([
+      getTeamPerspective(),
+      getSetting('style_read_cache'),
+    ]);
+    const cache = cacheRaw ? JSON.parse(cacheRaw) as { result: StyleReadResult; savedAt: number; itemIds: string[] } : null;
+    return NextResponse.json({ teamPerspective, cached: cache });
   } catch {
-    return NextResponse.json({ teamPerspective: '' });
+    return NextResponse.json({ teamPerspective: '', cached: null });
   }
 }
