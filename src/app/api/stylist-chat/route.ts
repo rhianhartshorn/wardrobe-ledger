@@ -10,7 +10,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
   buildWardrobeCachePrefix, type SpecialistBrief,
@@ -60,6 +60,7 @@ async function runHeadStylist(
   specialistBriefs: SpecialistBrief[],
   wardrobeImages?: Array<{ base64: string }>,
   model: string = 'claude-opus-4-8',
+  statementRoster = '',
 ): Promise<StylistResponse> {
 
   const tensionClass = classifyTension(specialistBriefs);
@@ -72,7 +73,7 @@ async function runHeadStylist(
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${weatherBlock}${gridBlock}${spotlightBlock}${conversationBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${weatherBlock}${gridBlock}${spotlightBlock}${statementRoster}${conversationBlock}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
 Tension classification: ${tensionClass}
@@ -329,6 +330,7 @@ export async function POST(req: NextRequest) {
       : '';
 
     const spotlightBlock = items?.length ? buildSpotlightBlock(items) : '';
+    const statementRoster = items?.length ? buildStatementRoster(items) : '';
 
     // Split into a STABLE block (identity, thesis, lifestyle, saved looks,
     // colour profile, character brief, directives — changes rarely, so it's
@@ -352,6 +354,7 @@ export async function POST(req: NextRequest) {
       weatherBlock,
       trimmedConversationBlock,
       spotlightBlock,
+      statementRoster,
     ].filter(Boolean).join('\n');
 
     // ── STEP 1: Route to relevant specialists ────────────────────────────────
@@ -401,7 +404,7 @@ export async function POST(req: NextRequest) {
       ...(runFashionEditor ? [runSpecialist(
         'Fashion Editor',
         FASHION_EDITOR_PERSONA,
-        `Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated. Pay specific attention to pattern mixing: two bold patterns (florals, animal print, houndstooth, plaid, geometric) together only work with a shared colour family or a clear dominant/accent scale hierarchy — flag any pattern-on-pattern combination that lacks that logic as a clash, not a considered choice.${wardrobeImages ? ' A visual wardrobe grid is attached — judge coherence with your eyes on the actual garments, not from the text descriptions alone.' : ''}`,
+        `Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated. If a STATEMENT PIECES roster appears in your context, your candidates should REACH for those prints, colours, and dresses and build around them — a safe neutral pairing when characterful pieces are available is exactly the under-reaching you exist to prevent; propose the boldest coherent option, not the most predictable one that happens to work. Pay specific attention to pattern mixing: two bold patterns (florals, animal print, houndstooth, plaid, geometric) together only work with a shared colour family or a clear dominant/accent scale hierarchy — flag any pattern-on-pattern combination that lacks that logic as a clash, not a considered choice.${wardrobeImages ? ' A visual wardrobe grid is attached — judge coherence with your eyes on the actual garments, not from the text descriptions alone.' : ''}`,
         message, itemListText, dynamicTurnContext, wardrobeImages, stableClientContext,
       )] : []),
       ...(runOccasion ? [runSpecialist(
@@ -437,7 +440,7 @@ export async function POST(req: NextRequest) {
       itemListText, gridBlock,
       spotlightBlock, conversationBlock,
       specialistBriefs, wardrobeImages,
-      headStylistModel,
+      headStylistModel, statementRoster,
     );
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────

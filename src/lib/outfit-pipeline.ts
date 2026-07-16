@@ -66,6 +66,48 @@ export function buildSpotlightBlock(items: WardrobeItemLite[]): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// STATEMENT-PIECE ROSTER — direct testing proved the stylist under-reaches on a
+// rich wardrobe: it defaults to the same safe anchor (a plain blazer thrown
+// over everything) and leaves prints, bold colours, and dresses on the rack,
+// scoring 3/10 on maximisation while the same engine hits 7-8 on a wardrobe it
+// has no safe default in. This surfaces the wardrobe's genuinely characterful
+// pieces explicitly, so "build around the strongest piece" has a concrete
+// roster to work from rather than a plea the model buries under safe context.
+// A piece is a statement if it has a real pattern, a non-neutral colour, or is
+// a dress/one-piece — the pieces that actually carry a look.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NEUTRAL_COLOURS = ['black', 'white', 'grey', 'gray', 'navy', 'beige', 'cream', 'tan', 'camel', 'charcoal', 'brown', 'ivory', 'nude', 'khaki', 'stone', 'greige', 'gold', 'silver'];
+const PLAIN_PATTERNS = ['', 'solid', 'textured'];
+
+export function isStatementPiece(it: WardrobeItemLite): boolean {
+  const pattern = (it.pattern ?? '').toLowerCase();
+  const colour = (it.primaryColor ?? '').toLowerCase();
+  const hasPattern = !PLAIN_PATTERNS.includes(pattern);
+  const isColourful = !NEUTRAL_COLOURS.some((n) => colour.includes(n));
+  const isDress = it.category === 'Dress/One-piece';
+  return hasPattern || isColourful || isDress;
+}
+
+export function buildStatementRoster(items: WardrobeItemLite[]): string {
+  const statement = items.filter(isStatementPiece);
+  if (statement.length < 3) return '';
+  const lines = statement.map((it) =>
+    `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.pattern && !PLAIN_PATTERNS.includes(it.pattern.toLowerCase()) ? ', ' + it.pattern : ''}`
+  );
+  return `\nSTATEMENT PIECES IN THIS WARDROBE (${statement.length} of ${items.length} — the prints, bold colours, and dresses that actually carry a look). This wardrobe is rich in character; the failure to avoid is defaulting to safe neutrals and throwing the same plain blazer over everything while these sit unused:\n${lines.join('\n')}\n`;
+}
+
+// Given the itemIds a response actually used, returns true if at least one was
+// a statement piece. Used to detect the under-reaching failure mode.
+export function usedAnyStatementPiece(usedIds: string[], items: WardrobeItemLite[]): boolean {
+  return usedIds.some((id) => {
+    const it = items.find((i) => i.id === id);
+    return it ? isStatementPiece(it) : false;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Records which pieces actually made it into a response's outfit/packingList
 // blocks, so the spotlight above reflects real, closed-loop recommendation
 // history instead of a proxy. Fire-and-forget — never blocks the response.
