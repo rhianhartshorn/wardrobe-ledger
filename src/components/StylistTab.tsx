@@ -6,6 +6,7 @@ import type { BodyProfile } from '@/lib/body-profile';
 import type { StyleDirective } from '@/app/api/stylist-chat/route';
 import { slim, buildWardrobeGrid } from './utils';
 import LearnMorePage, { type LearnMoreProps } from './LearnMorePage';
+import type { InspirationImage } from '@/lib/style-types';
 
 type Weather = { locationName: string; tempF: number; condition: string; windMph: number; summary: string };
 
@@ -62,6 +63,10 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
   const [inspoLoading, setInspoLoading] = useState(false);
   const [inspoErr, setInspoErr] = useState('');
   const [showInspo, setShowInspo] = useState(false);
+  const [refImages, setRefImages] = useState<InspirationImage[] | null>(null);
+  const [refLoading, setRefLoading] = useState(false);
+  const [refErr, setRefErr] = useState('');
+  const [showRefs, setShowRefs] = useState(false);
 
   const save = async () => {
     if (saved || saving || pieces.length === 0) return;
@@ -128,6 +133,24 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
       setShowInspo(true);
     } catch (e) { setInspoErr(e instanceof Error ? e.message : 'Could not generate inspiration image'); }
     finally { setInspoLoading(false); }
+  };
+
+  const getReferences = async () => {
+    if (refImages) { setShowRefs((v) => !v); return; }
+    setRefLoading(true); setRefErr('');
+    try {
+      const pieceSummary = pieces.map((p) => `${p.primaryColor} ${p.name}`).join(', ');
+      const res = await fetch('/api/outfit-references', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ styleReference: outfit.styleReference, title: outfit.title, pieceSummary }),
+      });
+      const data = await res.json() as { images?: InspirationImage[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? 'Failed');
+      setRefImages(data.images ?? []);
+      setShowRefs(true);
+    } catch (e) { setRefErr(e instanceof Error ? e.message : 'Could not find similar looks'); }
+    finally { setRefLoading(false); }
   };
 
   if (pieces.length === 0) return null;
@@ -202,7 +225,34 @@ function OutfitMini({ outfit, items, hasProfilePhoto, onLearnMore }: { outfit: C
             See the look
           </button>
         </div>
-        {(tryOnErr || inspoErr) && <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">{tryOnErr || inspoErr}</p>}
+        <button
+          onClick={getReferences}
+          disabled={refLoading}
+          className="w-full mt-1.5 flex items-center justify-center gap-1.5 border border-[#E5DDD0] py-1.5 text-[9px] uppercase tracking-[0.12em] text-[#6B6058] font-light hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
+        >
+          {refLoading ? <Loader2 size={10} className="animate-spin" /> : <Sparkles size={10} />}
+          {showRefs ? 'Hide similar looks' : 'Similar looks online'}
+        </button>
+        {(tryOnErr || inspoErr || refErr) && <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">{tryOnErr || inspoErr || refErr}</p>}
+        {showRefs && refImages && (
+          refImages.length > 0 ? (
+            <div className="flex gap-1.5 overflow-x-auto mt-1.5 pt-1.5 border-t border-[#F5F2EC]">
+              {refImages.map((img, i) => (
+                <a
+                  key={i}
+                  href={img.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-16 h-16 shrink-0 overflow-hidden bg-[#F5F2EC] border border-[#E5DDD0]"
+                >
+                  <img src={img.thumbnailUrl} alt="Similar look" className="w-full h-full object-cover" />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[10px] text-[#A89F96] font-light mt-1.5 leading-snug">No close matches found online.</p>
+          )
+        )}
       </div>
     </div>
 

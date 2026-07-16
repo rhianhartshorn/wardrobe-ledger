@@ -107,6 +107,10 @@ export function usedAnyStatementPiece(usedIds: string[], items: WardrobeItemLite
   });
 }
 
+export function getStatementPieces(items: WardrobeItemLite[]): WardrobeItemLite[] {
+  return items.filter(isStatementPiece);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Records which pieces actually made it into a response's outfit/packingList
 // blocks, so the spotlight above reflects real, closed-loop recommendation

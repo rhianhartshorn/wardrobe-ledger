@@ -8,7 +8,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, getStatementPieces, usedAnyStatementPiece, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import { buildWardrobeCachePrefix } from '@/lib/specialist-team';
 
 type TodayResponse = {
@@ -128,7 +128,39 @@ Respond with ONLY valid JSON, no markdown:
       model: 'claude-opus-4-8',
       route: 'today-brief',
     });
-    const parsed = parseJSON(raw) as TodayResponse;
+    let parsed = parseJSON(raw) as TodayResponse;
+
+    // Same code-level backstop as stylist-chat: prompt-only "reach for statement
+    // pieces" instructions were measured and failed to move the needle. If a
+    // rich wardrobe's primary/alternative used zero statement pieces, force one
+    // targeted revision naming specific unused pieces by ID.
+    if (statementRoster) {
+      const usedIds = [parsed.primary, parsed.alternative].filter(Boolean).flatMap((o) => o!.itemIds);
+      if (usedIds.length && !usedAnyStatementPiece(usedIds, items)) {
+        const unused = getStatementPieces(items).filter((it) => !usedIds.includes(it.id));
+        if (unused.length) {
+          const picks = unused.slice(0, 4).map((it) =>
+            `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
+          );
+          const revisePrompt = `You are revising your own daily brief. Your prior response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals when characterful pieces were available.
+
+Rebuild so that AT LEAST ONE of the two looks (primary or alternative) is anchored around one of these specific pieces:
+${picks.join('\n')}
+
+Keep the same structure and quality bar — weather-appropriateness, proportion, and colour rules still apply exactly. Do not force a piece in if it genuinely clashes.
+
+PRIOR RESPONSE (revise this, keep the same JSON schema):
+${JSON.stringify(parsed)}
+
+Respond with ONLY the corrected valid JSON, no markdown, same schema as the prior response.`;
+          try {
+            const revisedRaw = await callClaude({ prompt: revisePrompt, maxTokens: 1200, model: 'claude-opus-4-8', route: 'today-brief-reach-enforce' });
+            const revised = parseJSON(revisedRaw) as TodayResponse;
+            if (revised?.primary || revised?.alternative) parsed = revised;
+          } catch { /* keep original on failure */ }
+        }
+      }
+    }
 
     // Post-process: completeness + visual gate + accessories, same bar as any other recommendation.
     // Gate and accessories run concurrently rather than sequentially — a few wasted

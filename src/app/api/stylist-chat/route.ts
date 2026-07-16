@@ -10,7 +10,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, getStatementPieces, usedAnyStatementPiece, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
   buildWardrobeCachePrefix, type SpecialistBrief,
@@ -41,6 +41,56 @@ type StylistResponse = {
   acknowledgment: string;
   blocks: Block[];
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATEMENT-REACH ENFORCEMENT — prompt-only instructions to "reach for
+// statement pieces" were measured and failed twice: maximisation stayed flat
+// at 3.0/10 even with an explicit roster and anti-monotony rules in the
+// prompt. This is the code-level backstop: check what the response actually
+// used, and if a rich wardrobe's outfits used zero statement pieces, force
+// ONE targeted revision naming specific unused pieces by ID — a hard
+// constraint instead of a persuasion attempt. Only fires on the failure
+// case, so it costs nothing on requests that already reach correctly.
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function enforceStatementReach(
+  synthesis: StylistResponse,
+  message: string,
+  items: WardrobeItemLite[],
+  model: string,
+): Promise<StylistResponse> {
+  const usedIds = synthesis.blocks.flatMap((b) => (b.type === 'outfits' ? b.outfits.flatMap((o) => o.itemIds) : []));
+  if (!usedIds.length || usedAnyStatementPiece(usedIds, items)) return synthesis;
+
+  const unused = getStatementPieces(items).filter((it) => !usedIds.includes(it.id));
+  if (!unused.length) return synthesis;
+
+  const picks = unused.slice(0, 4).map((it) =>
+    `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
+  );
+
+  const prompt = `You are revising your own styling response. The client asked: "${message}"
+
+Your prior response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals when characterful pieces were available. A real stylist maximises what's actually in the wardrobe, not the safest overlap.
+
+Rebuild your outfit block(s) so that AT LEAST ONE complete outfit is anchored around one of these specific pieces:
+${picks.join('\n')}
+
+Keep the same structure and quality bar — proportion, colour, and pattern-mixing rules still apply exactly. Do not force a piece in if it genuinely clashes; pick whichever of the above actually coordinates.
+
+PRIOR RESPONSE (revise this, keep the same JSON schema):
+${JSON.stringify(synthesis)}
+
+Respond with ONLY the corrected valid JSON, no markdown, same schema as the prior response.`;
+
+  try {
+    const raw = await callClaude({ prompt, maxTokens: 2000, model, route: 'stylist-chat-reach-enforce' });
+    const revised = parseJSON(raw) as StylistResponse;
+    return revised?.blocks?.length ? revised : synthesis;
+  } catch {
+    return synthesis;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HEAD STYLIST SYNTHESIS
@@ -434,7 +484,7 @@ export async function POST(req: NextRequest) {
     const needsTasteJudgment = isOutfitRequest || isCapsuleRequest || isFocusRequest || isStrategyRequest;
     const headStylistModel = needsTasteJudgment ? 'claude-opus-4-8' : 'claude-sonnet-4-6';
 
-    const synthesis = await runHeadStylist(
+    let synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
       styleBriefCtx, stableClientContext, weatherBlock,
       itemListText, gridBlock,
@@ -442,6 +492,10 @@ export async function POST(req: NextRequest) {
       specialistBriefs, wardrobeImages,
       headStylistModel, statementRoster,
     );
+
+    if (statementRoster && items?.length) {
+      synthesis = await enforceStatementReach(synthesis, message, items, headStylistModel);
+    }
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────
     // Run completeness check + accessories director on all outfit blocks
