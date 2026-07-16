@@ -102,8 +102,10 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — REPETITION CHECK: Look at the recent conversation history above. If you already proposed a specific combination earlier in this conversation, do not propose the identical combination again — the client has either already seen it or has told you it doesn't fit. Offer something genuinely different.
 — QUALITY GATE: Variety and underused-piece candidates are not exempt from scrutiny. Before finalizing ANY combination — whether it came from a specialist's candidate list or your own synthesis — check it against Fit & Proportion's structure rules, Colour Analysis's palette test, and Fashion Editor's pattern-mixing and coherence test yourself. A pairing surfaced because it's underused, or because a single specialist proposed it, still has to actually work as a whole outfit. Two competing bold prints with no coordinating logic, a proportion clash, or a palette miss must be excluded even if no specialist explicitly called it BLOCKING — you are the final check, not a pass-through.
 — COVERAGE: If a SPOTLIGHT block appears above, those pieces have been conspicuously absent from recent recommendations — genuinely consider each one before falling back to familiar anchors. This is not about forcing an awkward piece in; it's about actually evaluating the full wardrobe instead of unconsciously defaulting to the same 10-15 pieces every time, which is a failure of the job, not a sign of taste. If a spotlighted piece doesn't work, that's a legitimate outcome — but it must be because you assessed it, not because a 75-item list made it easy to skip past.
+— DISTINCT ANCHORS: When you propose more than one look in a single response, each look must be built around a DIFFERENT anchor piece. Three "different" looks that all hinge on the same blazer is not range — it is one look with three sets of accessories, and the client will read it as repetition. The ONLY exception is a hard constraint that genuinely forces the shared piece (e.g. "keep my arms covered" at a formal event where only one jacket qualifies) — and if that's the case, say so explicitly rather than presenting near-identical looks as if they were variety. Reusing a single garment across every option you show is the single most common way this fails; do not do it.
 
 STEP 3 — BUILD YOUR BLOCKS FIRST: Compose the response from any combination of block types, in whatever order best serves the request. You are not limited to one of each — a wedding weekend needs multiple outfit blocks, and a simple "what should I wear to X" question deserves 2-3 real options, not one. A narrow verdict question ("does this work") may need only a text or verdict block. Choose the structure that would be most useful to this client for this specific request. Decide and finalize this before you write a single word of the acknowledgment — the acknowledgment in STEP 4 must describe what you actually built here, not what you intend to build.
+MUST-STYLE RULE: If the client asked for something to wear — an outfit, a look, "what should I wear", "what goes with X", styling for an occasion — you MUST return at least one complete "outfits" block. Advisory text alone is never an acceptable answer to a styling request; the client came for a look, not a lecture. If they reference a garment that isn't in the wardrobe list (e.g. a coat they own but haven't logged), do not refuse to style — state the one assumption you're making about it in a text block, then build real looks around it from what IS in the wardrobe. Gap analysis, shopping advice, or "here's what to consider" may accompany the looks but never replace them.
 
 STEP 4 — WRITE YOUR RESPONSE LAST: 1-2 sentences to the client, written only after STEP 3 is finalized. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks. Describe exactly what is in the blocks you just built — if you built one outfit, say "here's what to wear," not "here are two routes." Never describe a plan; describe the delivered result.
 COUNT DISCIPLINE: Count the actual outfit blocks and actual outfits-within-blocks you built. Your acknowledgment's number word ("two", "three") must equal that count exactly — recount before writing it. Do not mention a styling variation, a second way to wear a piece, or an alternate version of a look UNLESS that variation is itself a separate block or a separate outfit entry above — a variation described only in prose, with no matching block, is exactly the mismatch that reads as broken. If you find yourself wanting to say "two ways" or "either X or Y" in the acknowledgment, that is a signal you need a second block, not a second sentence — go back to STEP 3 and add it, or drop the mention entirely.
@@ -196,6 +198,48 @@ Respond with ONLY the thesis text — no JSON, no heading, no preamble.`;
     }
   } catch {
     // Background update — never propagate errors to the client
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACKNOWLEDGMENT RECONCILER
+// The acknowledgment is written during synthesis, but the visual gate can
+// remove outfits afterward — so the final block count can differ from what
+// the acknowledgment claimed even when the model followed its instructions.
+// This detects a numeric mismatch against the FINAL blocks and, only then,
+// fires one tiny Haiku call to rewrite just the acknowledgment sentence to
+// match reality. Fires only on mismatch, outputs ~40 tokens — costs a
+// fraction of a cent, and only when it's actually needed.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const COUNT_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, '1': 1, '2': 2, '3': 3, '4': 4 };
+
+function countOutfits(blocks: Block[]): number {
+  return blocks.reduce((n, b) => b.type === 'outfits' ? n + (b.outfits?.length ?? 0) : n, 0);
+}
+
+// Extracts a claimed option count from the acknowledgment, e.g. "two routes",
+// "3 genuinely different looks" → the number. Returns null if none stated.
+function statedOptionCount(ack: string): number | null {
+  const m = ack.toLowerCase().match(/\b(one|two|three|four|1|2|3|4)\b[^.,;]{0,40}?\b(route|option|look|way|outfit|pairing|combination)s?\b/);
+  return m ? (COUNT_WORDS[m[1]] ?? null) : null;
+}
+
+async function reconcileAcknowledgment(ack: string, blocks: Block[], actualCount: number): Promise<string> {
+  const outfitTitles = blocks
+    .filter((b): b is Extract<Block, { type: 'outfits' }> => b.type === 'outfits')
+    .flatMap((b) => b.outfits.map((o) => o.title));
+  const prompt = `Rewrite this stylist's opening line so it accurately describes what was actually delivered. The line currently claims a different number of options than exist.
+
+CURRENT LINE: "${ack}"
+ACTUALLY DELIVERED: ${actualCount} outfit${actualCount !== 1 ? 's' : ''}${outfitTitles.length ? ` (${outfitTitles.join('; ')})` : ''}
+
+Keep the same warm, direct, specific voice and the same styling reasoning — only correct the count/description so it matches. No exclamation marks. Respond with ONLY the rewritten line, nothing else.`;
+  try {
+    const rewritten = await callClaude({ prompt, maxTokens: 120, model: 'claude-haiku-4-5-20251001', route: 'ack-reconcile' });
+    return rewritten.trim().replace(/^["']|["']$/g, '') || ack;
+  } catch {
+    return ack;
   }
 }
 
@@ -457,6 +501,16 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Reconcile the acknowledgment against the FINAL block count (the visual
+    // gate may have removed outfits after the acknowledgment was written).
+    // Only fires a call when there's an actual numeric mismatch.
+    let acknowledgment = synthesis.acknowledgment;
+    const actualOutfitCount = countOutfits(finalBlocks);
+    const claimedCount = statedOptionCount(acknowledgment);
+    if (claimedCount !== null && actualOutfitCount > 0 && claimedCount !== actualOutfitCount) {
+      acknowledgment = await reconcileAcknowledgment(acknowledgment, finalBlocks, actualOutfitCount);
+    }
+
     // Record which pieces actually made it into this response, across every
     // block type that surfaces specific items — the real, closed-loop signal
     // the spotlight above is built on.
@@ -502,7 +556,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      acknowledgment: synthesis.acknowledgment,
+      acknowledgment,
       blocks: finalBlocks,
       directives: newDirectives,
       allDirectives: updated,
