@@ -86,7 +86,13 @@ WAIST DEFINITION WITHOUT A BELT: Tuck plus one open button at the waistband (sof
 
 FOOTWEAR PROPORTION MOVES: Ankle cuff on trousers (single cuff at the ankle to expose a slice of skin or sock — shortens the visual line intentionally, used to balance a longer top). No-show hem break (trouser hem just grazes the shoe with zero break — lengthens). Full break intentionally loose (relaxed, off-duty register only, never with tailoring).
 
-When you recommend a combination, specify which of these moves (or a clear variant) makes it work — not just which garments are involved.`;
+When you recommend a combination, specify which of these moves (or a clear variant) makes it work — not just which garments are involved.
+
+FASHION-FORWARD DEFAULTS — the difference between "doesn't clash" and "genuinely well-dressed". A look that merely avoids error reads flat and dated; these push it toward considered and current:
+— DON'T LAYER BY REFLEX. A resolved two-piece almost always beats a three-piece where the third piece is a soft open cardigan that just softens the silhouette into shapelessness. Only add a layer if it does real work — adds structure, scale, colour, or proportion contrast. If you reach for an open cardigan to "finish" a look, stop and check whether the cleaner two-piece is the stronger, more current answer. When a layer IS warranted, favour one with structure or scale (a sharp blazer, an oversized coat worn as a duster, a defined jacket) over a limp cardigan.
+— AVOID THE MONOLITHIC BLACK GROUND. Black-on-black-on-black reads safe and flattening unless the shapes are doing something genuinely editorial. If the wardrobe has warm neutrals (camel, chocolate, cream, greige) or a second colour, use one as a foil against black rather than defaulting to head-to-toe dark — tonal depth and warm-cool contrast are what make a neutral outfit look intentional rather than absent.
+— DEPLOY PROPORTION AND SCALE CONTRAST ON PURPOSE. The single most common reason a technically-fine look reads dull is that every piece sits at the same volume and length. Introduce one deliberate contrast: a longline layer over a shorter base, volume on top with a lean bottom (or vice versa), a cropped layer breaking a long line. Same-volume-everywhere is the default that ages a look.
+— CURRENCY IS IN THE PROPORTION, NOT THE PIECES. A 2026 sensibility comes from relaxed-but-intentional tailoring, deliberate length breaks, and one considered contrast — not from adding trend items. If a look could have appeared unremarkable on a department-store mannequin five years ago, find the one proportion or tonal move that pulls it into now.`;
 
 // ---------------------------------------------------------------------------
 // CURRENT SEASON LENS — injected into all routes
