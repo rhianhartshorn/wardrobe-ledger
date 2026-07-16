@@ -26,6 +26,38 @@ const LAYERING_KEYWORDS = [
   'sweatshirt','fleece','anorak','parka','trench',
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SPOTLIGHT — counters "lost in the middle": a 75-item flat list means pieces
+// buried in the middle get systematically less attention than ones at the
+// start or end, and that bias compounds across every specialist call that
+// sees the same ordering. Pulling underused pieces into their own small,
+// unmissable block forces them to actually be considered rather than
+// unconsciously skipped past every time. Rotates which slice of the
+// underused pool gets spotlighted so coverage compounds across calls
+// instead of fixating on the same handful forever. Kept OUT of the cached
+// prefix deliberately — it needs to vary, and it's cheap either way.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function buildSpotlightBlock(items: WardrobeItemLite[]): string {
+  if (items.length < 6) return '';
+  const sorted = [...items].sort((a, b) => (a.wearCount ?? 0) - (b.wearCount ?? 0) || a.id.localeCompare(b.id));
+  const poolSize = Math.max(8, Math.ceil(sorted.length * 0.4));
+  const pool = sorted.slice(0, poolSize);
+  if (pool.length === 0) return '';
+
+  const spotlightSize = Math.min(8, pool.length);
+  const rotationWindowMs = 3 * 60 * 60 * 1000; // rotate every 3 hours
+  const windowIndex = Math.floor(Date.now() / rotationWindowMs);
+  const start = (windowIndex * spotlightSize) % pool.length;
+  const spotlight = [...pool.slice(start), ...pool.slice(0, start)].slice(0, spotlightSize);
+
+  const lines = spotlight.map((it) =>
+    `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${(it.wearCount ?? 0) === 0 ? ' — never worn' : `, worn ${it.wearCount}x`}`
+  );
+
+  return `\nSPOTLIGHT — pieces conspicuously absent from recent recommendations. A long wardrobe list makes it easy to unconsciously skip past the same pieces every time; these are flagged specifically so that doesn't happen. Before finalizing, actively check whether any of these genuinely serve this request — not as a quota to fill, but as pieces you must actually have considered, not defaulted past:\n${lines.join('\n')}\n`;
+}
+
 export function isCompleteOutfit(itemIds: string[], items: WardrobeItemLite[]): boolean {
   const pieces = itemIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as WardrobeItemLite[];
   if (pieces.length === 0) return false;

@@ -8,7 +8,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import { buildWardrobeCachePrefix } from '@/lib/specialist-team';
 
 type TodayResponse = {
@@ -88,13 +88,14 @@ export async function POST(req: NextRequest) {
     ).join('\n');
 
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    const spotlightBlock = buildSpotlightBlock(items);
 
     const prompt = `${personaCtx}
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
 Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}${spotlightBlock}
 
 ━━━ YOUR TASK ━━━
 This is the client's morning brief — the one thing your styling atelier proactively prepares before she even asks. Show up the way a real stylist would: dressed, resolved, ready.
@@ -104,6 +105,8 @@ Propose exactly ONE primary look for today and ONE genuinely different alternati
 — avoid the pieces worn in the last 3 days as the anchor
 — pass proportion, colour, and pattern-mixing rules exactly like any other recommendation — an underused piece only earns a place if it actually coordinates
 — include a specific styling technique from the craft vocabulary above, not just which pieces go together
+
+If a SPOTLIGHT block appears above, genuinely consider those pieces before defaulting to familiar anchors — a long wardrobe list makes it easy to unconsciously skip past the same items every day.
 
 Write one short, warm greeting sentence for today — direct, no hedging, no hollow words.
 

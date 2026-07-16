@@ -10,7 +10,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
   buildWardrobeCachePrefix, type SpecialistBrief,
@@ -102,6 +102,7 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — VARIETY: If the client is asking for outfit ideas or options for an occasion (not a narrow single-item verdict), propose at least 2 genuinely different combinations built around different anchor pieces. Do not let the specialists' shared preference for high-wear-count pieces collapse your answer onto the same 1-2 items every time — a client asking "what should I wear" wants her wardrobe's range explored, not her go-to pairing recycled back at her.
 — REPETITION CHECK: Look at the recent conversation history above. If you already proposed a specific combination earlier in this conversation, do not propose the identical combination again — the client has either already seen it or has told you it doesn't fit. Offer something genuinely different.
 — QUALITY GATE: Variety and underused-piece candidates are not exempt from scrutiny. Before finalizing ANY combination — whether it came from a specialist's candidate list or your own synthesis — check it against Fit & Proportion's structure rules, Colour Analysis's palette test, and Fashion Editor's pattern-mixing and coherence test yourself. A pairing surfaced because it's underused, or because a single specialist proposed it, still has to actually work as a whole outfit. Two competing bold prints with no coordinating logic, a proportion clash, or a palette miss must be excluded even if no specialist explicitly called it BLOCKING — you are the final check, not a pass-through.
+— COVERAGE: If a SPOTLIGHT block appears above, those pieces have been conspicuously absent from recent recommendations — genuinely consider each one before falling back to familiar anchors. This is not about forcing an awkward piece in; it's about actually evaluating the full wardrobe instead of unconsciously defaulting to the same 10-15 pieces every time, which is a failure of the job, not a sign of taste. If a spotlighted piece doesn't work, that's a legitimate outcome — but it must be because you assessed it, not because a 75-item list made it easy to skip past.
 
 STEP 3 — WRITE YOUR RESPONSE: 1-2 sentences to the client. Direct, warm, declarative. No hedging, no hollow words, no exclamation marks.
 
@@ -282,6 +283,8 @@ export async function POST(req: NextRequest) {
       : '';
 
     // Context block passed to all specialists (shared context, no specialist personas)
+    const spotlightBlock = items?.length ? buildSpotlightBlock(items) : '';
+
     const sharedContext = [
       thesisCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
@@ -292,6 +295,7 @@ export async function POST(req: NextRequest) {
       styleDirectives,
       existingDirectivesText,
       trimmedConversationBlock,
+      spotlightBlock,
     ].filter(Boolean).join('\n');
 
     // ── STEP 1: Route to relevant specialists ────────────────────────────────
@@ -373,7 +377,7 @@ export async function POST(req: NextRequest) {
 
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
-      styleBriefCtx, thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock, weatherBlock,
+      styleBriefCtx, thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock + spotlightBlock, weatherBlock,
       itemListText, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,
