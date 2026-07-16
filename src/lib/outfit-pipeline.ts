@@ -160,6 +160,7 @@ export async function runAccessoriesDirector(
   items: WardrobeItemLite[],
   styleBriefCtx: string,
   lifestyleCtx: string,
+  styleIdentityCtx = '',
 ): Promise<ChatOutfit[]> {
 
   const outfitDescriptions = outfits.map((o, i) => {
@@ -168,19 +169,19 @@ export async function runAccessoriesDirector(
       .filter(Boolean)
       .map((it) => `${it!.name} (${it!.category}, ${it!.primaryColor}${it!.material ? ', ' + it!.material : ''})`)
       .join('; ');
-    return `OUTFIT ${i + 1}: "${o.title}"\nPieces: ${pieces}\nStyle reference: ${o.styleReference ?? 'n/a'}`;
+    return `OUTFIT ${i + 1}: "${o.title}"\nPieces: ${pieces}\nStyle reference: ${o.styleReference ?? 'n/a'}${o.stylingNote ? `\nHow it's already being styled: ${o.stylingNote}` : ''}${o.rationale ? `\nWhy this works: ${o.rationale}` : ''}`;
   }).join('\n\n');
 
   const prompt = `${ACCESSORIES_DIRECTOR_PERSONA}
 
 ${BRAND_VOICE_RULES}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${styleIdentityCtx}
 
 The head stylist has selected the following outfits for the client. Your job is to provide the finishing accessory direction for each — the precise, opinionated detail that resolves the look.
 
 ${outfitDescriptions}
 
-For each outfit, specify: what accessory or accessories to add (or confirm the look is complete without them), with the exact weight, finish, colour relationship, and why. Be specific — not "add a bag" but which shape, size, finish, and how it relates to the rest of the look. Max 25 words per outfit.
+For each outfit, specify: what accessory or accessories to add (or confirm the look is complete without them), with the exact weight, finish, colour relationship, and why. Be specific — not "add a bag" but which shape, size, finish, and how it relates to the rest of the look. Factor in exactly how the outfit is already being styled (the tuck, the cuff, the layering) — an accessory has to resolve the SPECIFIC execution described, not a generic version of the outfit. If the client's declared style identity is given above, the accessory's scale and character should serve that archetype, not a default restrained choice. Max 25 words per outfit.
 
 Respond with ONLY valid JSON, no markdown:
 {

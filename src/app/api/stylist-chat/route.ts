@@ -51,15 +51,14 @@ async function runHeadStylist(
   personaCtx: string,
   brandVoice: string,
   styleBriefCtx: string,
-  lifestyleCtx: string,
+  stableContext: string,
   weatherBlock: string,
   itemListText: string,
   gridBlock: string,
-  existingDirectivesText: string,
+  spotlightBlock: string,
   conversationBlock: string,
   specialistBriefs: SpecialistBrief[],
   wardrobeImages?: Array<{ base64: string }>,
-  wardrobeCharacterBriefCtx = '',
   model: string = 'claude-opus-4-8',
 ): Promise<StylistResponse> {
 
@@ -73,7 +72,7 @@ async function runHeadStylist(
 
 ${STYLIST_2026_LENS}
 ${brandVoice}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${gridBlock}${existingDirectivesText}${conversationBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${weatherBlock}${gridBlock}${spotlightBlock}${conversationBlock}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
 Tension classification: ${tensionClass}
@@ -151,7 +150,7 @@ Respond with ONLY valid JSON, no markdown, fields IN THIS ORDER — blocks befor
   // second (craft library) is head-stylist-specific but still cacheable on its own.
   const raw = await callClaude({
     prompt,
-    cacheableSections: [cacheablePrefix, STYLING_CRAFT_LIBRARY],
+    cacheableSections: stableContext ? [cacheablePrefix, stableContext, STYLING_CRAFT_LIBRARY] : [cacheablePrefix, STYLING_CRAFT_LIBRARY],
     images: wardrobeImages,
     maxTokens: 3500,
     model,
@@ -285,19 +284,28 @@ export async function POST(req: NextRequest) {
       ? `\nRECENT HISTORY (tone/preference context only — focus on the current request):\n${conversationHistory.slice(-4).map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
       : '';
 
-    // Context block passed to all specialists (shared context, no specialist personas)
     const spotlightBlock = items?.length ? buildSpotlightBlock(items) : '';
 
-    const sharedContext = [
+    // Split into a STABLE block (identity, thesis, lifestyle, saved looks,
+    // colour profile, character brief, directives — changes rarely, so it's
+    // cached as a second breakpoint and reused across specialists in this
+    // request AND across conversation turns) and a DYNAMIC block (weather,
+    // conversation history, spotlight — genuinely different every turn, so
+    // there's no point trying to cache it).
+    const stableClientContext = [
       styleIdentityCtx,
       thesisCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
       bodyProfileCtx,
       lifestyleCtx,
       savedLooksBlock,
-      weatherBlock,
+      wardrobeCharacterBriefCtx,
       styleDirectives,
       existingDirectivesText,
+    ].filter(Boolean).join('\n');
+
+    const dynamicTurnContext = [
+      weatherBlock,
       trimmedConversationBlock,
       spotlightBlock,
     ].filter(Boolean).join('\n');
@@ -330,13 +338,13 @@ export async function POST(req: NextRequest) {
         'Fit & Proportion',
         FIT_SPECIALIST_PERSONA,
         'Evaluate every proposed or possible combination against your proportion rules — fulcrum principle, hem intelligence, tuck decision, structure tension. The client body profile is in your context — apply it specifically. Propose combinations that pass all structural tests for this body. Flag any proportion problem you see.',
-        message, itemListText, sharedContext,
+        message, itemListText, dynamicTurnContext, undefined, stableClientContext,
       ),
       runSpecialist(
         'Colour Analysis',
         COLOUR_ANALYST_PERSONA,
         'Apply the colour profile as a hard filter. Propose combinations where the dominant pieces fall within the flattering palette. Flag any combination where a dominant piece falls in the avoid list.',
-        message, itemListText, sharedContext,
+        message, itemListText, dynamicTurnContext, undefined, stableClientContext,
       ),
       runSpecialist(
         'Wardrobe Intelligence',
@@ -344,19 +352,19 @@ export async function POST(req: NextRequest) {
         isCapsuleRequest
           ? 'Identify the most versatile pieces in this wardrobe — items that work across multiple outfit combinations, multiple formality levels, and multiple activity types. Rank the top 8–12 pieces by versatility-per-item for a travel capsule. Flag any category gaps (e.g. no lightweight layer, no smart-casual option) that would leave the client without an outfit for a likely occasion.'
           : 'Read the wear patterns, look history (what worked and what didn\'t), category clusters, aspiration-reality gap, and brand projection. The client\'s saved look history is in your context — treat it as behavioural evidence about what actually works on this person, not as a script to repeat. If this is a request for outfit ideas (not a narrow single-item verdict), your job is to surface underused pieces worth reactivating — do not propose the same top-worn anchor combination the client already reaches for constantly; that is not new information, it is a rut. High wear count validates that a piece works on this client; it does not mean the same 1-2 pieces should be the candidate every time. An underused piece is only worth surfacing if it genuinely coordinates with something else in the wardrobe on colour and proportion, not merely because it has low wear count — do not propose a pairing you would not also propose if wear count were irrelevant. Provide the behavioural and identity context the head stylist needs. Flag the most important pattern or gap you observe.',
-        message, itemListText, sharedContext,
+        message, itemListText, dynamicTurnContext, undefined, stableClientContext,
       ),
       ...(runFashionEditor ? [runSpecialist(
         'Fashion Editor',
         FASHION_EDITOR_PERSONA,
         `Apply your two tests — aesthetic coherence and currency. Propose combinations that have genuine visual logic and read as intentional and current. Name the specific thing that makes each interesting. Flag anything that reads as incoherent or dated. Pay specific attention to pattern mixing: two bold patterns (florals, animal print, houndstooth, plaid, geometric) together only work with a shared colour family or a clear dominant/accent scale hierarchy — flag any pattern-on-pattern combination that lacks that logic as a clash, not a considered choice.${wardrobeImages ? ' A visual wardrobe grid is attached — judge coherence with your eyes on the actual garments, not from the text descriptions alone.' : ''}`,
-        message, itemListText, sharedContext, wardrobeImages,
+        message, itemListText, dynamicTurnContext, wardrobeImages, stableClientContext,
       )] : []),
       ...(runOccasion ? [runSpecialist(
         'Occasion & Context',
         OCCASION_SPECIALIST_PERSONA,
         'Assess the occasion or context the client is dressing for against your four axes: formality level, sector/industry culture, geography, and what they are trying to signal. Provide the contextual brief the head stylist needs. Flag any combination that would misread for this context.',
-        message, itemListText, sharedContext,
+        message, itemListText, dynamicTurnContext, undefined, stableClientContext,
       )] : []),
     ];
 
@@ -381,11 +389,11 @@ export async function POST(req: NextRequest) {
 
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
-      styleBriefCtx, styleIdentityCtx + thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock + spotlightBlock, weatherBlock,
+      styleBriefCtx, stableClientContext, weatherBlock,
       itemListText, gridBlock,
-      existingDirectivesText, conversationBlock,
+      spotlightBlock, conversationBlock,
       specialistBriefs, wardrobeImages,
-      wardrobeCharacterBriefCtx, headStylistModel,
+      headStylistModel,
     );
 
     // ── STEP 3: Post-process blocks ──────────────────────────────────────────
@@ -415,7 +423,7 @@ export async function POST(req: NextRequest) {
         const [gateSurvivors, accessorised] = completeOutfits.length
           ? await Promise.all([
               runVisualGate(completeOutfits, items),
-              runAccessoriesDirector(completeOutfits, items, styleBriefCtx, lifestyleCtx),
+              runAccessoriesDirector(completeOutfits, items, styleBriefCtx, lifestyleCtx, styleIdentityCtx),
             ])
           : [new Set<ChatOutfit>(), [] as ChatOutfit[]];
         const approvedOutfits = completeOutfits.filter((o) => gateSurvivors.has(o));

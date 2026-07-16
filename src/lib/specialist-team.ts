@@ -46,6 +46,13 @@ export async function runSpecialist(
   itemListText: string,
   contextBlock: string,
   images?: Array<{ base64: string }>,
+  // Client context that's stable across an entire session (identity, thesis,
+  // lifestyle, saved looks, colour profile, character brief) — a SECOND cache
+  // breakpoint, separate from contextBlock which carries genuinely per-turn
+  // content (conversation history, weather, spotlight). Splitting them means
+  // this larger, slower-changing block stays cache-hit across turns even on
+  // messages where the per-turn content necessarily differs every time.
+  cacheableContext = '',
 ): Promise<SpecialistBrief> {
   const cacheablePrefix = buildWardrobeCachePrefix(itemListText);
 
@@ -85,7 +92,7 @@ Respond with ONLY valid JSON, no markdown:
   try {
     const raw = await callClaude({
       prompt,
-      cacheableSections: [cacheablePrefix],
+      cacheableSections: cacheableContext ? [cacheablePrefix, cacheableContext] : [cacheablePrefix],
       images,
       maxTokens: 400,
       route: `specialist-${role.toLowerCase().replace(/\s+/g, '-')}`,

@@ -137,7 +137,7 @@ Respond with ONLY valid JSON, no markdown:
     const [gateSurvivors, accessorised] = complete.length
       ? await Promise.all([
           runVisualGate(complete, items),
-          runAccessoriesDirector(complete, items, styleBriefCtx, lifestyleCtx),
+          runAccessoriesDirector(complete, items, styleBriefCtx, lifestyleCtx, styleIdentityCtx),
         ])
       : [new Set<ChatOutfit>(), [] as ChatOutfit[]];
     const approved = complete.filter((o) => gateSurvivors.has(o));
