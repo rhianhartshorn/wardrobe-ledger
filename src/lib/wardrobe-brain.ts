@@ -78,3 +78,79 @@ export async function getWardrobeCharacterBriefContext(): Promise<string> {
     return '';
   }
 }
+
+// ---------------------------------------------------------------------------
+// STYLE IDENTITY — the client's own declared aesthetic, from Read My Style.
+// The team has a default technical point of view (see STYLIST_2026_LENS and
+// the Fashion Editor's reference points — restraint, proportion-led, quiet
+// luxury). That POV is a lens for HOW to execute — proportion discipline,
+// currency, coherence — not a mandate on WHAT aesthetic the client should
+// end up in. Without this, the team had no persisted record of the client's
+// own archetype and defaulted toward its own house style by omission. Real
+// stylists adapt their flair to the client's direction; this is what lets
+// ours do the same instead of quietly editing every client toward the same
+// restrained neutral outcome.
+// ---------------------------------------------------------------------------
+
+export type StyleIdentity = {
+  archetype: string;
+  styleKeywords: string[];
+  brandStatement: string;
+  colorStory: string;
+  narrativeArc: string;
+  updatedAt: number;
+};
+
+export async function saveStyleIdentity(identity: Omit<StyleIdentity, 'updatedAt'>): Promise<void> {
+  try {
+    const full: StyleIdentity = { ...identity, updatedAt: Date.now() };
+    await setSetting('style_identity', JSON.stringify(full));
+    // Regenerate the team's adaptation note whenever the archetype changes —
+    // cheap (one Haiku call) and only fires on real Read My Style runs, not
+    // per chat message.
+    generateTeamPerspectiveInBackground(full);
+  } catch {
+    // Never block the style-read response
+  }
+}
+
+export async function getStyleIdentityContext(): Promise<string> {
+  try {
+    const raw = await getSetting('style_identity');
+    if (!raw) return '';
+    const identity = JSON.parse(raw) as StyleIdentity;
+    return `\nCLIENT'S DECLARED STYLE IDENTITY (from her own Read My Style reading — this is HER stated aesthetic identity and takes priority over the team's default reference points when they differ):\nArchetype: ${identity.archetype}\nKeywords: ${identity.styleKeywords.join(', ')}\nWhat her wardrobe says: ${identity.brandStatement}\nColour story: ${identity.colorStory}\nDirection: ${identity.narrativeArc}\nThe team's own technical point of view (proportion discipline, current execution, coherence) is a lens for HOW to style her — it is not a mandate on WHICH aesthetic she should be styled into. Adapt to her archetype; do not quietly edit her toward the team's default restraint.\n`;
+  } catch {
+    return '';
+  }
+}
+
+async function generateTeamPerspectiveInBackground(identity: StyleIdentity): Promise<void> {
+  try {
+    const prompt = `You are the head of a styling atelier whose team has a default technical point of view: restraint, proportion discipline, quiet current-ness (think The Row, Toteme, Lemaire as reference points for HOW to execute a look well). A new client's declared style identity is:
+
+Archetype: ${identity.archetype}
+Keywords: ${identity.styleKeywords.join(', ')}
+Brand statement: ${identity.brandStatement}
+Colour story: ${identity.colorStory}
+
+Write a max 60-word note, addressed to the client, explaining specifically how your team's technical point of view adapts to serve HER archetype rather than editing her toward the team's own default aesthetic. Be concrete about what stays the same (the rigor) and what flexes (the aesthetic destination). No hollow reassurance — name the actual adaptation.
+
+Respond with ONLY the note text — no JSON, no heading, no preamble.`;
+
+    const note = await callClaude({ prompt, maxTokens: 150, model: 'claude-haiku-4-5-20251001', route: 'team-perspective' });
+    if (note?.trim()) {
+      await setSetting('team_perspective', note.trim());
+    }
+  } catch {
+    // Background update — never propagate errors
+  }
+}
+
+export async function getTeamPerspective(): Promise<string> {
+  try {
+    return (await getSetting('team_perspective')) || '';
+  } catch {
+    return '';
+  }
+}

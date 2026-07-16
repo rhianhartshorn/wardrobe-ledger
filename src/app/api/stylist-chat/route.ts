@@ -9,7 +9,7 @@ import {
   OCCASION_SPECIALIST_PERSONA, WARDROBE_INTELLIGENCE_PERSONA,
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
-import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
+import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
 import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
@@ -114,7 +114,7 @@ AVAILABLE BLOCK TYPES:
   {"type":"text","label":"optional heading","content":"your text here"}
 
 "outfits" — one or more complete outfit combinations. Use for specific looks to wear.
-  {"type":"outfits","label":"optional e.g. 'Day 1' or 'For the dinner'","outfits":[{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — the specific technique from the STYLING CRAFT vocabulary that makes this combination work, e.g. 'Half-tuck the shirt, cuff twice narrow, ankle-cuff the trouser hem'"}]}
+  {"type":"outfits","label":"optional e.g. 'Day 1' or 'For the dinner'","outfits":[{"title":"max 5 words","itemIds":["id1","id2","id3"],"styleReference":"2026 aesthetic max 6 words","rationale":"max 20 words, starts with Try or Wear","stylingNote":"max 15 words — a literal technique from the STYLING CRAFT vocabulary (a tuck, a cuff, a hem, a knot, a layering order) — e.g. 'Half-tuck the shirt, cuff twice narrow, ankle-cuff the trouser hem'. NEVER a brand or aesthetic name ('Lemaire ease', 'Toteme tonal play') standing in for an actual instruction — that is hedging, not styling direction."}]}
 
 "packingList" — a travel capsule: minimum pieces, maximum outfit combinations.
   {"type":"packingList","logic":"max 20 words — pieces count, outfit count, what it covers","outfitCount":14,"pieces":[{"itemId":"id1","role":"max 8 words — why this earns its place"}]}
@@ -124,6 +124,7 @@ AVAILABLE BLOCK TYPES:
 
 "verdict" — a direct yes/no/with-modifications on a specific question.
   {"type":"verdict","verdict":"yes|no|with-modifications","reasoning":"max 25 words","modification":"max 20 words — what would make it work","alternativeItemIds":["id1","id2","id3"]}
+  For a direct yes/no question ("does this work", "can I wear X with Y"), you have enough information from the wardrobe and context to give a real verdict — give one. Asking a clarifying question instead of judging is deflection, not thoroughness; the team's job is to have an opinion, not to hand the decision back. Only ask for clarification when the request is genuinely ambiguous in a way that would change the answer (e.g. no occasion given at all and the register matters), and even then, give your best verdict first and offer the clarifying question as a way to sharpen it further — never as a substitute for one.
 
 "principles" — a list of specific styling rules or guidelines for this client.
   {"type":"principles","label":"optional heading","items":["specific principle max 20 words","..."]}
@@ -217,7 +218,7 @@ export async function POST(req: NextRequest) {
     if (!message?.trim()) return NextResponse.json({ error: 'No message' }, { status: 400 });
 
     // Load all context in parallel
-    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks, wardrobeCharacterBriefCtx, thesisUpdatedAtRaw] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, existingRaw, brandVoice, styleDirectives, thesisCtx, existingThesisRaw, savedLooks, wardrobeCharacterBriefCtx, thesisUpdatedAtRaw, styleIdentityCtx] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
@@ -229,6 +230,7 @@ export async function POST(req: NextRequest) {
       getSavedLooks(),
       getWardrobeCharacterBriefContext(),
       getSetting('style_thesis_updated_at'),
+      getStyleIdentityContext(),
     ]);
 
     const existing: StyleDirective[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -286,6 +288,7 @@ export async function POST(req: NextRequest) {
     const spotlightBlock = items?.length ? buildSpotlightBlock(items) : '';
 
     const sharedContext = [
+      styleIdentityCtx,
       thesisCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
       bodyProfileCtx,
@@ -377,7 +380,7 @@ export async function POST(req: NextRequest) {
 
     const synthesis = await runHeadStylist(
       message, personaCtx, brandVoice,
-      styleBriefCtx, thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock + spotlightBlock, weatherBlock,
+      styleBriefCtx, styleIdentityCtx + thesisCtx + lifestyleCtx + bodyProfileCtx + savedLooksBlock + spotlightBlock, weatherBlock,
       itemListText, gridBlock,
       existingDirectivesText, conversationBlock,
       specialistBriefs, wardrobeImages,

@@ -72,6 +72,7 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
   const [loadingCurrency, setLoadingCurrency] = useState(false);
   const [err, setErr] = useState('');
   const [result, setResult] = useState<StyleReadResult | null>(null);
+  const [teamPerspective, setTeamPerspective] = useState('');
   const fashionCurrency = fashionCurrencyProp ?? null;
 
   const [goal, setGoal] = useState('');
@@ -127,6 +128,19 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
       const data = await res.json() as StyleReadResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Analysis failed');
       setResult(data);
+
+      // The team's note on how their default POV adapts to this archetype
+      // generates in the background — poll briefly rather than blocking the reading on it.
+      const pollPerspective = (attempt: number) => {
+        fetch('/api/style-read')
+          .then((r) => r.json())
+          .then((d: { teamPerspective?: string }) => {
+            if (d.teamPerspective) setTeamPerspective(d.teamPerspective);
+            else if (attempt < 4) setTimeout(() => pollPerspective(attempt + 1), 2500);
+          })
+          .catch(() => {});
+      };
+      pollPerspective(0);
 
       // Fashion currency — refresh when user explicitly runs Read My Style
       setLoadingCurrency(true);
@@ -234,6 +248,14 @@ export default function StyleTab({ items, bodyProfile, lifestyleProfile, onOpenL
               <p className="text-sm text-[#6B6058] font-light mt-3 leading-relaxed border-t border-[#E5DDD0] pt-3">{result.narrativeArc}</p>
             )}
           </div>
+
+          {/* Team's point of view — how their default technical POV adapts to this archetype */}
+          {teamPerspective && (
+            <div className="border border-[#E5DDD0] bg-[#F5F2EC] p-4">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-2">The team's point of view</p>
+              <p className="text-sm text-[#1A1714] font-light leading-relaxed">{teamPerspective}</p>
+            </div>
+          )}
 
           {/* Style twins */}
           {result.styleTwins?.length > 0 && (

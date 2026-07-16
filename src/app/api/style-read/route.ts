@@ -5,7 +5,7 @@ import {
   getPersonaContext, getStyleDirectives, STYLIST_2026_LENS, getStyleBriefContext, getBrandVoiceContext, getLifestyleContext,
   COLOUR_ANALYST_PERSONA, FASHION_EDITOR_PERSONA, WARDROBE_INTELLIGENCE_PERSONA,
 } from '@/lib/stylist';
-import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
+import { getWardrobeCharacterBriefContext, saveStyleIdentity, getTeamPerspective } from '@/lib/wardrobe-brain';
 import { searchInspirationImages } from '@/lib/image-search';
 import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock, buildWardrobeCachePrefix } from '@/lib/specialist-team';
 import { auditInBackground } from '@/lib/editorial';
@@ -165,6 +165,19 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
     });
     const parsed = parseJSON(raw) as StyleReadResult;
 
+    // Persist the client's own declared style identity so day-to-day
+    // recommendations can adapt to it instead of defaulting to the team's
+    // own house aesthetic. Fire-and-forget — never blocks the response.
+    if (parsed.archetype) {
+      saveStyleIdentity({
+        archetype: parsed.archetype,
+        styleKeywords: parsed.styleKeywords ?? [],
+        brandStatement: parsed.brandStatement ?? '',
+        colorStory: parsed.colorStory ?? '',
+        narrativeArc: parsed.narrativeArc ?? '',
+      });
+    }
+
     // Real inspiration photos for each style twin — never blocks the reading if unavailable
     if (parsed.styleTwins?.length) {
       const withImages = await Promise.all(
@@ -188,5 +201,18 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Style reading failed';
     return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+// The team's note on how their default technical POV adapts to this
+// client's declared archetype — generated once in the background after a
+// Read My Style run, fetched separately since it may not be ready the
+// instant the POST above returns.
+export async function GET() {
+  try {
+    const teamPerspective = await getTeamPerspective();
+    return NextResponse.json({ teamPerspective });
+  } catch {
+    return NextResponse.json({ teamPerspective: '' });
   }
 }

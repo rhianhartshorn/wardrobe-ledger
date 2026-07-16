@@ -7,6 +7,7 @@ import {
 } from '@/lib/stylist';
 import { searchInspirationImages } from '@/lib/image-search';
 import { runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock, buildWardrobeCachePrefix } from '@/lib/specialist-team';
+import { getStyleIdentityContext } from '@/lib/wardrobe-brain';
 import type { InspirationImage } from '@/lib/style-types';
 
 type WardrobeItem = {
@@ -31,11 +32,12 @@ export async function POST(req: NextRequest) {
 
     const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice] = await Promise.all([
+    const [styleBriefCtx, personaCtx, styleDirectives, brandVoice, styleIdentityCtx] = await Promise.all([
       getStyleBriefContext(),
       getPersonaContext(),
       getStyleDirectives(),
       getBrandVoiceContext(),
+      getStyleIdentityContext(),
     ]);
 
     const profileCtx = bodyProfile ? profileToContext(bodyProfile) : '';
@@ -52,6 +54,7 @@ export async function POST(req: NextRequest) {
       : '';
 
     const sharedContext = [
+      styleIdentityCtx,
       styleBriefCtx ? `COLOUR PROFILE:\n${styleBriefCtx}` : '',
       profileBlock,
       behaviourBlock,
@@ -92,7 +95,7 @@ export async function POST(req: NextRequest) {
     // ── STEP 2: Head stylist synthesizes the team's briefs ───────────────────
 
     const prompt = `${personaCtx} ${brandVoice} Today is ${today}. ${STYLIST_2026_LENS}
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleDirectives}${profileBlock}${behaviourBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${styleIdentityCtx}${styleDirectives}${profileBlock}${behaviourBlock}
 
 ━━━ SPECIALIST TEAM BRIEFS ━━━
 Tension classification: ${classifyTension(finalBriefs)}

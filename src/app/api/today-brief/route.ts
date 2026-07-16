@@ -7,7 +7,7 @@ import {
   getLifestyleContext, getStyleDirectives, getStyleThesisContext,
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
-import { getWardrobeCharacterBriefContext } from '@/lib/wardrobe-brain';
+import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
 import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import { buildWardrobeCachePrefix } from '@/lib/specialist-team';
 
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       } catch { /* fall through to regenerate */ }
     }
 
-    const [personaCtx, styleBriefCtx, lifestyleCtx, brandVoice, styleDirectives, thesisCtx, wardrobeCharacterBriefCtx, savedLooks, journal] = await Promise.all([
+    const [personaCtx, styleBriefCtx, lifestyleCtx, brandVoice, styleDirectives, thesisCtx, wardrobeCharacterBriefCtx, savedLooks, journal, styleIdentityCtx] = await Promise.all([
       getPersonaContext(),
       getStyleBriefContext(),
       getLifestyleContext(),
@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
       getWardrobeCharacterBriefContext(),
       getSavedLooks(),
       getJournalEntries(),
+      getStyleIdentityContext(),
     ]);
 
     const bodyProfileCtx = bodyProfile
@@ -95,7 +96,7 @@ export async function POST(req: NextRequest) {
 ${STYLIST_2026_LENS}
 ${brandVoice}
 Today is ${today}.
-${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}${spotlightBlock}
+${styleBriefCtx ? styleBriefCtx + '\n' : ''}${lifestyleCtx}${weatherBlock}${wardrobeCharacterBriefCtx}${styleIdentityCtx}${thesisCtx}${savedLooksBlock}${recentBlock}${bodyProfileCtx}${styleDirectives}${spotlightBlock}
 
 ━━━ YOUR TASK ━━━
 This is the client's morning brief — the one thing your styling atelier proactively prepares before she even asks. Show up the way a real stylist would: dressed, resolved, ready.
