@@ -20,6 +20,7 @@ type TodayResponse = {
 type CachedBrief = { date: string; response: TodayResponse };
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = Date.now();
   try {
     const { items, bodyProfile, weather, force } = await req.json() as {
       items?: WardrobeItemLite[];
@@ -141,15 +142,18 @@ Respond with ONLY valid JSON, no markdown:
     // Code-level backstop: if a rich wardrobe's primary/alternative used zero
     // statement pieces, force ONE full re-generation with a hard constraint
     // naming specific unused pieces by ID.
-    if (statementRoster) {
+    const RETRY_TIME_BUDGET_MS = 25000;
+    if (statementRoster && Date.now() - requestStartedAt < RETRY_TIME_BUDGET_MS) {
       const usedIds = [parsed.primary, parsed.alternative].filter(Boolean).flatMap((o) => o!.itemIds);
       if (usedIds.length && !usedAnyStatementPiece(usedIds, items)) {
         const unused = getStatementPieces(items).filter((it) => !usedIds.includes(it.id));
         if (unused.length) {
-          const picks = unused.slice(0, 4).map((it) =>
+          // Full ignored set, not a token handful — "any one piece" is
+          // gameable (measured: same one safe favourite reused every time).
+          const picks = unused.slice(0, 10).map((it) =>
             `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
           );
-          const hardConstraint = `\nHARD CONSTRAINT — MANDATORY: Your first attempt used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. This attempt MUST make either the primary or alternative look anchored around one of these specific pieces, still passing every proportion/colour/pattern-mixing rule above exactly:\n${picks.join('\n')}\nIf, after genuinely trying, none of the above pieces can be made to coordinate with anything else for today, say so rather than silently reverting to a neutral default.\n`;
+          const hardConstraint = `\nHARD CONSTRAINT — MANDATORY: Your first attempt used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. Below is the FULL set this wardrobe still has sitting unused. Weigh all of them against today's conditions and this client and pick whichever is the genuinely strongest match — not whichever is easiest to justify:\n${picks.join('\n')}\nThis attempt MUST make either the primary or alternative look anchored around your chosen piece, still passing every proportion/colour/pattern-mixing rule above exactly. If, after genuinely weighing all of them, none can be made to coordinate with anything else for today, say so rather than silently reverting to a neutral default.\n`;
           try {
             const revised = parseJSON(await runBrief(hardConstraint)) as TodayResponse;
             if (revised?.primary || revised?.alternative) parsed = revised;

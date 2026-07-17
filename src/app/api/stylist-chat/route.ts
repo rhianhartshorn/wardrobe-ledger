@@ -62,10 +62,15 @@ function buildStatementConstraint(synthesis: StylistResponse, items: WardrobeIte
   if (!usedIds.length || usedAnyStatementPiece(usedIds, items)) return '';
   const unused = getStatementPieces(items).filter((it) => !usedIds.includes(it.id));
   if (!unused.length) return '';
-  const picks = unused.slice(0, 4).map((it) =>
+  // Give it the full ignored set, not a token handful — "any one piece"
+  // was gameable (measured: the model would satisfy it with the same one
+  // safe favourite piece every time and still ignore everything else).
+  // Naming the whole set and demanding it be weighed against the occasion
+  // pushes toward an actual best-fit choice instead of a checkbox pick.
+  const picks = unused.slice(0, 10).map((it) =>
     `${it.id} :: "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`
   );
-  return `\nHARD CONSTRAINT — MANDATORY: Your first attempt at this response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. This attempt MUST include at least one complete outfit anchored around one of these specific pieces, still passing every proportion/colour/pattern-mixing rule above exactly:\n${picks.join('\n')}\nIf, after genuinely trying, none of the above pieces can be made to coordinate with anything else in the wardrobe for this specific request, say so explicitly in your response rather than silently reverting to a neutral default.\n`;
+  return `\nHARD CONSTRAINT — MANDATORY: Your first attempt at this response used none of this wardrobe's statement pieces (prints, bold colours, dresses) — it defaulted to safe neutrals. Below is the FULL set this wardrobe still has sitting unused. Weigh all of them against this specific request and pick whichever is the genuinely strongest, most occasion-appropriate match — not whichever is easiest to justify or the first one that technically coordinates:\n${picks.join('\n')}\nThis attempt MUST include at least one complete outfit anchored around your chosen piece, still passing every proportion/colour/pattern-mixing rule above exactly. If the request calls for more than one look, anchor different looks on different pieces from this list rather than repeating one. If, after genuinely weighing all of them, none can be made to coordinate with anything else in the wardrobe for this specific request, say so explicitly rather than silently reverting to a neutral default.\n`;
 }
 
 async function runHeadStylist(
@@ -272,6 +277,7 @@ Keep the same warm, direct, specific voice and the same styling reasoning — on
 // ─────────────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const requestStartedAt = Date.now();
   try {
     const { message, items, bodyProfile, weather, wardrobeGrid, wardrobeGridMapping, conversationHistory } = await req.json() as {
       message: string;
@@ -466,17 +472,28 @@ export async function POST(req: NextRequest) {
       headStylistModel, statementRoster,
     );
 
-    if (statementRoster && items?.length) {
+    // The retry is a second full head-stylist call — skip it if the request
+    // has already eaten meaningfully into the platform's response-time
+    // budget. A blind retry here previously pushed one request over a
+    // platform timeout and returned a 502 with nothing to the client at all,
+    // worse than just serving the safe first-pass response.
+    const RETRY_TIME_BUDGET_MS = 25000;
+    if (statementRoster && items?.length && Date.now() - requestStartedAt < RETRY_TIME_BUDGET_MS) {
       const constraint = buildStatementConstraint(synthesis, items);
       if (constraint) {
-        synthesis = await runHeadStylist(
-          message, personaCtx, brandVoice,
-          styleBriefCtx, stableClientContext, weatherBlock,
-          itemListText, gridBlock,
-          spotlightBlock, conversationBlock,
-          specialistBriefs, wardrobeImages,
-          headStylistModel, statementRoster, constraint,
-        );
+        try {
+          synthesis = await runHeadStylist(
+            message, personaCtx, brandVoice,
+            styleBriefCtx, stableClientContext, weatherBlock,
+            itemListText, gridBlock,
+            spotlightBlock, conversationBlock,
+            specialistBriefs, wardrobeImages,
+            headStylistModel, statementRoster, constraint,
+          );
+        } catch {
+          // Retry failed or timed out — fall back to the original synthesis
+          // rather than let the whole request fail.
+        }
       }
     }
 

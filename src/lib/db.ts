@@ -178,8 +178,8 @@ async function setIds(listKey: string, ids: string[]): Promise<void> {
 const ITEM_IDS_KEY    = 'wardrobe:itemids';
 const LOOK_IDS_KEY    = 'wardrobe:lookids';
 const JOURNAL_IDS_KEY = 'wardrobe:journalids';
-const SETTINGS_KEY    = 'wardrobe:settings';
 
+const settingKey = (key: string) => `wardrobe:setting:${key}`;
 const itemKey    = (id: string) => `wardrobe:item:${id}`;
 const imgKey     = (id: string) => `wardrobe:img:${id}`;
 const wearKey    = (id: string) => `wardrobe:wear:${id}`;
@@ -316,31 +316,25 @@ export async function deleteImage(filename: string): Promise<void> {
 // Settings
 // ---------------------------------------------------------------------------
 
-async function readSettings(): Promise<Record<string, string>> {
-  const raw = await redisGet(SETTINGS_KEY);
-  const parsed = parseVal<Record<string, string>>(raw);
-  return (parsed && typeof parsed === 'object') ? parsed : {};
-}
-
-async function writeSettings(settings: Record<string, string>): Promise<void> {
-  await redisSet(SETTINGS_KEY, settings);
-}
+// Each setting lives under its own Redis key rather than one shared JSON
+// blob. The shared-blob version had a read-modify-write race: several routes
+// fire background writes (e.g. saveStyleIdentity) unawaited alongside an
+// awaited setSetting call for a different key, and whichever write finished
+// last clobbered the other's change based on a now-stale snapshot — the
+// direct cause of style-read's cache silently vanishing. Per-key storage
+// makes concurrent writes to different settings independent.
 
 export async function getSetting(key: string): Promise<string | undefined> {
-  const settings = await readSettings();
-  return settings[key];
+  const raw = await redisGet(settingKey(key));
+  return parseVal<string>(raw) ?? undefined;
 }
 
 export async function setSetting(key: string, value: string): Promise<void> {
-  const settings = await readSettings();
-  settings[key] = value;
-  await writeSettings(settings);
+  await redisSet(settingKey(key), value);
 }
 
 export async function deleteSetting(key: string): Promise<void> {
-  const settings = await readSettings();
-  delete settings[key];
-  await writeSettings(settings);
+  await redisSet(settingKey(key), '');
 }
 
 // ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, RefreshCw, MapPin, Heart, ChevronRight } from 'lucide-react';
 import type { WardrobeItem } from '@/app/page';
 import type { BodyProfile } from '@/lib/body-profile';
@@ -133,11 +133,10 @@ export default function TodayTab({ items, bodyProfile, onGoToStylist }: { items:
     } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    if (items.length < 3) return;
-    detectWeather().then((w) => runBrief(w));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // No longer auto-fires on mount — it used to trigger a geolocation prompt
+  // and a network call the instant the app opened, every time. Now it only
+  // runs when the client explicitly asks for today's look.
+  const prepareToday = () => { detectWeather().then((w) => runBrief(w)); };
 
   if (items.length < 3) {
     return (
@@ -195,6 +194,18 @@ export default function TodayTab({ items, bodyProfile, onGoToStylist }: { items:
             className="border border-[#E5DDD0] px-3 py-1.5 text-[9px] uppercase tracking-widest text-[#6B6058] hover:border-[#9B7B3A] hover:text-[#9B7B3A] transition-colors disabled:opacity-40"
           >
             Go
+          </button>
+        </div>
+      )}
+
+      {!brief && !loading && (
+        <div className="border border-[#E5DDD0] bg-white p-6 text-center">
+          <p className="text-sm text-[#6B6058] font-light">Have your team prepare a look for today.</p>
+          <button
+            onClick={prepareToday}
+            className="mt-3 inline-flex items-center gap-1.5 border border-[#9B7B3A] text-[#9B7B3A] px-4 py-2 text-[9px] uppercase tracking-widest font-light hover:bg-[#9B7B3A] hover:text-white transition-colors"
+          >
+            Prepare today's look
           </button>
         </div>
       )}
