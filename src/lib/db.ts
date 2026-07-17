@@ -326,7 +326,15 @@ export async function deleteImage(filename: string): Promise<void> {
 
 export async function getSetting(key: string): Promise<string | undefined> {
   const raw = await redisGet(settingKey(key));
-  return parseVal<string>(raw) ?? undefined;
+  if (raw == null) return undefined;
+  // A setting's value is itself always a string (often already a caller's
+  // own JSON.stringify of some object) — NOT parseVal here. parseVal's
+  // "double-decode if the first parse yields a string" compensation is for
+  // legacy list/object values; applied to a setting it over-unwraps, handing
+  // callers a parsed object where they expect the original string and
+  // breaking their own JSON.parse downstream. One JSON.parse undoes exactly
+  // the one JSON.stringify redisSet applied.
+  try { return JSON.parse(raw) as string; } catch { return raw; }
 }
 
 export async function setSetting(key: string, value: string): Promise<void> {
