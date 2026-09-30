@@ -10,7 +10,7 @@ import {
   STYLIST_2026_LENS, STYLING_CRAFT_LIBRARY,
 } from '@/lib/stylist';
 import { getWardrobeCharacterBriefContext, getStyleIdentityContext } from '@/lib/wardrobe-brain';
-import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, getStatementPieces, usedAnyStatementPiece, recordRecommendationsInBackground, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
+import { isCompleteOutfit, runVisualGate, runAccessoriesDirector, buildSpotlightBlock, buildStatementRoster, getStatementPieces, usedAnyStatementPiece, recordRecommendationsInBackground, buildRetrievalPools, buildRetrievalPoolsBlock, type ChatOutfit, type WardrobeItemLite } from '@/lib/outfit-pipeline';
 import {
   runSpecialist, briefsHaveDisagreement, runRoundTable, classifyTension, formatBriefsBlock,
   buildWardrobeCachePrefix, type SpecialistBrief,
@@ -127,7 +127,7 @@ STEP 2 — SYNTHESIZE SPECIALIST INPUT: Before writing anything, resolve the tea
 — If the tension class is FATAL or DOMINANT, lead with the problem before offering alternatives.
 — You have consulted the full team. Your response must reflect their collective input — do not arrive at a recommendation that contradicts a specialist who gave high-confidence input.
 — EXPLICIT REQUEST OVERRIDES STORED DIRECTIVES: What the client says in THIS message about occasion, formality, or setting always wins over a stored directive from a previous session. If a directive says "needs work-appropriate outfits" but this message asks for something casual or informal, honour informal — the stored directive was scoped to whatever prompted it, not a permanent formality lock. Never let old context override what the client is explicitly asking for right now.
-— VARIETY: If the client is asking for outfit ideas or options for an occasion (not a narrow single-item verdict), propose at least 3 genuinely different combinations built around different anchor pieces. Do not let the specialists' shared preference for high-wear-count pieces collapse your answer onto the same 1-2 items every time — a client asking "what should I wear" wants her wardrobe's range explored, not her go-to pairing recycled back at her.
+— VARIETY: If the client is asking for outfit ideas or options for an occasion (not a narrow single-item verdict), propose at least 3 genuinely different combinations built around different anchor pieces. If a CANDIDATE POOLS block appears above, each look has a DIFFERENT JOB, not the same brief three times: Look 1 from the BEST-FIT POOL is your strongest overall answer; Look 2 from the FRESH POOL must use a different anchor piece entirely from Look 1; Look 3 from the DISCOVERY POOL should genuinely try the under-recommended pieces there rather than reaching back into the best-fit pool out of habit — only fall back to a stronger pool for Look 3 if nothing in the discovery pool is honestly wearable for this request, and say so. Do not let the specialists' shared preference for high-wear-count pieces collapse your answer onto the same 1-2 items every time — a client asking "what should I wear" wants her wardrobe's range explored, not her go-to pairing recycled back at her.
 — REPETITION CHECK: Look at the recent conversation history above. If you already proposed a specific combination earlier in this conversation, do not propose the identical combination again — the client has either already seen it or has told you it doesn't fit. Offer something genuinely different.
 — QUALITY GATE: Variety and underused-piece candidates are not exempt from scrutiny. Before finalizing ANY combination — whether it came from a specialist's candidate list or your own synthesis — check it against Fit & Proportion's structure rules, Colour Analysis's palette test, and Fashion Editor's pattern-mixing and coherence test yourself. A pairing surfaced because it's underused, or because a single specialist proposed it, still has to actually work as a whole outfit. Two competing bold prints with no coordinating logic, a proportion clash, or a palette miss must be excluded even if no specialist explicitly called it BLOCKING — you are the final check, not a pass-through.
 — COVERAGE: If a SPOTLIGHT block appears above, those pieces have been conspicuously absent from recent recommendations — genuinely consider each one before falling back to familiar anchors. This is not about forcing an awkward piece in; it's about actually evaluating the full wardrobe instead of unconsciously defaulting to the same 10-15 pieces every time, which is a failure of the job, not a sign of taste. If a spotlighted piece doesn't work, that's a legitimate outcome — but it must be because you assessed it, not because a 75-item list made it easy to skip past.
@@ -331,14 +331,44 @@ export async function POST(req: NextRequest) {
       ? `CLIENT DIRECTIVES (from previous sessions — apply to every recommendation):\n${existing.map((d) => `- ${d.instruction}`).join('\n')}\n`
       : '';
 
-    const itemListText = items?.length
-      ? items.map((it) =>
+    // ── Request classification — moved up here so retrieval (below) can use
+    // it to decide whether this request is shaped like a plain "what should
+    // I wear" ask, where narrowing the wardrobe to a relevant candidate pool
+    // before generation makes sense, versus a focus/capsule/verdict/wardrobe
+    // question where any piece might be the one actually being asked about.
+    const msgLower = message.toLowerCase();
+    const isOutfitRequest = /\b(wear|outfit|look|dress|style me|what (should|do) i wear|what('s| is) (a good|the right)|suggest|recommend|put together|combine|combination)\b/.test(msgLower);
+    const isCapsuleRequest = /\b(holiday|trip|travel|packing|pack|days away|weekend away|minimis|suitcase|luggage|capsule|how many outfits)\b/.test(msgLower);
+    const isColourQuestion = /\b(colour|color|palette|tone|clash|match|go with)\b/.test(msgLower);
+    const isFitQuestion = /\b(fit|proportion|shape|tuck|hem|length|size|silhouette)\b/.test(msgLower);
+    const isOccasionQuestion = /\b(occasion|work|office|interview|wedding|event|formal|casual|weekend|smart|dress code|meeting|date|party|travel)\b/.test(msgLower);
+    const isWardrobeQuestion = /\b(missing|gap|need|buy|shopping|wardrobe|collection|have enough|what do i (have|own))\b/.test(msgLower);
+    const isFocusRequest = /\b(what goes with|go with|wear with|pair with|style with|how (do|should|can) i wear|how to wear|works? with)\b/.test(msgLower);
+    const isVerdictRequest = /\b(can i wear|does this work|would this work|is this (ok|okay|appropriate|right)|too (formal|casual|much))\b/.test(msgLower);
+    const isStrategyRequest = /\b(look more|dress more|build a wardrobe|dress for|style for|want to (look|dress|appear)|wardrobe for)\b/.test(msgLower);
+
+    // ── Deterministic retrieval — reduce the wardrobe to a genuinely
+    // relevant candidate pool BEFORE any model call, for the plain "give me
+    // an outfit" shape of request only. Focus/capsule/verdict/wardrobe
+    // questions keep the full wardrobe — they may need any specific piece
+    // the client is actually asking about, which generic retrieval scoring
+    // could exclude.
+    const isPlainOutfitAsk = isOutfitRequest && !isFocusRequest && !isCapsuleRequest && !isVerdictRequest && !isWardrobeQuestion;
+    const savedLookItemIds = new Set(savedLooks.flatMap((l) => l.itemIds));
+    const retrievalPools = (isPlainOutfitAsk && items?.length)
+      ? buildRetrievalPools(items, savedLookItemIds)
+      : null;
+    const generationItems = retrievalPools?.reduced ? retrievalPools.candidates : items;
+    const retrievalPoolsBlock = retrievalPools ? buildRetrievalPoolsBlock(retrievalPools, items!) : '';
+
+    const itemListText = generationItems?.length
+      ? generationItems.map((it) =>
           `${it.id} :: ${it.category}${it.accessoryType ? ' (' + it.accessoryType + ')' : ''}, "${it.name}", ${it.primaryColor}${it.secondaryColor ? '/' + it.secondaryColor : ''}${it.material ? ', ' + it.material : ''}${it.fit ? ', ' + it.fit : ''}${it.length ? ', ' + it.length : ''}, ${it.formality}, ${it.season}${it.visualNotes ? ' [' + it.visualNotes + ']' : ''}${(it.wearCount ?? 0) > 0 ? ', worn ' + it.wearCount + 'x' : ''}${it.styleNote ? ' — ' + it.styleNote : ''}`
         ).join('\n')
       : '';
 
     const wardrobeBlock = itemListText
-      ? `\nCLIENT'S WARDROBE (${items!.length} pieces):\n${itemListText}\n`
+      ? `\nCLIENT'S WARDROBE (${generationItems!.length}${retrievalPools?.reduced ? ` of ${items!.length}, narrowed by retrieval` : ''} pieces):\n${itemListText}\n`
       : '';
 
     const gridBlock = wardrobeGrid
@@ -358,8 +388,12 @@ export async function POST(req: NextRequest) {
       ? `\nRECENT HISTORY (tone/preference context only — focus on the current request):\n${conversationHistory.slice(-4).map((m) => `${m.role === 'user' ? 'CLIENT' : 'STYLIST'}: ${m.text}`).join('\n')}\n`
       : '';
 
-    const spotlightBlock = items?.length ? buildSpotlightBlock(items) : '';
-    const statementRoster = items?.length ? buildStatementRoster(items) : '';
+    // Spotlight and the statement roster operate on whatever set the model
+    // will actually be shown — when retrieval has narrowed the wardrobe,
+    // referencing pieces outside that pool here would contradict the
+    // CANDIDATE POOLS block and confuse the model about what's in play.
+    const spotlightBlock = generationItems?.length ? buildSpotlightBlock(generationItems) : '';
+    const statementRoster = generationItems?.length ? buildStatementRoster(generationItems) : '';
 
     // Split into a STABLE block (identity, thesis, lifestyle, saved looks,
     // colour profile, character brief, directives — changes rarely, so it's
@@ -384,25 +418,14 @@ export async function POST(req: NextRequest) {
       trimmedConversationBlock,
       spotlightBlock,
       statementRoster,
+      retrievalPoolsBlock,
     ].filter(Boolean).join('\n');
 
     // ── STEP 1: Route to relevant specialists ────────────────────────────────
-    // Classify the request to avoid running specialists who cannot contribute.
-
-    const msgLower = message.toLowerCase();
-    const isOutfitRequest = /\b(wear|outfit|look|dress|style me|what (should|do) i wear|what('s| is) (a good|the right)|suggest|recommend|put together|combine|combination)\b/.test(msgLower);
-    const isCapsuleRequest = /\b(holiday|trip|travel|packing|pack|days away|weekend away|minimis|suitcase|luggage|capsule|how many outfits)\b/.test(msgLower);
-    const isColourQuestion = /\b(colour|color|palette|tone|clash|match|go with)\b/.test(msgLower);
-    const isFitQuestion = /\b(fit|proportion|shape|tuck|hem|length|size|silhouette)\b/.test(msgLower);
-    const isOccasionQuestion = /\b(occasion|work|office|interview|wedding|event|formal|casual|weekend|smart|dress code|meeting|date|party|travel)\b/.test(msgLower);
-    const isWardrobeQuestion = /\b(missing|gap|need|buy|shopping|wardrobe|collection|have enough|what do i (have|own))\b/.test(msgLower);
-
     // Always include: Fit (structure), Colour (hard filter), Wardrobe Intelligence (identity context)
     // Conditionally include: Fashion Editor (all outfit requests + general aesthetic questions)
     //                        Occasion (when context/event is relevant)
-    const isFocusRequest = /\b(what goes with|go with|wear with|pair with|style with|how (do|should|can) i wear|how to wear|works? with)\b/.test(msgLower);
-    const isVerdictRequest = /\b(can i wear|does this work|would this work|is this (ok|okay|appropriate|right)|too (formal|casual|much))\b/.test(msgLower);
-    const isStrategyRequest = /\b(look more|dress more|build a wardrobe|dress for|style for|want to (look|dress|appear)|wardrobe for)\b/.test(msgLower);
+    // (Request classification itself now happens earlier, alongside retrieval.)
 
     const runFashionEditor = isOutfitRequest || isCapsuleRequest || isFocusRequest || isColourQuestion || isFitQuestion || isStrategyRequest || (!isWardrobeQuestion && !isOccasionQuestion && !isVerdictRequest);
     const runOccasion = isOccasionQuestion || isOutfitRequest || isCapsuleRequest || isVerdictRequest;

@@ -107,6 +107,98 @@ export function usedAnyStatementPiece(usedIds: string[], items: WardrobeItemLite
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DETERMINISTIC RETRIEVAL — reduces the full wardrobe to a genuinely relevant
+// candidate pool BEFORE any generation call, instead of asking the model to
+// reason its way from ~80 items straight to a final answer while a stack of
+// prompt rules (VARIETY, COVERAGE, statement-reach retries, etc.) tries to
+// stop it collapsing onto the same few pieces. Repetition avoidance now lives
+// in scoring, not pleading: recommendationCount is treated as EXPOSURE, not
+// preference — more exposure is a penalty, not a signal to repeat. Proven
+// success (wear, saves) is a positive signal. Under-exposed pieces get an
+// exploration bonus so they can still surface on their own merits.
+//
+// Produces three overlapping pools with different roles, so three outfit
+// slots can be given genuinely different jobs instead of one model
+// generating three near-identical variations from the same unrestricted list:
+//   BEST    — strongest overall match, mild exposure penalty only
+//   FRESH   — excludes the best pool's top anchor, exposure penalty doubled
+//   DISCOVERY — prioritises credible under-exposed pieces with real potential
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type RetrievalPools = {
+  candidates: WardrobeItemLite[]; // deduped union of all three pools — what generation actually sees
+  bestPoolIds: string[];
+  freshPoolIds: string[];
+  discoveryPoolIds: string[];
+  reduced: boolean; // false when the wardrobe was small enough that no reduction was applied
+};
+
+const POOL_SIZE = 12;
+const RETRIEVAL_SKIP_THRESHOLD = 20; // wardrobes at or below this size aren't worth reducing
+
+export function buildRetrievalPools(
+  items: WardrobeItemLite[],
+  savedLookItemIds: Set<string> = new Set(),
+): RetrievalPools {
+  if (items.length <= RETRIEVAL_SKIP_THRESHOLD) {
+    const allIds = items.map((i) => i.id);
+    return { candidates: items, bestPoolIds: allIds, freshPoolIds: allIds, discoveryPoolIds: allIds, reduced: false };
+  }
+
+  const scored = items.map((it) => {
+    const exposure = it.recommendationCount ?? 0;
+    const wear = Math.min(it.wearCount ?? 0, 10);
+    const saved = savedLookItemIds.has(it.id) ? 1 : 0;
+    const statementBonus = isStatementPiece(it) ? 2 : 0; // a mild nudge, never a hard gate
+    const provenSuccess = wear * 1.5 + saved * 4;
+    // Diminishing exploration bonus — a never-recommended piece gets the max,
+    // dropping off quickly rather than linearly so heavily-exposed items
+    // don't need an enormous penalty to be outscored.
+    const explorationBonus = exposure === 0 ? 5 : Math.max(0, 4 - Math.log2(exposure + 1) * 2);
+    const recentExposurePenalty = Math.min(exposure, 8) * 1.2;
+    const score = provenSuccess + explorationBonus + statementBonus - recentExposurePenalty;
+    return { item: it, score, exposure };
+  });
+
+  const byScoreDesc = [...scored].sort((a, b) => b.score - a.score);
+  const bestPool = byScoreDesc.slice(0, POOL_SIZE);
+  const bestPoolIds = bestPool.map((s) => s.item.id);
+  const likelyAnchorId = bestPool[0]?.item.id;
+
+  // FRESH: same scoring, but the likely anchor is excluded outright and
+  // exposure is weighted more heavily so recently-leaned-on pieces sink
+  // further before this pool is drawn from.
+  const freshScored = scored
+    .filter((s) => s.item.id !== likelyAnchorId)
+    .map((s) => ({ ...s, freshScore: s.score - s.exposure * 1.5 }))
+    .sort((a, b) => b.freshScore - a.freshScore);
+  const freshPoolIds = freshScored.slice(0, POOL_SIZE).map((s) => s.item.id);
+
+  // DISCOVERY: restrict to pieces with near-zero exposure first (genuinely
+  // under-explored), falling back to the general ranking only if too few
+  // low-exposure pieces exist to fill the pool.
+  const lowExposure = scored.filter((s) => s.exposure <= 1).sort((a, b) => b.score - a.score);
+  const discoveryPoolIds = (lowExposure.length >= 4 ? lowExposure : byScoreDesc)
+    .slice(0, POOL_SIZE)
+    .map((s) => s.item.id);
+
+  const candidateIdSet = new Set([...bestPoolIds, ...freshPoolIds, ...discoveryPoolIds]);
+  const candidates = items.filter((i) => candidateIdSet.has(i.id));
+
+  return { candidates, bestPoolIds, freshPoolIds, discoveryPoolIds, reduced: true };
+}
+
+export function buildRetrievalPoolsBlock(pools: RetrievalPools, items: WardrobeItemLite[]): string {
+  if (!pools.reduced) return '';
+  const line = (it: WardrobeItemLite) =>
+    `${it.id} :: ${it.category}, "${it.name}", ${it.primaryColor}${it.pattern && it.pattern.toLowerCase() !== 'solid' ? ', ' + it.pattern : ''}`;
+  const listFor = (ids: string[]) =>
+    ids.map((id) => items.find((i) => i.id === id)).filter((i): i is WardrobeItemLite => !!i).map(line).join('\n');
+
+  return `\nCANDIDATE POOLS — retrieval has already narrowed this wardrobe down to the genuinely relevant pieces for this request (full wardrobe: ${items.length} pieces). Build your looks from these pools, not pieces outside them:\n\nBEST-FIT POOL (strongest overall matches for this request — your primary look):\n${listFor(pools.bestPoolIds)}\n\nFRESH POOL (excludes the best pool's likely anchor and downweights recently-recommended pieces — build a genuinely different second look from here, a different anchor entirely):\n${listFor(pools.freshPoolIds)}\n\nDISCOVERY POOL (credible under-recommended pieces that still genuinely work for this request — build a third, exploratory look from here; skip this look only if nothing in this pool is actually wearable for this specific ask, and say so rather than forcing it):\n${listFor(pools.discoveryPoolIds)}\n`;
+}
+
 export function getStatementPieces(items: WardrobeItemLite[]): WardrobeItemLite[] {
   return items.filter(isStatementPiece);
 }

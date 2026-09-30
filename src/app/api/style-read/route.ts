@@ -148,10 +148,21 @@ Respond with ONLY valid JSON, no markdown:
   "colorStory": "max 12 words on palette and mood",
   "wardrobeStrengths": ["max 8 words", "max 8 words", "max 8 words"],
   "wardrobeGaps": ["max 8 words", "max 8 words", "max 8 words"],
-  "styleGroups": [{"groupName": "e.g. The Weekend Edit", "mood": "4–5 words", "itemIds": ["id1","id2"]}]
+  "styleGroups": [{"groupName": "e.g. The Weekend Edit", "mood": "4–5 words", "itemIds": ["id1","id2"]}],
+  "colourAppetite": "low|medium|medium-high|high — how much colour (vs neutrals) this wardrobe actually reaches for",
+  "patternAppetite": "low|medium|medium-high|high — how much print/pattern (vs solids) this wardrobe actually reaches for",
+  "contrastPreference": "low|medium|medium-high|high — tonal vs high-contrast combinations",
+  "visualDensity": "low|medium|medium-high|high — spare/minimal vs layered/maximal",
+  "noveltyAppetite": "low|medium|medium-high|high — how much this client reaches for the unexpected vs the reliable",
+  "minimalismTolerance": "low|medium|medium-high|high — how much restraint genuinely suits this client vs reading as flat on her",
+  "tailoringPreference": "low|medium|medium-high|high — structured/tailored vs soft/relaxed",
+  "silhouettePreferences": ["max 3 short phrases — the silhouettes that actually recur in this wardrobe"],
+  "styleReferences": ["2-4 REAL style icons, designers, or aesthetic movements that genuinely match THIS specific wardrobe's character — not a generic 'well-dressed' default. A maximalist print-led wardrobe should get maximalist references, not minimalist ones."],
+  "antiReferences": ["1-3 words/phrases for the look this client's wardrobe explicitly is NOT — the aesthetic that would betray her actual identity if the team defaulted to it"]
 }
 
-styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.`;
+styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mood, not by category. Every item in exactly one group.
+styleReferences/antiReferences: these become this client's PERMANENT reference points for all future styling — ground them in what she actually owns and wears, not aspiration.`;
 
     // Taste-critical synthesis — same standard as the head stylist elsewhere.
     // Shares the same cache prefix (principles + wardrobe) the specialist
@@ -176,6 +187,16 @@ styleGroups: group ALL items into 2–4 meaningful aesthetic clusters by look/mo
         brandStatement: parsed.brandStatement ?? '',
         colorStory: parsed.colorStory ?? '',
         narrativeArc: parsed.narrativeArc ?? '',
+        colourAppetite: parsed.colourAppetite,
+        patternAppetite: parsed.patternAppetite,
+        contrastPreference: parsed.contrastPreference,
+        visualDensity: parsed.visualDensity,
+        noveltyAppetite: parsed.noveltyAppetite,
+        minimalismTolerance: parsed.minimalismTolerance,
+        tailoringPreference: parsed.tailoringPreference,
+        silhouettePreferences: parsed.silhouettePreferences,
+        styleReferences: parsed.styleReferences,
+        antiReferences: parsed.antiReferences,
       });
     }
 

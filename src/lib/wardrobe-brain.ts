@@ -81,30 +81,52 @@ export async function getWardrobeCharacterBriefContext(): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
-// STYLE IDENTITY — the client's own declared aesthetic, from Read My Style.
-// The team has a default technical point of view (see STYLIST_2026_LENS and
-// the Fashion Editor's reference points — restraint, proportion-led, quiet
-// luxury). That POV is a lens for HOW to execute — proportion discipline,
-// currency, coherence — not a mandate on WHAT aesthetic the client should
-// end up in. Without this, the team had no persisted record of the client's
-// own archetype and defaulted toward its own house style by omission. Real
-// stylists adapt their flair to the client's direction; this is what lets
-// ours do the same instead of quietly editing every client toward the same
-// restrained neutral outcome.
+// CLIENT AESTHETIC LENS (operational Style DNA) — the client's own declared
+// aesthetic, from Read My Style, persisted as machine-usable dimensions and
+// concrete reference points rather than descriptive prose alone.
+//
+// This replaced a fixed universal aesthetic (see STYLIST_2026_LENS in
+// stylist.ts) that named the same minimalist reference points — The Row,
+// Toteme, Lemaire, Copenhagen dressing — for every single client, with one
+// caveat sentence saying to adapt if she differed. Measured evidence pointed
+// to that fixed, vivid anchor as a likely root cause of the team defaulting
+// to safe, neutral combinations even on wardrobes that were independently
+// confirmed to be print-heavy and colourful. There is no longer one "house
+// style" — styleReferences/antiReferences below are generated FROM this
+// specific client's actual wardrobe and declared identity, so a maximalist
+// client gets maximalist reference points, not a minimalist one with a
+// footnote.
 // ---------------------------------------------------------------------------
 
-export type StyleIdentity = {
+export type ClientAestheticLens = {
   archetype: string;
   styleKeywords: string[];
   brandStatement: string;
   colorStory: string;
   narrativeArc: string;
+  // Operational dimensions — free-text scale (e.g. 'low'|'medium'|'high' or
+  // 'medium-high') rather than a fixed enum, so generation doesn't need a
+  // rigid rubric to hit exactly and existing prose-only readings degrade
+  // gracefully if a field is missing.
+  colourAppetite?: string;
+  patternAppetite?: string;
+  contrastPreference?: string;
+  visualDensity?: string;
+  noveltyAppetite?: string;
+  minimalismTolerance?: string;
+  tailoringPreference?: string;
+  silhouettePreferences?: string[];
+  // Concrete reference points GENERATED FOR THIS CLIENT — replaces the fixed
+  // universal reference list previously hardcoded into the Fashion Editor
+  // persona.
+  styleReferences?: string[];
+  antiReferences?: string[];
   updatedAt: number;
 };
 
-export async function saveStyleIdentity(identity: Omit<StyleIdentity, 'updatedAt'>): Promise<void> {
+export async function saveStyleIdentity(identity: Omit<ClientAestheticLens, 'updatedAt'>): Promise<void> {
   try {
-    const full: StyleIdentity = { ...identity, updatedAt: Date.now() };
+    const full: ClientAestheticLens = { ...identity, updatedAt: Date.now() };
     await setSetting('style_identity', JSON.stringify(full));
     // Regenerate the team's adaptation note whenever the archetype changes —
     // cheap (one Haiku call) and only fires on real Read My Style runs, not
@@ -115,16 +137,30 @@ export async function saveStyleIdentity(identity: Omit<StyleIdentity, 'updatedAt
   }
 }
 
-export async function getStyleIdentityContext(): Promise<string> {
+export async function getClientAestheticLensContext(): Promise<string> {
   try {
     const raw = await getSetting('style_identity');
     if (!raw) return '';
-    const identity = JSON.parse(raw) as StyleIdentity;
-    return `\nCLIENT'S DECLARED STYLE IDENTITY (from her own Read My Style reading — this is HER stated aesthetic identity and takes priority over the team's default reference points when they differ):\nArchetype: ${identity.archetype}\nKeywords: ${identity.styleKeywords.join(', ')}\nWhat her wardrobe says: ${identity.brandStatement}\nColour story: ${identity.colorStory}\nDirection: ${identity.narrativeArc}\nThe team's own technical point of view (proportion discipline, current execution, coherence) is a lens for HOW to style her — it is not a mandate on WHICH aesthetic she should be styled into. Adapt to her archetype; do not quietly edit her toward the team's default restraint.\n`;
+    const lens = JSON.parse(raw) as ClientAestheticLens;
+    const dims = [
+      lens.colourAppetite ? `colour appetite ${lens.colourAppetite}` : '',
+      lens.patternAppetite ? `pattern appetite ${lens.patternAppetite}` : '',
+      lens.contrastPreference ? `contrast preference ${lens.contrastPreference}` : '',
+      lens.visualDensity ? `visual density ${lens.visualDensity}` : '',
+      lens.noveltyAppetite ? `novelty appetite ${lens.noveltyAppetite}` : '',
+      lens.minimalismTolerance ? `minimalism tolerance ${lens.minimalismTolerance}` : '',
+      lens.tailoringPreference ? `tailoring preference ${lens.tailoringPreference}` : '',
+    ].filter(Boolean).join(', ');
+    return `\nCLIENT AESTHETIC LENS (operational Style DNA, from her own Read My Style reading — this is HER stated aesthetic identity and takes priority over any generic execution default when they differ):\nArchetype: ${lens.archetype}\nKeywords: ${lens.styleKeywords.join(', ')}\nWhat her wardrobe says: ${lens.brandStatement}\nColour story: ${lens.colorStory}\nDirection: ${lens.narrativeArc}${dims ? `\nDimensions: ${dims}` : ''}${lens.silhouettePreferences?.length ? `\nSilhouette preferences: ${lens.silhouettePreferences.join(', ')}` : ''}${lens.styleReferences?.length ? `\nHer style references (use these BY NAME, not a generic house aesthetic): ${lens.styleReferences.join(', ')}` : ''}${lens.antiReferences?.length ? `\nWhat would betray this style (avoid): ${lens.antiReferences.join(', ')}` : ''}\nThe team's technical rigor (proportion discipline, current execution, coherence) is a lens for HOW to style her — it is not a mandate on WHICH aesthetic she should be styled into. Adapt to her archetype and references; never quietly edit her toward a generic restrained default.\n`;
   } catch {
     return '';
   }
 }
+
+// Backward-compatible alias — same data, prior name, for any caller not yet
+// migrated to the operational lens naming.
+export const getStyleIdentityContext = getClientAestheticLensContext;
+export type StyleIdentity = ClientAestheticLens;
 
 async function generateTeamPerspectiveInBackground(identity: StyleIdentity): Promise<void> {
   try {
