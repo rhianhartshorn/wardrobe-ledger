@@ -73,6 +73,9 @@ export default function WardrobeApp() {
       .then(([itemsData, profileData, bodyData, lifestyleData, fcData]) => {
         // Guard: API may return {error: "..."} on 500 — never pass a non-array to setItems
         const loadedItems: WardrobeItem[] = Array.isArray(itemsData) ? itemsData as WardrobeItem[] : [];
+        if (!Array.isArray(itemsData)) {
+          setError("Couldn't load your wardrobe — the database isn't responding. Don't re-add items yet; try again shortly.");
+        }
         setItems(loadedItems);
         if (profileData && typeof profileData === 'object' && !Array.isArray(profileData)) {
           const p = profileData as { imageUrl?: string | null; imageFilename?: string | null };

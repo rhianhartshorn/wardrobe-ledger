@@ -99,18 +99,19 @@ export type JournalEntry = {
 // pre-stringify before passing a value here, or values end up double-encoded.
 // ---------------------------------------------------------------------------
 
+// A missing key is null; an unreachable or erroring database THROWS. These
+// used to be indistinguishable — every failure returned null — so when the
+// Upstash database was deleted, the app showed an empty wardrobe instead of
+// an outage, and the loss wasn't recognised as an infrastructure failure.
 async function redisGet(key: string): Promise<string | null> {
   if (!REDIS_URL || !REDIS_TOKEN) return memGet(key);
-  try {
-    const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-      cache: 'no-store',
-    });
-    const json = await res.json() as { result: string | null };
-    return json.result ?? null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Database read failed (${res.status})`);
+  const json = await res.json() as { result: string | null };
+  return json.result ?? null;
 }
 
 // Atomically increment an integer key and return the new value.
@@ -128,12 +129,15 @@ async function redisIncr(key: string): Promise<number> {
 // Accepts any JSON-serializable value and stores it with ONE level of encoding.
 async function redisSet(key: string, value: unknown): Promise<void> {
   if (!REDIS_URL || !REDIS_TOKEN) { memSet(key, value); return; }
-  await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
+  const res = await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(value),
     cache: 'no-store',
   });
+  // Upstash reports quota/size rejections as an HTTP error — previously
+  // ignored, so a rejected photo write looked like a successful save.
+  if (!res.ok) throw new Error(`Database write failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
 }
 
 // Parse a raw Redis GET result back to its original value.

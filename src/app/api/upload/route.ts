@@ -16,7 +16,10 @@ export async function POST(req: NextRequest) {
     const safeId = imageId.replace(/[^a-zA-Z0-9-]/g, '');
     const imageFilename = `${safeId}.${ext}`;
 
-    saveImage(imageFilename, base64Data, mimeType);
+    // Must be awaited — a fire-and-forget write can be cut off if the
+    // serverless container is recycled right after the response is sent,
+    // leaving the image referenced but never actually saved.
+    await saveImage(imageFilename, base64Data, mimeType);
 
     return NextResponse.json({ imageFilename, base64Data, mediaType: mimeType });
   } catch (err) {
