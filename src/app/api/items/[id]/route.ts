@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getItem, deleteItem, deleteImage, incrementWear, updateItem, getAllItems } from '@/lib/db';
+import { getItemMeta, deleteItem, incrementWear, updateItem, getAllItems } from '@/lib/db';
+import { mediaUrl } from '@/lib/media';
 import { updateWardrobeCharacterBriefInBackground } from '@/lib/wardrobe-brain';
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const item = await getItem(params.id).catch(() => undefined);
-  await deleteItem(params.id);
-  if (item?.image_filename) await deleteImage(item.image_filename).catch(() => {});
-  getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
-  return NextResponse.json({ ok: true });
+  try {
+    await deleteItem(params.id);
+    getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Delete failed';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function PATCH(
@@ -19,7 +23,7 @@ export async function PATCH(
 ) {
   try {
     const body = await req.json() as { action?: string; wear_count?: number };
-    const item = await getItem(params.id);
+    const item = await getItemMeta(params.id);
     if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     if (body.action === 'log-wear') {
@@ -45,7 +49,7 @@ export async function PATCH(
         ...(length !== undefined && { length: length || undefined }),
         ...(price !== undefined && { price: price ?? undefined }),
       });
-      const updated = await getItem(params.id);
+      const updated = await getItemMeta(params.id);
       if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
       getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
       return NextResponse.json({
@@ -54,6 +58,7 @@ export async function PATCH(
         pattern: updated.pattern, formality: updated.formality, season: updated.season,
         material: updated.material, fit: updated.fit, length: updated.length,
         price: updated.price, wearCount: updated.wear_count ?? 0,
+        imageUrl: mediaUrl(updated.image_key), thumbUrl: mediaUrl(updated.thumb_key),
       });
     }
 

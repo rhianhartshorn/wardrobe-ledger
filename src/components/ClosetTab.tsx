@@ -335,7 +335,7 @@ function ItemCard({ item, allItems, onRemove, onWearLogged, onEdit, bodyProfile,
       <div className="bg-white border border-[#E5DDD0] group relative cursor-pointer" onClick={() => !confirming && setShowDetail(true)}>
         <div className="aspect-square w-full overflow-hidden bg-[#F5F2EC] relative">
           {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+            <img src={item.thumbUrl ?? item.imageUrl} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <Shirt size={24} className="text-[#D6CFC0]" />

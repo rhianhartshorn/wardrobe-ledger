@@ -1,9 +1,7 @@
 import 'server-only';
+import { query } from './pg';
 
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL!;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN!;
-const LOG_KEY = 'wl:usage:log';
-const MAX_ENTRIES = 1000;
+const MAX_ENTRIES = 5000;
 
 // Pricing per million tokens (USD) — update if Anthropic changes rates
 const PRICING: Record<string, { input: number; output: number }> = {
@@ -22,6 +20,7 @@ export type UsageEntry = {
   cacheCreationTokens?: number; // written to a new 5-min ephemeral cache — billed 1.25x input rate
   cacheReadTokens?: number;     // served from cache — billed 0.1x input rate
   costUsd: number;
+  latencyMs?: number;
 };
 
 // Anthropic prompt caching multipliers on the base input rate (5-min ephemeral cache)
@@ -40,45 +39,6 @@ export function computeCost(
     + (outputTokens / 1_000_000) * price.output
     + (cacheCreationTokens / 1_000_000) * price.input * CACHE_WRITE_MULTIPLIER
     + (cacheReadTokens / 1_000_000) * price.input * CACHE_READ_MULTIPLIER;
-}
-
-async function redisGet(key: string): Promise<string | null> {
-  try {
-    const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-      headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-      cache: 'no-store',
-    });
-    const json = await res.json() as { result: string | null };
-    return json.result ?? null;
-  } catch { return null; }
-}
-
-// ENCODING NOTE (matches src/lib/db.ts): Upstash REST stores the raw POST
-// body bytes, so JSON.stringify is called ONCE here on the value. Callers
-// must pass the raw value (array/object), never a pre-stringified string —
-// doing so double-encodes it, and a double-encoded array reads back as a
-// plain string, silently breaking every subsequent read and write.
-async function redisSet(key: string, value: unknown): Promise<void> {
-  await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(value),
-    cache: 'no-store',
-  });
-}
-
-// Parse a raw Redis GET result back to its original value. Handles both
-// correctly-encoded values AND legacy double-encoded values (from the bug
-// above) so historical entries are still readable rather than silently lost.
-function parseVal<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try {
-    const once = JSON.parse(raw) as unknown;
-    if (typeof once === 'string') {
-      try { return JSON.parse(once) as T; } catch { return once as T; }
-    }
-    return once as T;
-  } catch { return null; }
 }
 
 // Fixed cost per call for external (non-Anthropic) APIs
@@ -101,14 +61,15 @@ export async function logExternalCall(entry: { ts: number; route: string; model:
   return appendToLog({ ...entry, inputTokens: 0, outputTokens: 0, costUsd });
 }
 
-async function appendToLog(full: UsageEntry): Promise<void> {
+// One row per call — no read-modify-write of a shared log, so concurrent calls
+// can never drop each other's entries.
+async function appendToLog(e: UsageEntry): Promise<void> {
   try {
-    const raw = await redisGet(LOG_KEY);
-    const parsed = parseVal<unknown[]>(raw);
-    const log: UsageEntry[] = Array.isArray(parsed) ? (parsed as UsageEntry[]) : [];
-    log.push(full);
-    if (log.length > MAX_ENTRIES) log.splice(0, log.length - MAX_ENTRIES);
-    await redisSet(LOG_KEY, log);
+    await query(
+      `INSERT INTO usage_log (ts, route, model, input_tokens, output_tokens, cache_creation_tokens,
+         cache_read_tokens, cost_usd, latency_ms) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [e.ts, e.route, e.model, e.inputTokens, e.outputTokens, e.cacheCreationTokens ?? 0,
+        e.cacheReadTokens ?? 0, e.costUsd, e.latencyMs ?? null]);
   } catch {
     // Never let logging failures surface to users
   }
@@ -124,30 +85,18 @@ export async function logUsage(entry: Omit<UsageEntry, 'costUsd'>): Promise<void
   }
 }
 
-// Older or partially-written entries may be missing fields, non-numeric, or
-// not even objects — normalize everything to a safe shape so a single bad
-// record from an earlier schema can never crash the dashboard render.
-function sanitizeEntry(e: unknown): UsageEntry | null {
-  if (!e || typeof e !== 'object') return null;
-  const r = e as Partial<UsageEntry>;
-  return {
-    ts: typeof r.ts === 'number' && !isNaN(r.ts) ? r.ts : 0,
-    route: typeof r.route === 'string' ? r.route : 'unknown',
-    model: typeof r.model === 'string' ? r.model : 'unknown',
-    inputTokens: typeof r.inputTokens === 'number' && !isNaN(r.inputTokens) ? r.inputTokens : 0,
-    outputTokens: typeof r.outputTokens === 'number' && !isNaN(r.outputTokens) ? r.outputTokens : 0,
-    cacheCreationTokens: typeof r.cacheCreationTokens === 'number' && !isNaN(r.cacheCreationTokens) ? r.cacheCreationTokens : 0,
-    cacheReadTokens: typeof r.cacheReadTokens === 'number' && !isNaN(r.cacheReadTokens) ? r.cacheReadTokens : 0,
-    costUsd: typeof r.costUsd === 'number' && !isNaN(r.costUsd) ? r.costUsd : 0,
-  };
-}
-
 export async function getUsageLog(): Promise<UsageEntry[]> {
   try {
-    const raw = await redisGet(LOG_KEY);
-    const parsed = parseVal<unknown[]>(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map(sanitizeEntry).filter((e): e is UsageEntry => e !== null);
+    const rows = await query<{
+      ts: number; route: string; model: string; input_tokens: number; output_tokens: number;
+      cache_creation_tokens: number; cache_read_tokens: number; cost_usd: number; latency_ms: number | null;
+    }>(`SELECT ts, route, model, input_tokens, output_tokens, cache_creation_tokens, cache_read_tokens,
+          cost_usd, latency_ms FROM usage_log ORDER BY ts DESC LIMIT ${MAX_ENTRIES}`);
+    return rows.reverse().map((r) => ({
+      ts: r.ts, route: r.route, model: r.model, inputTokens: r.input_tokens, outputTokens: r.output_tokens,
+      cacheCreationTokens: r.cache_creation_tokens, cacheReadTokens: r.cache_read_tokens,
+      costUsd: r.cost_usd, latencyMs: r.latency_ms ?? undefined,
+    }));
   } catch { return []; }
 }
 

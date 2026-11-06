@@ -79,6 +79,7 @@ export async function callClaude({
     headers['anthropic-beta'] = 'web-search-2025-03-05';
   }
 
+  const startedAt = Date.now();
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers,
@@ -110,7 +111,7 @@ export async function callClaude({
   const cacheCreationTokens = data.usage?.cache_creation_input_tokens ?? 0;
   const cacheReadTokens = data.usage?.cache_read_input_tokens ?? 0;
   if (inputTokens || outputTokens || cacheCreationTokens || cacheReadTokens) {
-    logUsage({ ts: Date.now(), route, model, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens }).catch(() => {});
+    logUsage({ ts: Date.now(), route, model, inputTokens, outputTokens, cacheCreationTokens, cacheReadTokens, latencyMs: Date.now() - startedAt }).catch(() => {});
   }
 
   return data.content

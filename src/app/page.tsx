@@ -34,6 +34,7 @@ export type WardrobeItem = {
   accessoryType?: string;
   imageFilename: string | null;
   imageUrl: string | null;
+  thumbUrl?: string | null;
   addedAt: number;
   price?: number;
   wearCount?: number;
@@ -61,6 +62,7 @@ export default function WardrobeApp() {
     return !localStorage.getItem('wl_onboarded');
   });
   const [showStyleDiscovery, setShowStyleDiscovery] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -72,10 +74,14 @@ export default function WardrobeApp() {
     ])
       .then(([itemsData, profileData, bodyData, lifestyleData, fcData]) => {
         // Guard: API may return {error: "..."} on 500 — never pass a non-array to setItems
-        const loadedItems: WardrobeItem[] = Array.isArray(itemsData) ? itemsData as WardrobeItem[] : [];
         if (!Array.isArray(itemsData)) {
-          setError("Couldn't load your wardrobe — the database isn't responding. Don't re-add items yet; try again shortly.");
+          // Never fall through to the empty-wardrobe screens: that invites
+          // re-adding items into a store that isn't working.
+          setLoadFailed(true);
+          setLoaded(true);
+          return;
         }
+        const loadedItems = itemsData as WardrobeItem[];
         setItems(loadedItems);
         if (profileData && typeof profileData === 'object' && !Array.isArray(profileData)) {
           const p = profileData as { imageUrl?: string | null; imageFilename?: string | null };
@@ -123,12 +129,9 @@ export default function WardrobeApp() {
         }
 
         setLoaded(true);
-        if (!Array.isArray(itemsData) && itemsData && (itemsData as { error?: string }).error) {
-          setError('Wardrobe failed to load — try refreshing.');
-        }
       })
       .catch(() => {
-        setError('Failed to load wardrobe data.');
+        setLoadFailed(true);
         setLoaded(true);
       });
   }, []);
@@ -206,6 +209,17 @@ export default function WardrobeApp() {
         {!loaded ? (
           <div className="flex justify-center py-24">
             <Loader2 className="animate-spin text-[#A89F96]" size={24} />
+          </div>
+        ) : loadFailed ? (
+          <div className="border border-[#E5DDD0] bg-white p-6 text-center">
+            <p className="font-serif text-xl text-[#1A1714]">Your wardrobe is unavailable</p>
+            <p className="text-sm text-[#6B6058] font-light mt-2">The app can&apos;t reach its database right now. Please don&apos;t re-add items — try again shortly.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 border border-[#9B7B3A] text-[#9B7B3A] px-4 py-2 text-[9px] uppercase tracking-widest font-light hover:bg-[#9B7B3A] hover:text-white transition-colors"
+            >
+              Try again
+            </button>
           </div>
         ) : tab === 'today' ? (
           <TodayTab items={items} bodyProfile={bodyProfile} onGoToStylist={() => setTab('stylist')} />

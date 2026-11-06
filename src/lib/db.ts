@@ -1,49 +1,14 @@
 import 'server-only';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+import { query } from './pg';
+import { putMedia, getMedia, deleteMedia, parseDataUrl, extFor } from './media';
 
 // ---------------------------------------------------------------------------
-// File-based fallback store — used when Upstash env vars are not set.
-// Persists across hot reloads in development.
-// ---------------------------------------------------------------------------
-const STORE_FILE = path.join(process.cwd(), '.local-store.json');
-
-function loadStore(): Record<string, string> {
-  try {
-    if (fs.existsSync(STORE_FILE)) {
-      return JSON.parse(fs.readFileSync(STORE_FILE, 'utf-8')) as Record<string, string>;
-    }
-  } catch { /* ignore */ }
-  return {};
-}
-
-function saveStore(store: Record<string, string>): void {
-  try { fs.writeFileSync(STORE_FILE, JSON.stringify(store)); } catch { /* ignore */ }
-}
-
-function memGet(key: string): string | null {
-  const store = loadStore();
-  return store[key] ?? null;
-}
-function memSet(key: string, value: unknown): void {
-  const store = loadStore();
-  store[key] = JSON.stringify(value);
-  saveStore(store);
-}
-function memIncr(key: string): number {
-  const store = loadStore();
-  const cur = parseInt(store[key] ?? '0', 10);
-  const next = (isNaN(cur) ? 0 : cur) + 1;
-  store[key] = String(next);
-  saveStore(store);
-  return next;
-}
-
-// ---------------------------------------------------------------------------
-// Types
+// Storage layer — Postgres for data, R2 (media.ts) for photos.
+//
+// Replaces an Upstash Redis store that held every photo as base64 text and was
+// the only copy of the wardrobe; when that database was deleted, everything
+// went with it. Errors here always propagate — a failing database must never
+// look like an empty wardrobe again.
 // ---------------------------------------------------------------------------
 
 export type ItemRow = {
@@ -60,11 +25,18 @@ export type ItemRow = {
   length?: string;
   accessory_type?: string;
   image_filename: string;
+  // Read: populated only by getItem() (single item), as a data URL, for the
+  // callers that need the actual bytes (visual gate, try-on, enrichment).
+  // Write: a data URL passed to insertItem/updateItem is stored in R2.
   image_data_url: string;
+  thumb_data_url?: string; // write-only: small list thumbnail
+  image_key?: string | null;
+  thumb_key?: string | null;
   added_at: number;
   price?: number;
   wear_count?: number;
   rec_count?: number;
+  last_recommended_at?: number | null;
   style_note?: string;
   visual_notes?: string;
 };
@@ -91,335 +63,254 @@ export type JournalEntry = {
 };
 
 // ---------------------------------------------------------------------------
-// Redis REST helpers — GET and SET only (proven to work with Upstash REST).
-// All hash-based operations have been replaced with GET/SET + an ID-list pattern.
-//
-// ENCODING NOTE: Upstash REST stores the raw POST body bytes. So we call
-// JSON.stringify ONCE on the value inside redisSet — callers must NOT
-// pre-stringify before passing a value here, or values end up double-encoded.
-// ---------------------------------------------------------------------------
-
-// A missing key is null; an unreachable or erroring database THROWS. These
-// used to be indistinguishable — every failure returned null — so when the
-// Upstash database was deleted, the app showed an empty wardrobe instead of
-// an outage, and the loss wasn't recognised as an infrastructure failure.
-async function redisGet(key: string): Promise<string | null> {
-  if (!REDIS_URL || !REDIS_TOKEN) return memGet(key);
-  const res = await fetch(`${REDIS_URL}/get/${encodeURIComponent(key)}`, {
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`Database read failed (${res.status})`);
-  const json = await res.json() as { result: string | null };
-  return json.result ?? null;
-}
-
-// Atomically increment an integer key and return the new value.
-async function redisIncr(key: string): Promise<number> {
-  if (!REDIS_URL || !REDIS_TOKEN) return memIncr(key);
-  const res = await fetch(`${REDIS_URL}/incr/${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}` },
-    cache: 'no-store',
-  });
-  const json = await res.json() as { result: number };
-  return json.result ?? 0;
-}
-
-// Accepts any JSON-serializable value and stores it with ONE level of encoding.
-async function redisSet(key: string, value: unknown): Promise<void> {
-  if (!REDIS_URL || !REDIS_TOKEN) { memSet(key, value); return; }
-  const res = await fetch(`${REDIS_URL}/set/${encodeURIComponent(key)}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(value),
-    cache: 'no-store',
-  });
-  // Upstash reports quota/size rejections as an HTTP error — previously
-  // ignored, so a rejected photo write looked like a successful save.
-  if (!res.ok) throw new Error(`Database write failed (${res.status}): ${(await res.text()).slice(0, 200)}`);
-}
-
-// Parse a raw Redis GET result back to its original value.
-// Handles both correctly-encoded values AND legacy double-encoded values
-// (stored before the encoding fix) so old items are still readable.
-function parseVal<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try {
-    const once = JSON.parse(raw) as unknown;
-    // If the first parse gives a string, it was double-encoded (legacy storage).
-    // Try a second parse to unwrap the original value.
-    if (typeof once === 'string') {
-      try { return JSON.parse(once) as T; } catch { return once as T; }
-    }
-    return once as T;
-  } catch { return null; }
-}
-
-// ---------------------------------------------------------------------------
-// ID-list helpers
-// Each entity type (items, looks, journal) maintains a JSON array of its IDs.
-// Clearing an entity type means writing [] — no DEL command needed.
-// ---------------------------------------------------------------------------
-
-async function getIds(listKey: string): Promise<string[]> {
-  const raw = await redisGet(listKey);
-  const parsed = parseVal<unknown>(raw);
-  if (!Array.isArray(parsed)) return [];
-  // Filter out corrupt single-character entries (caused by legacy spread-of-string bug)
-  return (parsed as string[]).filter((id) => typeof id === 'string' && id.length > 10);
-}
-
-async function setIds(listKey: string, ids: string[]): Promise<void> {
-  // Pass the array directly — redisSet will JSON.stringify once
-  await redisSet(listKey, ids);
-}
-
-// ---------------------------------------------------------------------------
-// Key constants
-// ---------------------------------------------------------------------------
-
-const ITEM_IDS_KEY    = 'wardrobe:itemids';
-const LOOK_IDS_KEY    = 'wardrobe:lookids';
-const JOURNAL_IDS_KEY = 'wardrobe:journalids';
-
-const settingKey = (key: string) => `wardrobe:setting:${key}`;
-const itemKey    = (id: string) => `wardrobe:item:${id}`;
-const imgKey     = (id: string) => `wardrobe:img:${id}`;
-const wearKey    = (id: string) => `wardrobe:wear:${id}`;
-const recKey     = (id: string) => `wardrobe:rec:${id}`;
-const lookKey    = (id: string) => `wardrobe:look:${id}`;
-const journalKey = (id: string) => `wardrobe:journal:${id}`;
-
-// ---------------------------------------------------------------------------
 // Items
 // ---------------------------------------------------------------------------
 
-export async function getAllItems(): Promise<ItemRow[]> {
-  const ids = await getIds(ITEM_IDS_KEY);
-  if (!ids.length) return [];
+const ITEM_COLUMNS = `id, name, category, primary_color, secondary_color, pattern, formality, season,
+  material, fit, length, accessory_type, image_key, thumb_key, image_filename, added_at, price,
+  wear_count, rec_count, last_recommended_at, style_note, visual_notes`;
 
-  const items = await Promise.all(
-    ids.map(async (id): Promise<ItemRow | null> => {
-      try {
-        const [metaRaw, imgRaw, wearRaw, recRaw] = await Promise.all([
-          redisGet(itemKey(id)),
-          redisGet(imgKey(id)),
-          redisGet(wearKey(id)),
-          redisGet(recKey(id)),
-        ]);
-        const item = parseVal<ItemRow>(metaRaw);
-        if (!item || typeof item !== 'object') return null;
-        const img = parseVal<string>(imgRaw);
-        if (img && typeof img === 'string') item.image_data_url = img;
-        // Prefer the dedicated wear key (atomic INCR); fall back to legacy wear_count in meta
-        const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
-        item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
-        const recFromKey = recRaw != null ? parseInt(recRaw, 10) : NaN;
-        item.rec_count = !isNaN(recFromKey) ? recFromKey : 0;
-        return item;
-      } catch { return null; }
-    })
-  );
+type DbItem = Omit<ItemRow, 'image_data_url' | 'thumb_data_url'> & {
+  material: string | null; fit: string | null; length: string | null; accessory_type: string | null;
+  price: number | null; style_note: string | null; visual_notes: string | null;
+};
 
-  return items
-    .filter((item): item is ItemRow => item !== null)
-    .sort((a, b) => b.added_at - a.added_at);
+function fromDb(r: DbItem): ItemRow {
+  return {
+    ...r,
+    material: r.material ?? undefined,
+    fit: r.fit ?? undefined,
+    length: r.length ?? undefined,
+    accessory_type: r.accessory_type ?? undefined,
+    price: r.price ?? undefined,
+    style_note: r.style_note ?? undefined,
+    visual_notes: r.visual_notes ?? undefined,
+    image_data_url: '',
+  };
 }
 
+// Versioned keys: a replaced photo gets a new key, so the immutable cache
+// headers on /api/media can never serve a stale image.
+async function storeItemPhoto(id: string, dataUrl: string, variant: 'full' | 'thumb'): Promise<string | null> {
+  const parsed = parseDataUrl(dataUrl);
+  if (!parsed) return null;
+  const safeId = id.replace(/[^a-zA-Z0-9-]/g, '');
+  const key = `items/${safeId}/${Date.now()}-${variant}.${extFor(parsed.mimeType)}`;
+  await putMedia(key, parsed.buffer, parsed.mimeType);
+  return key;
+}
+
+async function photoAsDataUrl(key: string | null | undefined): Promise<string> {
+  if (!key) return '';
+  const media = await getMedia(key);
+  return media ? `data:${media.contentType};base64,${media.body.toString('base64')}` : '';
+}
+
+export async function getAllItems(): Promise<ItemRow[]> {
+  const rows = await query<DbItem>(`SELECT ${ITEM_COLUMNS} FROM items ORDER BY added_at DESC`);
+  return rows.map(fromDb);
+}
+
+// Metadata only — no photo download. Use this unless the bytes are needed.
+export async function getItemMeta(id: string): Promise<ItemRow | undefined> {
+  const [row] = await query<DbItem>(`SELECT ${ITEM_COLUMNS} FROM items WHERE id = $1`, [id]);
+  return row ? fromDb(row) : undefined;
+}
+
+// Includes the full photo as a data URL, for callers that send it to a model.
 export async function getItem(id: string): Promise<ItemRow | undefined> {
-  const [metaRaw, imgRaw, wearRaw, recRaw] = await Promise.all([
-    redisGet(itemKey(id)),
-    redisGet(imgKey(id)),
-    redisGet(wearKey(id)),
-    redisGet(recKey(id)),
-  ]);
-  const item = parseVal<ItemRow>(metaRaw);
-  if (!item || typeof item !== 'object') return undefined;
-  const img = parseVal<string>(imgRaw);
-  if (img && typeof img === 'string') item.image_data_url = img;
-  const wearFromKey = wearRaw != null ? parseInt(wearRaw, 10) : NaN;
-  item.wear_count = !isNaN(wearFromKey) ? wearFromKey : (item.wear_count ?? 0);
-  const recFromKey = recRaw != null ? parseInt(recRaw, 10) : NaN;
-  item.rec_count = !isNaN(recFromKey) ? recFromKey : 0;
+  const item = await getItemMeta(id);
+  if (!item) return undefined;
+  item.image_data_url = await photoAsDataUrl(item.image_key);
   return item;
 }
 
-export async function insertItem(item: ItemRow): Promise<void> {
-  const { image_data_url, ...meta } = item;
-
-  // Pass values directly — redisSet does ONE JSON.stringify
-  await Promise.all([
-    redisSet(itemKey(item.id), { ...meta, image_data_url: '' }),
-    image_data_url ? redisSet(imgKey(item.id), image_data_url) : Promise.resolve(),
-  ]);
-
-  const ids = await getIds(ITEM_IDS_KEY);
-  if (!ids.includes(item.id)) {
-    await setIds(ITEM_IDS_KEY, [item.id, ...ids]);
-  }
+export async function insertItem(item: ItemRow): Promise<ItemRow> {
+  const imageKey = item.image_data_url ? await storeItemPhoto(item.id, item.image_data_url, 'full') : null;
+  const thumbKey = item.thumb_data_url ? await storeItemPhoto(item.id, item.thumb_data_url, 'thumb') : imageKey;
+  await query(
+    `INSERT INTO items (id, name, category, primary_color, secondary_color, pattern, formality, season,
+       material, fit, length, accessory_type, image_key, thumb_key, image_filename, added_at, price,
+       wear_count, rec_count, style_note, visual_notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)`,
+    [item.id, item.name, item.category, item.primary_color ?? '', item.secondary_color ?? '', item.pattern ?? '',
+      item.formality ?? '', item.season ?? '', item.material ?? null, item.fit ?? null, item.length ?? null,
+      item.accessory_type ?? null, imageKey, thumbKey, item.image_filename ?? '', item.added_at,
+      item.price ?? null, item.wear_count ?? 0, item.rec_count ?? 0, item.style_note ?? null, item.visual_notes ?? null],
+  );
+  return { ...item, image_key: imageKey, thumb_key: thumbKey, thumb_data_url: undefined };
 }
 
 export async function incrementWear(id: string): Promise<number> {
-  return redisIncr(wearKey(id));
+  const [row] = await query<{ wear_count: number }>(
+    'UPDATE items SET wear_count = wear_count + 1 WHERE id = $1 RETURNING wear_count', [id]);
+  return row?.wear_count ?? 0;
 }
 
-// How many times the AI team has actually proposed this piece, regardless of
-// whether the client wore or saved it — a closed-loop signal for what the
-// TEAM has been neglecting, distinct from wear_count (what the CLIENT has
-// been neglecting). This is the real fix for recommendation narrowness.
+// How many times the team has proposed this piece — EXPOSURE, not preference.
 export async function incrementRecommendation(id: string): Promise<number> {
-  return redisIncr(recKey(id));
+  const [row] = await query<{ rec_count: number }>(
+    'UPDATE items SET rec_count = rec_count + 1, last_recommended_at = $2 WHERE id = $1 RETURNING rec_count',
+    [id, Date.now()]);
+  return row?.rec_count ?? 0;
 }
+
+const UPDATABLE: Array<keyof ItemRow> = [
+  'name', 'category', 'primary_color', 'secondary_color', 'pattern', 'formality', 'season',
+  'material', 'fit', 'length', 'accessory_type', 'image_filename', 'price', 'style_note', 'visual_notes',
+];
 
 export async function updateItem(id: string, patch: Partial<ItemRow>): Promise<void> {
-  const existing = await getItem(id);
-  if (!existing) return;
-  const { image_data_url, ...meta } = { ...existing, ...patch };
-  await redisSet(itemKey(id), { ...meta, image_data_url: '' });
-  if (image_data_url !== undefined && image_data_url !== existing.image_data_url) {
-    await redisSet(imgKey(id), image_data_url);
+  const sets: string[] = [];
+  const params: unknown[] = [id];
+  for (const col of UPDATABLE) {
+    if (patch[col] !== undefined) {
+      params.push(patch[col]);
+      sets.push(`${col} = $${params.length}`);
+    }
   }
+  if (patch.image_data_url?.startsWith('data:')) {
+    const key = await storeItemPhoto(id, patch.image_data_url, 'full');
+    params.push(key);
+    sets.push(`image_key = $${params.length}`);
+    const thumb = patch.thumb_data_url ? await storeItemPhoto(id, patch.thumb_data_url, 'thumb') : key;
+    params.push(thumb);
+    sets.push(`thumb_key = $${params.length}`);
+  }
+  if (!sets.length) return;
+  await query(`UPDATE items SET ${sets.join(', ')} WHERE id = $1`, params);
+}
+
+async function deleteItemPhotos(rows: Array<{ image_key: string | null; thumb_key: string | null }>): Promise<void> {
+  const keys = new Set(rows.flatMap((r) => [r.image_key, r.thumb_key]).filter((k): k is string => !!k));
+  await Promise.all(Array.from(keys).map((k) => deleteMedia(k).catch(() => {})));
 }
 
 export async function deleteItem(id: string): Promise<void> {
-  const ids = await getIds(ITEM_IDS_KEY);
-  await setIds(ITEM_IDS_KEY, ids.filter((i) => i !== id));
-  await Promise.all([
-    redisSet(itemKey(id), ''),
-    redisSet(imgKey(id), ''),
-    redisSet(wearKey(id), '0'),
-  ]);
+  const rows = await query<{ image_key: string | null; thumb_key: string | null }>(
+    'DELETE FROM items WHERE id = $1 RETURNING image_key, thumb_key', [id]);
+  await deleteItemPhotos(rows);
 }
 
 export async function clearAllItems(): Promise<void> {
-  await setIds(ITEM_IDS_KEY, []);
+  const rows = await query<{ image_key: string | null; thumb_key: string | null }>(
+    'DELETE FROM items RETURNING image_key, thumb_key');
+  await deleteItemPhotos(rows);
 }
 
-// No-op — no legacy blob to nuke under the new GET/SET-only design
 export async function nukeLegacyBlob(): Promise<void> {}
 
 // ---------------------------------------------------------------------------
-// Image helpers (kept for backward compat with [id]/route.ts DELETE handler)
+// Standalone images (profile photo etc.) — stored in R2 under files/
 // ---------------------------------------------------------------------------
 
+const fileKey = (filename: string) => `files/${filename.replace(/[^a-zA-Z0-9._-]/g, '')}`;
+
 export async function getImage(filename: string): Promise<{ data: string; mimeType: string } | null> {
-  const raw = await redisGet(`wardrobe:img-file:${filename}`);
-  return parseVal<{ data: string; mimeType: string }>(raw);
+  const media = await getMedia(fileKey(filename));
+  return media ? { data: media.body.toString('base64'), mimeType: media.contentType } : null;
 }
 
 export async function saveImage(filename: string, base64Data: string, mimeType: string): Promise<void> {
-  await redisSet(`wardrobe:img-file:${filename}`, { data: base64Data, mimeType });
+  await putMedia(fileKey(filename), Buffer.from(base64Data, 'base64'), mimeType);
 }
 
 export async function deleteImage(filename: string): Promise<void> {
-  await redisSet(`wardrobe:img-file:${filename}`, '');
+  await deleteMedia(fileKey(filename));
 }
 
 // ---------------------------------------------------------------------------
-// Settings
+// Settings — one row per key, so concurrent writes to different settings
+// never clobber each other.
 // ---------------------------------------------------------------------------
 
-// Each setting lives under its own Redis key rather than one shared JSON
-// blob. The shared-blob version had a read-modify-write race: several routes
-// fire background writes (e.g. saveStyleIdentity) unawaited alongside an
-// awaited setSetting call for a different key, and whichever write finished
-// last clobbered the other's change based on a now-stale snapshot — the
-// direct cause of style-read's cache silently vanishing. Per-key storage
-// makes concurrent writes to different settings independent.
-
 export async function getSetting(key: string): Promise<string | undefined> {
-  const raw = await redisGet(settingKey(key));
-  if (raw == null) return undefined;
-  // A setting's value is itself always a string (often already a caller's
-  // own JSON.stringify of some object) — NOT parseVal here. parseVal's
-  // "double-decode if the first parse yields a string" compensation is for
-  // legacy list/object values; applied to a setting it over-unwraps, handing
-  // callers a parsed object where they expect the original string and
-  // breaking their own JSON.parse downstream. One JSON.parse undoes exactly
-  // the one JSON.stringify redisSet applied.
-  try { return JSON.parse(raw) as string; } catch { return raw; }
+  const [row] = await query<{ value: string }>('SELECT value FROM settings WHERE key = $1', [key]);
+  return row?.value;
 }
 
 export async function setSetting(key: string, value: string): Promise<void> {
-  await redisSet(settingKey(key), value);
+  await query(
+    `INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, $3)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+    [key, value, Date.now()]);
 }
 
 export async function deleteSetting(key: string): Promise<void> {
-  await redisSet(settingKey(key), '');
+  await query('DELETE FROM settings WHERE key = $1', [key]);
+}
+
+export async function getAllSettings(): Promise<Record<string, string>> {
+  const rows = await query<{ key: string; value: string }>('SELECT key, value FROM settings');
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 }
 
 // ---------------------------------------------------------------------------
 // Saved looks
 // ---------------------------------------------------------------------------
 
+type DbLook = {
+  id: string; title: string; item_ids: string[]; style_reference: string | null; rationale: string | null;
+  accessorizing: string[] | null; saved_at: number; feedback: SavedLook['feedback'] | null;
+};
+
+const lookFromDb = (r: DbLook): SavedLook => ({
+  id: r.id, title: r.title, itemIds: r.item_ids ?? [],
+  styleReference: r.style_reference ?? undefined, rationale: r.rationale ?? undefined,
+  accessorizing: r.accessorizing ?? undefined, savedAt: r.saved_at, feedback: r.feedback ?? undefined,
+});
+
 export async function getSavedLooks(): Promise<SavedLook[]> {
-  const ids = await getIds(LOOK_IDS_KEY);
-  if (!ids.length) return [];
-
-  const looks = await Promise.all(
-    ids.map(async (id) => {
-      const raw = await redisGet(lookKey(id));
-      return parseVal<SavedLook>(raw);
-    })
-  );
-
-  return looks
-    .filter((l): l is SavedLook => l !== null)
-    .sort((a, b) => b.savedAt - a.savedAt);
+  const rows = await query<DbLook>('SELECT * FROM looks ORDER BY saved_at DESC');
+  return rows.map(lookFromDb);
 }
 
 export async function addSavedLook(look: SavedLook): Promise<void> {
-  await redisSet(lookKey(look.id), look);
-  const ids = await getIds(LOOK_IDS_KEY);
-  if (!ids.includes(look.id)) {
-    await setIds(LOOK_IDS_KEY, [look.id, ...ids]);
-  }
+  await query(
+    `INSERT INTO looks (id, title, item_ids, style_reference, rationale, accessorizing, saved_at, feedback)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, item_ids = EXCLUDED.item_ids,
+       style_reference = EXCLUDED.style_reference, rationale = EXCLUDED.rationale,
+       accessorizing = EXCLUDED.accessorizing, feedback = EXCLUDED.feedback`,
+    [look.id, look.title, look.itemIds ?? [], look.styleReference ?? null, look.rationale ?? null,
+      look.accessorizing ? JSON.stringify(look.accessorizing) : null, look.savedAt, look.feedback ?? null]);
 }
 
 export async function updateSavedLook(id: string, patch: Partial<SavedLook>): Promise<void> {
-  const raw = await redisGet(lookKey(id));
-  const existing = parseVal<SavedLook>(raw);
-  if (!existing) return;
-  await redisSet(lookKey(id), { ...existing, ...patch });
+  const [row] = await query<DbLook>('SELECT * FROM looks WHERE id = $1', [id]);
+  if (!row) return;
+  await addSavedLook({ ...lookFromDb(row), ...patch, id });
 }
 
 export async function deleteSavedLook(id: string): Promise<void> {
-  const ids = await getIds(LOOK_IDS_KEY);
-  await setIds(LOOK_IDS_KEY, ids.filter((i) => i !== id));
-  await redisSet(lookKey(id), '');
+  await query('DELETE FROM looks WHERE id = $1', [id]);
 }
 
 // ---------------------------------------------------------------------------
 // Outfit journal
 // ---------------------------------------------------------------------------
 
+type DbJournal = {
+  id: string; date: string; item_ids: string[]; occasion: string | null; weather_note: string | null;
+  saved_look_id: string | null; logged_at: number;
+};
+
 export async function getJournalEntries(): Promise<JournalEntry[]> {
-  const ids = await getIds(JOURNAL_IDS_KEY);
-  if (!ids.length) return [];
-
-  const entries = await Promise.all(
-    ids.map(async (id) => {
-      const raw = await redisGet(journalKey(id));
-      return parseVal<JournalEntry>(raw);
-    })
-  );
-
-  return entries
-    .filter((e): e is JournalEntry => e !== null)
-    .sort((a, b) => b.loggedAt - a.loggedAt);
+  const rows = await query<DbJournal>('SELECT * FROM journal ORDER BY logged_at DESC');
+  return rows.map((r) => ({
+    id: r.id, date: r.date, itemIds: r.item_ids ?? [], occasion: r.occasion ?? undefined,
+    weatherNote: r.weather_note ?? undefined, savedLookId: r.saved_look_id ?? undefined, loggedAt: r.logged_at,
+  }));
 }
 
 export async function addJournalEntry(entry: JournalEntry): Promise<void> {
-  await redisSet(journalKey(entry.id), entry);
-  const ids = await getIds(JOURNAL_IDS_KEY);
-  if (!ids.includes(entry.id)) {
-    await setIds(JOURNAL_IDS_KEY, [entry.id, ...ids]);
-  }
+  await query(
+    `INSERT INTO journal (id, date, item_ids, occasion, weather_note, saved_look_id, logged_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (id) DO NOTHING`,
+    [entry.id, entry.date, entry.itemIds ?? [], entry.occasion ?? null, entry.weatherNote ?? null,
+      entry.savedLookId ?? null, entry.loggedAt]);
 }
 
 export async function deleteJournalEntry(id: string): Promise<void> {
-  const ids = await getIds(JOURNAL_IDS_KEY);
-  await setIds(JOURNAL_IDS_KEY, ids.filter((i) => i !== id));
-  await redisSet(journalKey(id), '');
+  await query('DELETE FROM journal WHERE id = $1', [id]);
 }

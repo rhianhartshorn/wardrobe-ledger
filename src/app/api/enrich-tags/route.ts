@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAllItems, updateItem } from '@/lib/db';
+import { getAllItems, getItem, updateItem } from '@/lib/db';
 import { callClaude, parseJSON } from '@/lib/claude';
 
 // ---------------------------------------------------------------------------
@@ -12,11 +12,13 @@ import { callClaude, parseJSON } from '@/lib/claude';
 export async function POST() {
   try {
     const items = await getAllItems();
-    const pending = items.filter((i) => !i.visual_notes && i.image_data_url?.startsWith('data:'));
+    const pending = items.filter((i) => !i.visual_notes && i.image_key);
     const batch = pending.slice(0, 4);
 
-    await Promise.all(batch.map(async (item) => {
+    await Promise.all(batch.map(async (meta) => {
       try {
+        const item = await getItem(meta.id);
+        if (!item) return;
         const match = /^data:([^;]+);base64,(.*)$/.exec(item.image_data_url);
         if (!match) return;
         const prompt = `Look at this garment photo ("${item.name}", ${item.category}). Respond with ONLY valid JSON, no markdown: {"visualNotes":"max 15 words, comma-separated styling-relevant attributes: pattern scale (large-scale print / small-scale print / no pattern), sheen (matte / subtle sheen / shiny), fabric weight and drape (lightweight-fluid / mid-weight / structured / heavy), plus neckline for tops and dresses or rise for bottoms when visible"}`;

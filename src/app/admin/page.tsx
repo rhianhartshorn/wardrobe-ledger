@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { getUsageLog, summarise } from '@/lib/usage';
+import { query } from '@/lib/pg';
+import { mediaHealth } from '@/lib/media';
+import { lastBackup } from '@/lib/backup';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,20 +43,42 @@ function safeDate(val: unknown, opts: Intl.DateTimeFormatOptions): string {
   } catch { return '—'; }
 }
 
+type StorageStatus = {
+  database: { ok: boolean; detail: string };
+  media: { ok: boolean; detail: string };
+  backup: string;
+};
+
+async function getStorageStatus(): Promise<StorageStatus> {
+  const [database, media, backup] = await Promise.all([
+    query<{ items: number }>('SELECT count(*)::int AS items FROM items')
+      .then(([r]) => ({ ok: true, detail: `${r?.items ?? 0} items` }))
+      .catch((err: unknown) => ({ ok: false, detail: err instanceof Error ? err.message : String(err) })),
+    mediaHealth().then((m) => ({ ok: m.ok, detail: m.ok ? m.backend.toUpperCase() : m.error ?? 'unavailable' })),
+    lastBackup().catch(() => null),
+  ]);
+  return {
+    database,
+    media,
+    backup: backup ? `${new Date(backup.created_at).toLocaleString('en-GB')} · ${backup.item_count} items` : 'none yet',
+  };
+}
+
 export default async function AdminPage() {
+  const storage = await getStorageStatus();
   try {
     const log = await getUsageLog();
     const s = summarise(log);
     const maxRouteCost = s.byRoute.length > 0 ? Math.max(...s.byRoute.map((r) => r.costUsd)) : 0.000001;
     const maxDayCost = s.byDay.length > 0 ? Math.max(...s.byDay.map((d) => d.costUsd)) : 0.000001;
-    return renderDashboard(log, s, maxRouteCost, maxDayCost);
+    return renderDashboard(log, s, maxRouteCost, maxDayCost, storage);
   } catch (err) {
     return (
       <div style={{ padding: 40, fontFamily: 'monospace' }}>
         <h2>Admin page error</h2>
         <pre style={{ color: 'red', whiteSpace: 'pre-wrap' }}>{String(err)}</pre>
-        <p>REDIS_URL set: {!!process.env.UPSTASH_REDIS_REST_URL ? 'yes' : 'NO'}</p>
-        <p>REDIS_TOKEN set: {!!process.env.UPSTASH_REDIS_REST_TOKEN ? 'yes' : 'NO'}</p>
+        <p>Database: {storage.database.ok ? 'ok' : storage.database.detail}</p>
+        <p>Photo storage: {storage.media.ok ? 'ok' : storage.media.detail}</p>
       </div>
     );
   }
@@ -64,6 +89,7 @@ function renderDashboard(
   s: ReturnType<typeof summarise>,
   maxRouteCost: number,
   maxDayCost: number,
+  storage: StorageStatus,
 ) {
   return (
     <div className="min-h-screen bg-[#FAF8F4] text-[#1A1714] px-4 py-8 max-w-3xl mx-auto">
@@ -74,6 +100,27 @@ function renderDashboard(
         <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mt-3">Wardrobe Ledger</p>
         <h1 className="font-serif text-3xl mt-1">Cost dashboard</h1>
         <p className="text-xs text-[#A89F96] font-light mt-1">Anthropic API usage · last {log.length} calls logged</p>
+      </div>
+
+      {/* Storage health + backups */}
+      <div className="border border-[#E5DDD0] bg-white p-4 mb-8">
+        <p className="text-[10px] uppercase tracking-[0.2em] text-[#9B7B3A] font-light mb-3">Storage &amp; backups</p>
+        <div className="grid grid-cols-3 gap-3 text-xs font-light">
+          {[
+            { label: 'Database', ...storage.database },
+            { label: 'Photos', ...storage.media },
+            { label: 'Last backup', ok: storage.backup !== 'none yet', detail: storage.backup },
+          ].map((row) => (
+            <div key={row.label}>
+              <p className="text-[10px] uppercase tracking-widest text-[#A89F96]">{row.label}</p>
+              <p className={row.ok ? 'text-[#1A1714]' : 'text-red-700'}>{row.ok ? '● ' : '✕ '}{row.detail}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-4 mt-4">
+          <a href="/api/export?photos=1" className="text-[10px] uppercase tracking-widest text-[#9B7B3A] hover:text-[#1A1714]">Download my wardrobe (with photos)</a>
+          <a href="/api/export" className="text-[10px] uppercase tracking-widest text-[#A89F96] hover:text-[#1A1714]">Data only</a>
+        </div>
       </div>
 
       {/* Top stats */}
@@ -189,7 +236,7 @@ function renderDashboard(
         <p>Gemini 3.1 Flash Image (try-on, "see the look"): $0.067/image at 1024px output — verified against Google's published rate, July 2026</p>
         <p>Google Custom Search (real-photo search on Style DNA and Style Goals): $0.005/query, priced at the paid rate — first 100/day may be free depending on account tier</p>
         <p>Weather (Open-Meteo + OpenStreetMap Nominatim): genuinely free, no API key — not logged since there is nothing to log</p>
-        <p>Log capped at 1,000 entries. Upstash Redis storage cost not included (typically &lt;$1/mo on free tier).</p>
+        <p>Showing the most recent 5,000 calls; every call is kept in Postgres. Postgres and R2 storage costs not included.</p>
         <p>Railway hosting cost not included in this dashboard.</p>
       </div>
     </div>

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllItems, insertItem, clearAllItems, setSetting, type ItemRow } from '@/lib/db';
+import { mediaUrl } from '@/lib/media';
+import { backupInBackgroundIfStale } from '@/lib/backup';
 import { generateItemDossierInBackground, updateWardrobeCharacterBriefInBackground } from '@/lib/wardrobe-brain';
 
 function toClient(row: ItemRow) {
@@ -17,7 +19,8 @@ function toClient(row: ItemRow) {
     length: row.length || undefined,
     accessoryType: row.accessory_type || undefined,
     imageFilename: row.image_filename || null,
-    imageUrl: row.image_data_url || null,
+    imageUrl: mediaUrl(row.image_key),
+    thumbUrl: mediaUrl(row.thumb_key),
     addedAt: row.added_at,
     price: row.price,
     wearCount: row.wear_count ?? 0,
@@ -37,7 +40,13 @@ export async function GET() {
   }
 }
 
-export async function DELETE() {
+// Wipes the whole wardrobe. Requires an explicit confirmation phrase so no
+// stray request, bot or client bug can trigger it.
+export async function DELETE(req: NextRequest) {
+  const body = await req.json().catch(() => ({})) as { confirm?: string };
+  if (body.confirm !== 'DELETE_MY_WARDROBE') {
+    return NextResponse.json({ error: 'Confirmation missing or incorrect — nothing was deleted.' }, { status: 400 });
+  }
   await Promise.all([
     clearAllItems(),
     setSetting('style_directives', '[]'),
@@ -52,7 +61,7 @@ export async function POST(req: NextRequest) {
       id, name, category,
       primaryColor = '', secondaryColor = '',
       pattern = '', formality = '', season = '', material = '', fit = '', length = '', accessoryType = '',
-      imageDataUrl = '',
+      imageDataUrl = '', thumbDataUrl = '',
       price, visualNotes = '',
     } = body as Record<string, string | number | undefined>;
 
@@ -60,7 +69,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'id, name, and category are required' }, { status: 400 });
     }
 
-    const row: ItemRow = {
+    const saved = await insertItem({
       id: id as string, name: name as string, category: category as string,
       primary_color: primaryColor as string,
       secondary_color: secondaryColor as string,
@@ -73,20 +82,20 @@ export async function POST(req: NextRequest) {
       accessory_type: (accessoryType as string) || undefined,
       image_filename: '',
       image_data_url: imageDataUrl as string,
+      thumb_data_url: (thumbDataUrl as string) || undefined,
       added_at: Date.now(),
       price: price != null ? Number(price) : undefined,
       wear_count: 0,
       visual_notes: (visualNotes as string) || undefined,
-    };
-
-    await insertItem(row);
+    });
 
     // Fire-and-forget: give this piece a styling dossier, then refresh the wardrobe character brief
-    generateItemDossierInBackground(row).then(() => {
+    generateItemDossierInBackground(saved).then(() => {
       getAllItems().then((all) => updateWardrobeCharacterBriefInBackground(all)).catch(() => {});
     }).catch(() => {});
+    backupInBackgroundIfStale();
 
-    return NextResponse.json(toClient(row), { status: 201 });
+    return NextResponse.json(toClient(saved), { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     return NextResponse.json({ error: message }, { status: 500 });

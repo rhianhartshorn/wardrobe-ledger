@@ -39,6 +39,7 @@ type QueueItem = {
   file: File;
   preview: string;
   imageDataUrl: string;
+  thumbDataUrl?: string;
   status: QueueStatus;
   form: TagForm;
   error?: string;
@@ -313,7 +314,14 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
     for (const qi of newItems) {
       setQueue((q) => q.map((it) => it.localId === qi.localId ? { ...it, status: 'analyzing' } : it));
       try {
-        const dataUrl = await compressImage(qi.file, 768, 0.75, 700_000);
+        // Analysis uses a 768px copy (vision cost scales with pixels); the
+        // stored photo is higher resolution for boards and the visual critic,
+        // with a small thumbnail for lists.
+        const [dataUrl, storedUrl, thumbUrl] = await Promise.all([
+          compressImage(qi.file, 768, 0.75, 700_000),
+          compressImage(qi.file, 1280, 0.82, 1_200_000),
+          compressImage(qi.file, 360, 0.7, 60_000),
+        ]);
         const match = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
         const mediaType = match ? match[1] : 'image/jpeg';
         const base64Data = match ? match[2] : dataUrl;
@@ -352,7 +360,8 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
           const dupes = findDuplicates(form, allExisting);
           return q.map((it) => it.localId === qi.localId ? {
             ...it,
-            imageDataUrl: dataUrl,
+            imageDataUrl: storedUrl,
+            thumbDataUrl: thumbUrl,
             form,
             qualityWarning,
             qualityTip,
@@ -388,7 +397,7 @@ export default function AddItemTab({ onAdd, items }: { onAdd: (item: WardrobeIte
         const res = await fetch('/api/items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', ...formRest, material: material || undefined, fit: fit || undefined, length: length || undefined, price }),
+          body: JSON.stringify({ id, imageDataUrl: qi.imageDataUrl ?? '', thumbDataUrl: qi.thumbDataUrl ?? '', ...formRest, material: material || undefined, fit: fit || undefined, length: length || undefined, price }),
         });
         const data = await res.json() as WardrobeItem & { error?: string };
         if (!res.ok) throw new Error(data.error ?? 'Save failed');

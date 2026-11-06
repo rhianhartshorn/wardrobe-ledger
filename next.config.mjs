@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  experimental: {
+    // Loaded from node_modules at runtime rather than bundled: PGlite ships a
+    // WebAssembly Postgres, and pg has optional native bindings.
+    serverComponentsExternalPackages: ['@electric-sql/pglite', 'pg'],
+  },
   async headers() {
     return [
       {

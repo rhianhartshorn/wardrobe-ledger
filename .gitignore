@@ -6,3 +6,5 @@ wardrobe.db
 wardrobe.db-shm
 wardrobe.db-wal
 .local-store.json
+.local-pg/
+.local-media/
