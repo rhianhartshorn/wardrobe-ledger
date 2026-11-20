@@ -1,0 +1,2387 @@
+{
+  "engine": "v1-lite",
+  "description": "Conditions in code → generate (Sonnet 5.5, high), one call.",
+  "label": "hard12",
+  "judgeVersion": "v2",
+  "results": [
+    {
+      "wardrobe": "maya",
+      "request": "r04",
+      "requestText": "It's raining all day and I'll be walking a lot. What should I wear?",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 27221,
+          "costUsd": 0.0498835,
+          "inputTokens": 798,
+          "outputTokens": 3203,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 6503
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "Mustard and Cobalt in the Rain",
+            "idea": "Colour-on-colour joy with a sharp waist, built to walk through wet streets.",
+            "itemIds": [
+              "m21",
+              "m10",
+              "m88",
+              "m67",
+              "m51",
+              "m85",
+              "m80",
+              "m70"
+            ],
+            "anchorItemId": "m21",
+            "howToWear": "Tuck the fine merino jumper into the high-waisted pleated skirt and cinch the wide black belt over the jumper at your natural waist. Wear black opaque tights and the flat knee-high boots, so the mid-calf hem overlaps the boot tops and nothing trails on wet ground. Belt the trench over the top, leaving the collar open so cobalt shows at your face. Wear the tan crossbody across the body to keep your hands free, with the hoops in.",
+            "why": "Mustard and cobalt are both warm brights that suit your colouring, and the cobalt jumper carries the colour at your face. The high-rise skirt and belt mark your waist and lengthen your short legs. The skirt is crepe, so it handles damp air. Merino, tights, leather boots and a trench make it warm enough for 8°C and breezy, and the trench is the only rain-ready coat you own. It has long sleeves for the office, and the only black is the trench, so it reads as a coat rather than the corporate blazer that flattened your red dress."
+          },
+          {
+            "title": "Romantic Wrap, Weatherproofed",
+            "idea": "Your signature wrap-dress romance, layered up and grounded in rain boots.",
+            "itemIds": [
+              "m34",
+              "m41",
+              "m88",
+              "m69",
+              "m51",
+              "m80",
+              "m82",
+              "m71"
+            ],
+            "anchorItemId": "m34",
+            "howToWear": "Wear the navy floral wrap dress with black opaque tights and the short rain boots. Add the burgundy longline cardigan open over the dress, then belt the trench over both to keep your waist visible. Push the cardigan sleeves up slightly so the dress's flutter sleeves and bangles show at the wrist. Carry the black tote.",
+            "why": "The wrap front marks your waist in the way you like and the knee-length hem keeps clear of puddles. Burgundy over navy floral is a tonal print-and-colour mix that suits your warm colouring. The cardigan covers your arms for the office and adds warmth that the thin viscose lacks alone. Tights, rain boots and the trench handle 8°C and steady rain. The cardigan is longline and open, so it is a little bulky under the trench, but the belted coat keeps the waist defined."
+          },
+          {
+            "title": "Check, Stripe and Boots",
+            "idea": "An under-worn blazer finally gets a home: print on print with a polished, tailored edge.",
+            "itemIds": [
+              "m45",
+              "m06",
+              "m27",
+              "m60",
+              "m51",
+              "m85",
+              "m80",
+              "m70"
+            ],
+            "anchorItemId": "m45",
+            "howToWear": "Tuck the Breton top into the navy cropped trousers and add the wide belt at your waist. Wear the oversized check blazer open over it, with the sleeves pushed up slightly to show the stripes at the wrist. Finish with the Chelsea boots, which cover the ankle gap, and wear the belted trench over everything for the commute. Take the trench off at the office so the blazer is the outer layer.",
+            "why": "This gives the never-worn check blazer a first outing, and it is polished enough for a client pitch. Rust and brown check next to navy and cream stripes is the print-mixing you like. The slim cropped trousers balance the oversized blazer so you avoid the top-and-bottom volume that swamped you before. The belted waist keeps your shape visible, and the trousers clear the wet ground. The Chelsea boots are smooth leather and comfortable for long walks. The blazer under the trench is a snug fit, so the look works best if the trench sleeves go on over it comfortably."
+          }
+        ],
+        "note": "Only the black belted trench is rain-ready, so every look uses it. That also rules out the camel coat, the leopard faux-fur and the puffer today. I avoided the full-length wide-leg trousers and flares because the hems would drag and wick on wet pavements. I also left out the silk pieces and suede boots, which are not suited to steady rain."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 8,
+          "weather": "steady rain all day, breezy",
+          "rain": true,
+          "heavyRain": true,
+          "tempBand": "cool",
+          "needsOuterwear": true,
+          "cycling": false,
+          "walkingALot": true,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": null,
+          "heelLimitCm": 7,
+          "rules": [
+            "It is 8°C and steady rain all day, breezy (cool).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Sustained rain: outerwear must be rain-ready, shoes must cope with wet ground, and avoid delicate fabrics (suede, velvet, silk) where they will get wet. Full-length hems will drag and wick on wet ground unless they clear the shoe.",
+            "Lots of walking: comfortable shoes the client can walk in all day.",
+            "No heels higher than 7cm."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "The mid-calf hem of the m21 mustard crepe pleated skirt sits below the knee-length m51 trench, so it will be rained on all day. Wet crepe can drop its pleats and crease. The claim that 'crepe handles damp air' is not a reason to put it in steady rain."
+              },
+              {
+                "code": "NOT_HER_STYLE",
+                "detail": "There is no print anywhere for a print-led client. The m84 silk floral scarf (rust/navy/cream) knotted at the trench collar would add pattern and keep out the breeze."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "'The only black is the trench' is wrong: the m88 tights, m67 boots and m85 belt are all black."
+              }
+            ],
+            "comment": "This is the strongest look: m21 and m10 make a proper warm-bright colour-on-colour pairing that echoes her proven cobalt win, and the m67 knee-high boots with m88 tights are a sound wet-weather base. It is a bit solid-colour and safe for Maya. Adding the m84 scarf and the m87 burgundy beret would finish it and make it hers."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 2,
+            "visuallyResolved": 2,
+            "hasIdea": 2,
+            "finished": 3,
+            "explanation": 2,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "An open m41 longline cardigan under a belted knee-length trench adds bulk and an extra hemline across the thigh. On a short-legged hourglass this shortens the leg and muddies the waist. The stylist even admits it is bulky."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Navy, burgundy, black tights, black rain boots, black trench and black tote make a dark, muted pile. Nothing here is joyful or colour-forward, and the small navy/white floral of m34 is the mildest print she owns."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "Pushing up the cardigan sleeves 'so the flutter sleeves show at the wrist' is impossible, because flutter sleeves are short. 'Burgundy over navy floral is tonal' is also not accurate."
+              },
+              {
+                "code": "NO_REAL_TECHNIQUE",
+                "detail": "The look is a layering stack rather than a styling move. Belting the trench over a cardigan over a dress is damage control, not an idea."
+              }
+            ],
+            "comment": "The m69 rain boots and m88 tights are practical, but the look is heavy, dark and lumpy, and does none of what Maya loves. If a dress is the answer, her proven m30 baroque wrap dress with m67 boots does this job far better."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "An oversized wool boyfriend blazer (m45) under a belted cotton trench (m51) will be tight across the shoulders and sleeves. The stylist hedges ('works best if the trench sleeves go on comfortably') instead of checking or offering a fix, such as wearing m45 as the outer layer with the trench carried."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "A hip-length oversized blazer worn open over ankle-cropped slim trousers on short legs cuts the leg twice. The m85 belt is largely hidden by the open blazer, so the waist barely reads."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "The palette of brown, navy, black and tan has no warm bright. The m84 rust/navy/cream scarf would literally bridge the check and the Breton, and the m74 red mini bag would give the joyful sharp note."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Stretch-cotton cropped trousers leave her legs cool at 8°C in a breeze, with exposed ankle skin above the m60 Chelsea boots when walking."
+              }
+            ],
+            "comment": "Finally giving the unworn m45 check blazer an outing is exactly the right instinct, and check-on-Breton is genuine print-mixing. But the execution is muted and reads more Parisian-classic than Dries. The blazer-under-trench fit problem is flagged but left unsolved."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 3,
+        "overall": 6,
+        "missedOpportunity": "m30 baroque print wrap dress + m88 black opaque tights + m67 black flat knee-high boots + m51 belted trench + m84 silk floral scarf at the collar + m80 hoops + m87 burgundy beret + m70 tan crossbody. This is her proven, compliment-getting print piece. It has long sleeves and a built-in waist, its silky jersey shrugs off damp better than crepe, and the scarf-on-baroque print mix plus the beret make it rain-ready and unmistakably Maya.",
+        "summary": "The practical thinking is sound: every look uses the only rain-ready coat, hems are kept off wet pavements, and suede is avoided. Look 1 is a genuinely good colour-on-colour answer. But the set is too cautious for a print-led, joyful client. Two of the three looks are dark and muted. The ban on silk is overcautious, since silk under a trench is fine. Her best weapons go unused: the m30 baroque dress, the m84 scarf, the m87 beret and the m74 red bag. Look 2 is bulky and its explanation contains factual errors. Look 3 has the right idea but leaves its fit problem unresolved. Competent and dry, but not yet Maya."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 46174,
+        "costUsd": 0.1063752,
+        "inputTokens": 2965,
+        "outputTokens": 4651,
+        "cacheReadTokens": 7476,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "maya",
+      "request": "r07",
+      "requestText": "I'm presenting to senior leadership next week. I want to look authoritative but still like me.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 29247,
+          "costUsd": 0.0371063,
+          "inputTokens": 493,
+          "outputTokens": 3547,
+          "cacheReadTokens": 6503,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "The Baroque Boardroom",
+            "idea": "Her signature print dress made authoritative with a long line, dark legs and gold hardware.",
+            "itemIds": [
+              "m30",
+              "m88",
+              "m67",
+              "m50",
+              "m80",
+              "m82",
+              "m71"
+            ],
+            "anchorItemId": "m30",
+            "howToWear": "Wrap the dress snugly so the tie sits at your natural waist. Wear black opaque tights with the flat knee-high boots, so the dark leg line runs unbroken from the midi hem into the boots. That continuous line helps your shorter legs. Leave the camel coat open on the way in so the burgundy and gold print shows. Add the chunky hoops and a few bangles pushed up the wrist. Carry the black tote for your laptop.",
+            "why": "The dress is formality 4 with long sleeves, so it covers your arms and has a defined waist that suits your hourglass shape. The burgundy and gold sit warmly against your olive skin. The print carries the personality, and the sharp part comes from the polish: tights, flat boots, camel coat. There is no black blazer on top, which is what made the red dress feel corporate. Warmth is covered by the tights, leather boots and the 5/5 wool coat. In a proper downpour, swap the camel coat for the water-resistant black trench (m51)."
+          },
+          {
+            "title": "Leopard, Sharpened",
+            "idea": "Her Friday leopard blouse promoted to pitch day with razor tailoring and a marked waist.",
+            "itemIds": [
+              "m23",
+              "m01",
+              "m85",
+              "m60",
+              "m51",
+              "m80",
+              "m82",
+              "m71"
+            ],
+            "anchorItemId": "m23",
+            "howToWear": "Tuck the silk blouse fully into the high-rise trousers and undo one extra button at the neck. Put the wide black belt over the blouse to mark your waist. Let the pressed-crease wide leg fall long over the Chelsea boots, so only the toe shows and the leg looks longer. Wear the hoops and bangles. Wear the trench belted for the commute and open it indoors.",
+            "why": "The black wool-blend trousers are your most formal bottom (4/5) and give the authority. The leopard blouse has long sleeves and is a look you already know works for you. The tan and cream sit near your face instead of stark black. The belt and tuck use the high rise and hourglass shape. The trench is rain-ready and the Chelsea boots cope with wet pavements. It is clearly you, not corporate all-black, because the leopard is the focus."
+          },
+          {
+            "title": "Check Blazer, Finally",
+            "idea": "Under-worn oversized check blazer in autumn tones, made sharp with a nipped waist and a long leg line.",
+            "itemIds": [
+              "m45",
+              "m13",
+              "m21",
+              "m85",
+              "m88",
+              "m67",
+              "m50",
+              "m81",
+              "m82",
+              "m70"
+            ],
+            "anchorItemId": "m45",
+            "howToWear": "Tuck the ivory silk shirt into the mustard pleated skirt and cinch the black belt over the shirt at your waist. Wear the check blazer open as a long, loose vertical line over it, with the sleeves down to cover your arms. Wear black opaque tights with the flat knee-high boots so the hem meets the boot tops. Add pearl drops and the bangles. Carry the tan crossbody, and wear the camel coat over everything.",
+            "why": "The blazer has never been worn, and its brown, rust and cream tones pick up the mustard skirt, so the colour feels deliberate rather than random. The oversized shoulder reads as authority, and the belted shirt keeps your waist visible so you aren't swamped. The pleated crepe skirt falls fluidly rather than as tulle volume, and the blazer stays open. The ivory shirt is a warm colour near your face. The risk is the amount of volume in the blazer, so keep the belt and tuck tight. If the volume still feels like too much when you try it on, go back to Look 1 or 2. In a downpour, swap the camel coat for the black trench (m51)."
+          }
+        ],
+        "note": "Your wardrobe has no umbrella. For a heavy downpour the black trench (m51) is the rain-ready coat, and the leather boots here handle wet ground. Keep the suede block-heel boots, gold sandals and leopard loafers for dry days."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 9,
+          "weather": "overcast with light drizzle",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "cool",
+          "needsOuterwear": true,
+          "cycling": false,
+          "walkingALot": false,
+          "muchTimeOutside": false,
+          "outdoorEvent": false,
+          "formality": [
+            3,
+            4
+          ],
+          "heelLimitCm": 7,
+          "rules": [
+            "It is 9°C and overcast with light drizzle (cool).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "Target formality for the clothes: 3–4 out of 5.",
+            "No heels higher than 7cm."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 3,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "This is essentially her proven gallery look (m30) with m61 swapped for m67 and tights added. It is reliable, but the 'sharp element' her DNA asks for is just 'polish' rather than an actual sharp piece. The black slingback kitten heels (m65, 4cm, pointed) could be changed into at the office for a crisper presenting line."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "The claim of an unbroken dark leg line from the midi hem into the boots oversells it. The hem still cuts at the calf. The real benefit is a dark, tonal lower leg that doesn't chop her at the ankle, and the explanation should say that plainly."
+              }
+            ],
+            "comment": "A safe, correct choice. m30 covers the arms, marks the waist and puts burgundy and gold at her face, and m50, m67 and m88 handle 9°C drizzle well. It reads as confident Maya rather than markedly more authoritative Maya, because no sharp element was actually added."
+          },
+          {
+            "look": 2,
+            "answersBrief": 5,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 4,
+            "hasIdea": 3,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Five black pieces (m23, m85, m60, m51, m71) frame one print. It leans towards the polished leopard-and-black formula anyone wears. It is not colour-forward, and there is no print mix."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "There is no colour accent. The red patent Mary Janes (m62) on a dry day, or the red mini bag (m74) alongside the tote, would bring in her joy and her 'one sharp element' and stop the look tipping towards corporate black."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Undoing an extra button on a fluid silk blouse is the wrong instinct for presenting to senior leadership. Keep it at one open button so she isn't adjusting it at the front of the room."
+              }
+            ],
+            "comment": "This is the most practical look and the most authoritative: m23 is her most formal bottom, the tuck and belt use her high rise, and m51 with m60 handles the drizzle. It is still a black frame around m01 rather than the eclectic, print-mixed Maya, and one red accent would fix that."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 2,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "The oversized, hip-length boyfriend blazer (m45) over an A-line pleated midi (m21) puts volume on top and bottom. That is a milder version of the tulle-skirt-plus-chunky-jumper look she felt swamped in. The blazer hem also cuts her at the hip, which shortens legs that are already short relative to her torso, and the belted waist only shows in a slit."
+              },
+              {
+                "code": "CLASH_WITHOUT_LOGIC",
+                "detail": "The black belt (m85), boots (m67) and tights (m88) sit apart from an otherwise brown, rust, mustard, ivory and camel palette. The black reads as leftover rather than as a deliberate anchor."
+              },
+              {
+                "code": "NOT_HER_STYLE",
+                "detail": "This is a single print in a tonal autumn palette. There is no print mix and no warm bright, so it reads more like a polished heritage look than Dries or Susie Bubble. The silk floral scarf (m84, rust/navy/cream) would at least have added a second print."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "The compact tan crossbody (m70) won't carry a laptop on presentation day."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "An oversized wool blazer under the straight camel coat (m50) means bulky sleeves for the commute."
+              }
+            ],
+            "comment": "It is good to finally get m45 out, but this pairing is the riskiest for a high-stakes presentation. The stylist's own fallback ('go back to Look 1 or 2') admits it is unresolved. The blazer belongs over a lean, high-rise trouser, not a pleated A-line midi."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 4,
+        "overall": 6,
+        "missedOpportunity": "Put the never-worn check blazer m45 over the leopard silk blouse m01, tucked and belted (m85) into the black tailored wide-leg trousers m23. Add the Chelsea boots m60, the trench m51 for the drizzle, the chunky hoops m80 and the tote m71. The brown, rust and cream check picks up the tan and cream of the leopard, giving a deliberate Susie Bubble-style print mix. The long dark trouser leg gives the oversized blazer a lean base and lengthens her legs, and m23 supplies the authority. A strong alternative is the emerald puff-sleeve poplin blouse m02 tucked into m23 with m80 and m65 at the office: a warm bright at the face, with the structured sleeve as the sharp element.",
+        "summary": "Looks 1 and 2 are sound and could be sent. Both cover her arms, keep heels under 7cm, mark her waist and suit 9°C drizzle. But both rework proven looks, and neither adds a real sharp element or her signature colour; Look 2 especially drifts towards leopard framed in black. Look 3 rightly tries the unworn check blazer m45 but pairs it with a volume-on-volume skirt, cutting her at the hip, in a palette with no brights or print mix. Across all three looks, her warm brights (m02, m10, m62, m74) go unused and nothing truly mixes prints, which is the core of her Style DNA. The brief asked for authority without losing herself, and the set delivers authority more convincingly than it delivers Maya."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 47517,
+        "costUsd": 0.1038552,
+        "inputTokens": 3035,
+        "outputTokens": 4511,
+        "cacheReadTokens": 7476,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "maya",
+      "request": "r08",
+      "requestText": "Wedding guest — outdoor afternoon ceremony, and the forecast says it might rain.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 43047,
+          "costUsd": 0.0562083,
+          "inputTokens": 1074,
+          "outputTokens": 5341,
+          "cacheReadTokens": 6503,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "Baroque Romantic",
+            "idea": "Her proven baroque wrap, with polished flat boots and a camel coat to take it from drizzle to ceremony.",
+            "itemIds": [
+              "m30",
+              "m88",
+              "m67",
+              "m50",
+              "m74",
+              "m80",
+              "m82"
+            ],
+            "anchorItemId": "m30",
+            "howToWear": "Wear the wrap dress with black opaque tights and the flat knee-high boots, so the hem and boots make one long dark line down the leg. Leave the camel coat open so the wrapped waist stays visible. Carry the red mini bag on its short strap, and stack the bangles on the wrist with the hoops in your ears.",
+            "why": "This is the dress that got her compliments at the gallery opening, and it is the most formal thing she owns that is warm enough, at 4/5 with long sleeves. It marks her waist, and the burgundy, gold and navy sit well with her warm colouring. The leather boots and tights handle wet grass and keep her warm while standing, and the tights plus a long hem balance her shorter legs. Camel avoids the corporate black-blazer problem and is fine for short trips, but it is not rain-ready. If it properly pours, swap to the black belted trench, which is water-resistant, and take an umbrella since she has none in the wardrobe. The red bag adds the joyful note, though the flat boots are only 3/5 formality, so they are the dressiest practical option rather than a formal one.}"
+          },
+          {
+            "title": "Emerald and Pink Tweed",
+            "idea": "Jewel-toned velvet with a cropped pink tweed jacket: romantic, colour-forward, with a sharp waist.",
+            "itemIds": [
+              "m38",
+              "m42",
+              "m88",
+              "m65",
+              "m51",
+              "m73",
+              "m81"
+            ],
+            "anchorItemId": "m38",
+            "howToWear": "Wear the emerald slip with the cropped tweed jacket buttoned or hooked at the waist, which covers her arms and marks the waist where the jacket ends. Add black opaque tights and the slingback kitten heels. Wear the belted trench over everything for the journey and the ceremony, belted at the waist, and take it off only indoors. Small pearl drops and the beaded clutch finish it.",
+            "why": "Emerald is one of her best colours and sits right by her face, and the pink and cream tweed adds a romantic print-like texture with one sharp element. The cropped jacket hits her waist, which suits her hourglass shape, and it adds the warmth and arm coverage the sleeveless slip lacks. The velvet is delicate in the wet, so the water-resistant trench is the outer layer here. The 4cm kitten heel is well under her 7cm limit, but a slim heel can sink into soft grass, so keep to paths and hard ground. This is the most dressy and celebratory option.}"
+          },
+          {
+            "title": "Check Blazer, Finally",
+            "idea": "A rust-and-brown check blazer finally gets an outfit: emerald, warm neutrals and a defined waist, with sharp tailoring.",
+            "itemIds": [
+              "m45",
+              "m02",
+              "m23",
+              "m85",
+              "m65",
+              "m50",
+              "m70",
+              "m80"
+            ],
+            "anchorItemId": "m45",
+            "howToWear": "Tuck the emerald puff-sleeve blouse into the high-rise black trousers and fasten the wide black belt at her natural waist. Wear the oversized check blazer open over the top so the belt shows, and push the blazer sleeves up slightly to make room for the puff sleeves. Finish with the slingback kitten heels, tan crossbody and hoops, and wear the camel coat over it all for the journey.",
+            "why": "This puts the unworn check blazer to use in warm rust and brown with emerald, which flatters her colouring and gives a clear print-and-colour focus. The belt keeps the oversized blazer from swamping her waist, and the high-rise wide-leg trousers lengthen her legs. The trousers are 4/5 formality in wool blend, so they cope with a bit of damp. The blouse and blazer are only 3/5, so it is the quieter, more tailored option and works best if the wedding is smart-casual rather than black tie. The camel coat is fine for short trips; carry an umbrella or use the trench instead if the rain gets heavy, and watch the wide hem on wet ground.}"
+          }
+        ],
+        "note": "The wardrobe has no tops above 3/5 formality, so the dresses carry the formality and the tailored look is the least formal. There is also no umbrella, and the trench is the only rain-ready outerwear. If the venue is on soft grass, the flat leather boots are the safest shoes."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 9,
+          "weather": "overcast with light drizzle",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "cool",
+          "needsOuterwear": true,
+          "cycling": false,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": true,
+          "formality": [
+            4,
+            5
+          ],
+          "heelLimitCm": 7,
+          "rules": [
+            "It is 9°C and overcast with light drizzle (cool).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "Outdoor event: plan for standing outside for a while, and for the ground underfoot.",
+            "Target formality for the clothes: 4–5 out of 5.",
+            "No heels higher than 7cm."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 5,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Camel wool coat m50 copes with light drizzle but not real rain. The stylist flags this honestly, but the trench swap would put stark black at her face over a colourful dress, which echoes her known black-blazer miss. The burgundy beret m87 would add rain and warmth cover that suits her palette."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "The finish is all repeat-wear basics. The pearl drops m81 would lift the hoops m80 to wedding level. The rust/navy/cream silk scarf m84 or the burgundy beret m87, which picks up the dress's burgundy, would give her one deliberate print-mixing or romantic move instead of everyday jewellery."
+              }
+            ],
+            "comment": "This is the right anchor. m30 is her proven, long-sleeved, waist-marking compliment dress, and m88 plus m67 make a warm, wet-grass-proof dark leg line that helps her proportions. The red bag m74 against the burgundy is a confident near-clash that works, but the look stops one styling move short of feeling like a wedding rather than a gallery opening."
+          },
+          {
+            "look": 2,
+            "answersBrief": 2,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Black slingback kitten heels m65 are wrong for an outdoor ceremony in drizzle. They have an open heel over tights, a slim heel that sinks into grass, and leather that gets wet. 'Keep to paths' is a hope, not a plan. The knee-high boots m67 work just as well under a velvet midi."
+              },
+              {
+                "code": "SMOTHERED_STATEMENT",
+                "detail": "The stylist says to keep the trench m51 on, belted, for the whole outdoor ceremony. The emerald and pink idea is therefore invisible for exactly the part of the day the brief is about, and she reads as a black trench coat."
+              },
+              {
+                "code": "REPEATS_KNOWN_MISS",
+                "detail": "Putting a plain black structured layer (m51) over a jewel-toned dress at a celebration is the same move that made the cherry red dress feel corporate. It also puts stark black at her face."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "At 9°C and standing still outside, a velvet slip (warmth 2), a cropped boucle jacket and a cotton gabardine trench (warmth 3) will be chilly. Velvet also water-spots, which is risky for a 1x-worn dress in drizzle."
+              }
+            ],
+            "comment": "Emerald velvet m38 with the pink tweed m42 is the most genuinely Maya idea here: Gucci-ish colour friction, waist-marking, arms covered. But it is styled for an indoor reception, not a wet outdoor ceremony. Swap to m67 boots and a warmer, non-black coat and it becomes a strong look."
+          },
+          {
+            "look": 3,
+            "answersBrief": 2,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 2,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "WRONG_REGISTER",
+                "detail": "An oversized boyfriend check blazer m45 over a poplin blouse m02 and black office trousers m23 reads as a client-pitch outfit, not a wedding guest look. The stylist concedes it suits only a smart-casual wedding. The look exists to use the unworn blazer, not to answer the brief."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "Structured puff sleeves (m02) crushed inside an oversized blazer (m45) stack bulk at the shoulders, and pushing the sleeves up does not fix it. A belt under an open boyfriend blazer is mostly hidden, so her waist gets lost. Fitting a straight longline coat m50 over an oversized blazer adds more bulk. This is the 'swamped' problem she has already reported."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Slingback kitten heels m65 and wide full-length hems on wet ground in drizzle. The stylist notes the hem issue but does nothing about it."
+              },
+              {
+                "code": "CLASH_WITHOUT_LOGIC",
+                "detail": "The black trousers, black belt and black slingbacks form a corporate base under rust check and emerald, with a tan bag m70 thrown in. The black does not connect to anything in the blazer."
+              }
+            ],
+            "comment": "It is a good instinct to finally use m45, but a wedding is the wrong place to test it, and the puff-sleeve-under-oversized-blazer pairing fights her hourglass. Save this idea for a pitch day, styled with m01 or m13."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 4,
+        "overall": 6,
+        "missedOpportunity": "A wedding-ready version of Look 2: m38 emerald velvet slip + m42 pink tweed cropped jacket + m88 opaque tights + m67 flat knee-high boots + m50 camel coat worn open + m87 burgundy beret + m81 pearl drops + m73 beaded clutch. It keeps the jewel-toned romance and the sharp cropped waist, but works on wet grass, keeps black away from her face and stays warm at 9°C.",
+        "summary": "Look 1 is a solid, honest answer built on her proven baroque dress with weather-sensible boots and tights, though it needs one wedding-level finishing move (pearls, beret or scarf). Look 2 has the best idea in the edit but is let down by slingback kitten heels on a wet lawn and a black trench that hides the outfit through the ceremony. Look 3 forces the unworn check blazer into a brief it doesn't suit and creates bulk at the shoulders. The stylist's caveats are candid and useful, especially naming the missing umbrella, but candour about a weak choice doesn't make it the right choice. Send Look 1 with finishing tweaks, rework Look 2's shoes and coat, and drop Look 3."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 45707,
+        "costUsd": 0.1022072,
+        "inputTokens": 3003,
+        "outputTokens": 4435,
+        "cacheReadTokens": 7476,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "daniel",
+      "request": "r04",
+      "requestText": "It's raining all day and I'll be walking a lot. What should I wear?",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 22074,
+          "costUsd": 0.0386465,
+          "inputTokens": 557,
+          "outputTokens": 2516,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 4949
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "Wet-Weather Studio Uniform",
+            "idea": "His winter-presentation formula, rebuilt to survive a downpour: charcoal, grey and black under waxed cotton.",
+            "itemIds": [
+              "d05",
+              "d21",
+              "d51",
+              "d41",
+              "d62",
+              "d60",
+              "d64",
+              "d66"
+            ],
+            "anchorItemId": "d05",
+            "howToWear": "Wear the roll-neck straight against the skin of the neck, with the flannel trousers on a black belt. Roll the trouser hem once so it clears the Chelsea boot and stays off the wet ground and the chain. Put the waxed jacket over the top and loop the navy scarf under the corduroy collar to block wind at the neck. Carry the roll-top backpack on the bike.",
+            "why": "This is the roll-neck, flannel and Chelsea combination that already felt sharp on him. The waxed jacket stands in for the overcoat, which is not rain-ready and tangles on the bike. The lambswool (4/5) and flannel (4/5) are real warmth for 5°C wind. Charcoal and mid-grey sit well with his cool colouring. The Chelsea's rubber sole grips the pedals and leather copes with puddles. The waxed jacket's hip length is safe on the bike."
+          },
+          {
+            "title": "Green Under the Grey Sky",
+            "idea": "A forest green merino brings colour and warmth to his navy base, with the shell and liner doing the weather work.",
+            "itemIds": [
+              "d12",
+              "d20",
+              "d55",
+              "d42",
+              "d43",
+              "d62",
+              "d65",
+              "d60",
+              "d64"
+            ],
+            "anchorItemId": "d12",
+            "howToWear": "Wear the green merino with the navy pleated trousers and a brown belt. Layer the charcoal quilted liner over the jumper, then the rain shell over both. The liner is only for under the shell, never on its own. The trousers taper, so the hem should clear the lug-sole boot and stay out of the pedals. Tuck the navy scarf into the shell collar and pull the hood up over it if the wind gets bad.",
+            "why": "Forest green is one of his best colours near the face and answers his wish for more warmth than navy and grey. The liner under the shell is the right way to get warmth against strong wind. The brown lug-sole boots are rainproof, give good grip on the bike and are comfortable for all-day walking. The navy trousers and brown boots keep the look tailored, so it doesn't read as technical outdoor gear."
+          },
+          {
+            "title": "Earth and Cream",
+            "idea": "Chocolate cord and a chunky cream knit, giving him the texture and warmth he says he wants.",
+            "itemIds": [
+              "d10",
+              "d26",
+              "d55",
+              "d41",
+              "d63",
+              "d60",
+              "d64"
+            ],
+            "anchorItemId": "d26",
+            "howToWear": "Wear the cream fisherman jumper with the chocolate corduroys, which are relaxed, so turn the hems up once or twice to sit clear of the boot tops and the pedals. Wear the waxed jacket over the top with the collar up. Put the grey cashmere beanie on for the ride and take it off indoors.",
+            "why": "This gives the rarely worn cords a clear job. Brown, cream and olive make a warm, earthy palette, and cream suits his colouring. The corduroy and the cable knit are the texture he likes. Both are warm (4/5), and the waxed jacket keeps the rain off. The lug-sole boots handle wet streets, long walking and pedals. Cord soaks up water at the hem, so the cuffs matter today."
+          }
+        ],
+        "note": "Left out because of the weather: the navy overcoat, suede shoes and jacket, the loafers and the ecru wide-leg chinos. I haven't suggested a jacket for a client presentation. If you have one today, throw the navy blazer in the backpack and change into it there."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 5,
+          "weather": "heavy rain and strong wind all day",
+          "rain": true,
+          "heavyRain": true,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": true,
+          "walkingALot": true,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": null,
+          "heelLimitCm": null,
+          "rules": [
+            "It is 5°C and heavy rain and strong wind all day (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Sustained rain: outerwear must be rain-ready, shoes must cope with wet ground, and avoid delicate fabrics (suede, velvet, silk) where they will get wet. Full-length hems will drag and wick on wet ground unless they clear the shoe.",
+            "The client cycles today: no long or loose hems that can catch, no coats that tangle on the bike, shoes that grip the pedals.",
+            "Lots of walking: comfortable shoes the client can walk in all day."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "UNFINISHED",
+                "detail": "No head cover for a full day of heavy rain, strong wind and lots of walking. The d41 waxed jacket has no hood, and the d63 cashmere beanie is sitting unused in the wardrobe."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "d21 mid-grey flannel sits fully exposed below a hip-length jacket. It will darken, splash-mark and stay damp through a day of heavy rain. Rolling a straight flannel hem once also looks scrappy. The d55 lug boots would grip and seal better than the elastic-gusset d51 for walking all day in puddles."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "This simply re-runs his proven presentation formula in charcoal, grey and black. It does nothing for his stated wish for more warmth and texture beyond the olive jacket."
+              }
+            ],
+            "comment": "A sensible re-engineering of his known win (d05/d21/d51) with d41 swapped in for the bike-unfriendly overcoat, and the colour sits well on him. As written, though, he walks all day in a downpour bareheaded. It needs d63, and arguably d55 instead of d51."
+          },
+          {
+            "look": 2,
+            "answersBrief": 5,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "d20 is a formality-4 pleated wool trouser and will take the full rain below the d42 hem. The stylist should have said plainly that the wardrobe has nothing waterproof for the legs."
+              }
+            ],
+            "comment": "The genuinely rain-ready answer. The d43 liner under the d42 hooded shell handles 5°C wind and rain, d55 is rainproof and grips, and the d12 forest green gives him colour at the face once indoors. Keeping the tailored d20 trousers and brown leather below stops the technical shell reading as a full outdoor-gear look."
+          },
+          {
+            "look": 3,
+            "answersBrief": 2,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "d26 wide-wale cotton cord is the most water-hungry trouser he owns. It sits fully exposed below the hip-length d41 in all-day heavy rain, while cycling and walking a lot. Turning up the hems doesn't stop the thighs and seat soaking through, and wet cotton cord is heavy and cold at 5°C. This is the wrong day to rehabilitate it."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "The chunky d10 cable knit under a hip-length waxed jacket will bunch at the arms and hem. On a 188cm frame with long arms, the sleeves will ride up and leave his wrists exposed on the bars."
+              },
+              {
+                "code": "COSTUME",
+                "detail": "Fisherman knit, cords, waxed jacket and lug boots stack into a full country-rambler outfit. It is less precise than his Lemaire/Our Legacy end of the spectrum."
+              }
+            ],
+            "comment": "The right instinct: it uses the neglected d26 and answers his aspiration for warmth and texture. But it is aimed at the wrong weather. Save it for a cold, dry weekend and keep d26 out of an all-day downpour."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 4,
+        "overall": 6,
+        "missedOpportunity": "A wet-day answer to his warmth-and-texture wish that doesn't sacrifice the cords: d05 charcoal lambswool roll-neck + d34 forest green flannel overshirt as a mid-layer + d21 grey flannel + d55 brown lug-sole boots + d41 olive waxed jacket + d63 grey beanie + d60 + d64. That gives four textures (lambswool, brushed flannel, wax, cord collar), green warmth near the face and rainproof grip. It should come with an honest note that he owns no waterproof trousers and the d42 shell is his only hood.",
+        "summary": "Look 2 is the strong, sign-off-ready answer for heavy all-day rain. Look 1 is a smart adaptation of his proven formula but leaves him bareheaded in a storm, and d55 would serve him better than d51. Look 3 has the most creative intent, giving the rarely worn d26 cords a job and adding warmth and texture. Its fault is putting the most rain-vulnerable trouser into the wettest possible day under a hip-length jacket. Across all three looks, the stylist never says plainly that the wardrobe has nothing to keep his legs dry, and should have. The presentation fallback (d30 blazer in the backpack) is a reasonable touch."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 49501,
+        "costUsd": 0.134662,
+        "inputTokens": 2878,
+        "outputTokens": 4677,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 5922
+      }
+    },
+    {
+      "wardrobe": "daniel",
+      "request": "r07",
+      "requestText": "I'm presenting to senior leadership next week. I want to look authoritative but still like me.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 42285,
+          "costUsd": 0.0507849,
+          "inputTokens": 645,
+          "outputTokens": 4900,
+          "cacheReadTokens": 4949,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "The Winter Presentation, Rebuilt for the Bike",
+            "idea": "His proven charcoal-and-flannel presentation formula, with the blazer doing the job the overcoat can't do on a bicycle.",
+            "itemIds": [
+              "d30",
+              "d05",
+              "d21",
+              "d51",
+              "d66",
+              "d64",
+              "d41",
+              "d62",
+              "d60"
+            ],
+            "anchorItemId": "d30",
+            "howToWear": "Ride in the roll-neck, flannel trousers and waxed jacket with the navy scarf tucked inside the collar. Fold the unlined blazer in half, lining out, and lay it flat in the roll-top backpack. Put it on at the studio and ditch the scarf. Roll or strap the right trouser hem for the ride, then drop it. The jumper's roll-neck replaces a shirt and tie, so the blazer's open front shows one clean charcoal column. Black belt to match the Chelsea boots.",
+            "why": "This is the one that worked in real life (charcoal roll-neck, grey flannel, Chelsea boots, navy outer), but with a blazer in place of the overcoat, which is risky on the bike. The soft-shouldered navy blazer over charcoal gives authority through tone and cut, not stiffness, and avoids the full-suit feel that failed before. Lambswool and flannel are both warmth 4, so he's warm in a 6°C wind. The waxed jacket is rain-ready and hip length, and the Chelsea boots have rubber soles that grip the pedals. Charcoal and navy sit well against his cool colouring."
+          },
+          {
+            "title": "Green Under Charcoal",
+            "idea": "A suit jacket broken up into separates, with forest green and a pale blue collar to bring warmth and colour near the face.",
+            "itemIds": [
+              "d31",
+              "d12",
+              "d02",
+              "d20",
+              "d51",
+              "d66",
+              "d64",
+              "d41",
+              "d62",
+              "d60"
+            ],
+            "anchorItemId": "d12",
+            "howToWear": "Wear the pale blue poplin shirt under the forest green merino with the collar worn out over the crew neck and no tie. Navy pleated trousers are worn with the charcoal jacket only. Leave the matching charcoal suit trousers at home so it reads as separates, not a suit. Ride in shirt, jumper, trousers, waxed jacket and scarf. Carry the structured jacket flat in the backpack with the lapels folded in, and hang it up and steam it when you arrive. Black belt and Chelsea boots.",
+            "why": "The charcoal jacket gives senior leadership the formality (5/5) and the lines of a proper jacket, but charcoal over navy trousers is clearly not the stiff full suit that felt over the top. Forest green and pale blue both flatter his cool, low-contrast colouring and answer his wish for more than navy and grey. The tapered pleated trousers are rideable and the green merino is warmth 3. The honest trade-off is that the structured jacket will crease more than the blazer in Look 1."
+          },
+          {
+            "title": "Chocolate and Navy, Discovery Look",
+            "idea": "His rarely worn chocolate cords bring warmth and texture to a navy blazer, which is a quieter kind of authority.",
+            "itemIds": [
+              "d26",
+              "d08",
+              "d30",
+              "d55",
+              "d65",
+              "d64",
+              "d41",
+              "d62",
+              "d60"
+            ],
+            "anchorItemId": "d26",
+            "howToWear": "Wear the navy and white bengal stripe shirt with the collar open and sleeves buttoned, untucked front only if the hem is long enough. Otherwise tuck it fully into the wide-wale cords with the brown belt. Roll the cuff of the cords once or twice for the ride and leave them rolled or let them down at the studio. Ride in the waxed jacket with the navy scarf and keep the blazer folded in the backpack. Put it on over the shirt just before the presentation. Brown lug-sole boots, belt and watch strap tie together.",
+            "why": "The chocolate cords (warmth 4) finally have a use: brown with navy and a fine stripe is a classic, textured combination that feels like Margaret Howell. It adds the warmth he's asking for without orange or mustard near his face. The lug-sole boots grip the pedals and handle the wet. It is the most relaxed of the three because the cords and boots are formality 2, so it suits a leadership group that already knows him. If this audience is very formal, pick Look 1 or 2. The shirt is a thin layer, so keep the scarf on for the ride."
+          }
+        ],
+        "note": "No tie in any look, as there is no occasion that strictly requires one. For a heavy downpour, wear the black rain shell (d42) over the waxed jacket or instead of it, and keep the blazer or jacket wrapped inside the roll-top. The navy overcoat, suede derbies and loafers stay home on bike days. If you're getting a lift or the weather is dry on the day, the overcoat over Look 1 would be the sharpest finish. Check the forecast for the day itself, as I've styled for today's weather."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 6,
+          "weather": "windy with passing showers",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": true,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": [
+            3,
+            4
+          ],
+          "heelLimitCm": null,
+          "rules": [
+            "It is 6°C and windy with passing showers (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "The client cycles today: no long or loose hems that can catch, no coats that tangle on the bike, shoes that grip the pedals.",
+            "Target formality for the clothes: 3–4 out of 5."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 5,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "UNFINISHED",
+                "detail": "No grey cashmere beanie (d63) for a windy 6°C ride, and the d30 blazer is 'unlined', so 'fold lining out' makes no sense. Folding a blazer in half in d60 leaves a crease across the back. Roll it instead, or swap to a lined jacket."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Navy and grey again, with nothing towards his stated wish for more warmth. Fine for the safe anchor look, but it puts the whole aspiration on Looks 2 and 3."
+              }
+            ],
+            "comment": "The right anchor. It takes his proven roll-neck, flannel and Chelsea presentation look (d05, d21, d51) and replaces the bike-hostile overcoat with the soft navy blazer (d30). That gives a tonal, low-contrast column that suits his colouring and reads as authoritative without stiffness. The packing instructions need tightening, and he needs a hat for the ride."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "CLASH_WITHOUT_LOGIC",
+                "detail": "An orphaned structured worsted suit jacket (d31) over navy wool trousers (d20) gives two near-dark cool tones in different cloths. It reads as a mismatched suit, not intentional separates. Worsted's flat finish against the trousers' wool gives the game away."
+              },
+              {
+                "code": "NOT_HER_STYLE",
+                "detail": "d31 is the stiff, structured jacket from his known miss. His references (Lemaire, Margaret Howell) and his own feedback point to the soft-shouldered d30, not a hard shoulder."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "A structured jacket folded into a roll-top backpack will arrive with crushed shoulders and creased lapels before a high-stakes presentation. 'Steam it when you arrive' assumes a steamer that may not exist."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "Shirt, merino and structured jacket stack three layers at the chest and collar. There is no note on sleeve length for his long arms, which matters most in a structured jacket."
+              }
+            ],
+            "comment": "The colour idea is good: forest green (d12) with a pale blue collar (d02) brings warmth near his face. But putting it inside a half-suit is the weakest move available. The same green-and-blue core under d30 with d21, or under the full d31/d32 suit with no shirt, would be cleaner and more him."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "UNFINISHED",
+                "detail": "An open-collar bengal stripe shirt (d08) with an 'untucked front if the hem is long enough' option undercuts authority for a senior leadership presentation. There is no knit layer to lift it. The charcoal roll-neck (d05) or green merino (d12) under the blazer would add polish and warmth."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "The stylist concedes the look is formality 2 and hedges with 'suits a leadership group that already knows him', an assumption not in the brief. The note shifts the decision back to the client instead of making the look authoritative."
+              }
+            ],
+            "comment": "A genuinely good discovery: the chocolate wide-wale cords (d26) with the navy blazer (d30) and brown lug boots (d55) is a textured, Margaret Howell-ish answer to his warmth aspiration. As styled, though, it is a studio-day look, not 'authoritative'. Put a roll-neck under it and it earns its place."
+          }
+        ],
+        "usesWardrobesBest": 4,
+        "range": 4,
+        "overall": 6,
+        "missedOpportunity": "The charcoal suit (d31 + d32) de-stiffened with the forest green merino crew (d12) worn on its own (no shirt), black Chelsea boots (d51) and black belt (d66). This is the most authoritative register in the wardrobe. It differs from the known miss (no white Oxford shirt, no Oxford shoes), and the green brings colour to his face. Ride with d41, d62 and d63, hem strapped, and roll the jacket rather than folding it. A softer alternative is d30 + d05 + d26 + d55, the cords made presentation-worthy by the roll-neck.",
+        "summary": "Look 1 is strong and sendable: his proven formula, intelligently re-engineered for the bike. Looks 2 and 3 both reach for his warmth aspiration with good instincts (green near the face, the neglected chocolate cords), but each lets down the 'authoritative' half of the brief. Look 2 orphans a structured suit jacket over navy trousers in a way that reads as a mistake and will arrive crushed from a backpack. Look 3 drops to an open stripe shirt and hedges on register. Directives are respected throughout: no tie, rideable shoes, no long coat. Smaller misses include no beanie on a windy ride and a muddled 'lining out' instruction for an unlined blazer. Competent, with one excellent look and two near-misses."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 56932,
+        "costUsd": 0.1279044,
+        "inputTokens": 3495,
+        "outputTokens": 5637,
+        "cacheReadTokens": 5922,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "daniel",
+      "request": "r08",
+      "requestText": "Wedding guest — outdoor afternoon ceremony, and the forecast says it might rain.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 44130,
+          "costUsd": 0.0550009,
+          "inputTokens": 768,
+          "outputTokens": 5297,
+          "cacheReadTokens": 4949,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "The Presentation Uniform, Dressed for a Wedding",
+            "idea": "His proven winter-presentation formula, sharpened with a soft navy blazer so it reads as a celebration, not a meeting.",
+            "itemIds": [
+              "d05",
+              "d21",
+              "d30",
+              "d51",
+              "d40",
+              "d62",
+              "d66",
+              "d64"
+            ],
+            "anchorItemId": "d05",
+            "howToWear": "Wear the charcoal roll-neck under the unlined navy blazer, with the roll-neck's fold sitting neatly against the lapel. Add the grey flannel trousers with the black belt so it matches the boots. Let the straight leg break just on top of the Chelsea boots, which are long enough for his legs. Wear the navy overcoat open over the blazer for the walk in, with the navy scarf tucked inside the lapels. If a real downpour hits, wear the overcoat only for the dash from the car to the venue and keep it off while you stand outside. Wool takes a few drops but not a soaking.",
+            "why": "The roll-neck, flannel and Chelsea combination has already worked for him at a formal level. The roll-neck is lambswool (warmth 4/5), which matters at 6°C in the wind, and the blazer plus overcoat add two more layers. Charcoal and navy are in his best colour range and the roll-neck sits quietly at his face. Black rubber-soled Chelsea boots handle wet grass better than any other formal shoe he owns. No tie, and the look is polished without being a full suit."
+          },
+          {
+            "title": "Green Under Charcoal",
+            "idea": "Warmer and more textural than his usual navy: forest green knit and a pale blue collar under a charcoal jacket worn as a separate.",
+            "itemIds": [
+              "d12",
+              "d02",
+              "d31",
+              "d20",
+              "d51",
+              "d41",
+              "d66",
+              "d64"
+            ],
+            "anchorItemId": "d12",
+            "howToWear": "Wear the pale blue poplin shirt with the collar open and flat, and the forest green merino crew over it, so only the collar and a little of the cuff show. Add the charcoal suit jacket worn alone, not with its matching trousers, and the navy pleated trousers with the black belt. Wear them slightly high so the taper falls clean onto the black Chelsea boots. Use the olive waxed jacket for travel and for standing outside, keeping the corduroy collar up against the wind. It is waterproof, so it is the one to wear if the showers set in. Take it off for the ceremony itself.",
+            "why": "Forest green is one of his best colours, and it adds the warmth and texture he says he wants without leaving his palette. Breaking up the charcoal suit avoids the stiff full-suit feeling that failed before, and the soft knit and open collar make the structured jacket look relaxed. Merino, jacket and waxed cotton make a sensible warm stack for standing around outdoors. The waxed jacket is a more casual layer, but over a tailored jacket it feels right for an outdoor autumn wedding and is the sturdiest answer to rain."
+          },
+          {
+            "title": "Stripe Collar, Quiet Tailoring",
+            "idea": "A discovery look that wakes up an under-worn shirt with a layered collar and tonal charcoal trousers.",
+            "itemIds": [
+              "d08",
+              "d04",
+              "d30",
+              "d32",
+              "d51",
+              "d40",
+              "d62",
+              "d66",
+              "d64"
+            ],
+            "anchorItemId": "d08",
+            "howToWear": "Wear the navy and white bengal stripe shirt with the collar open, and the navy merino crew over it so the stripe shows at the neck and just below the jumper hem. Over that add the navy blazer, and the charcoal suit trousers with the black belt. Keep the trousers' full straight leg over the black Chelsea boots. Wear the overcoat with the navy scarf. In heavy rain, keep the coat for walking only and stand under cover where you can. If he is cycling, this is not the look for it: the overcoat is too long to pedal in.",
+            "why": "The stripe shirt has only been worn 5 times, and this uses it in a precise, understated way. A narrow stripe at the collar adds pattern and texture without a loud print, in navy and white, which suit his cool colouring. The charcoal trousers are the trousers from the suit, now used on their own to avoid the full-suit look that felt over the top. The shirt, merino and blazer give three layers under a 5/5 warmth overcoat. It is the quietest of the three looks, so it is the least adventurous."
+          }
+        ],
+        "note": "Black Chelsea boots are the only formal shoe in the wardrobe that copes with wet grass: the black Oxfords and loafers have leather soles, and the brown suede derbies are not rain-ready. There is no umbrella in the wardrobe, so in a heavy shower the waxed jacket in Look 2 is the best cover. Looks 1 and 3 rely on the overcoat for short trips only. The warmer pieces he owns, such as the rust shirt, the camel suede jacket and the chocolate corduroys, are too casual or too delicate for this brief."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 6,
+          "weather": "windy with passing showers",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": false,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": true,
+          "formality": [
+            4,
+            5
+          ],
+          "heelLimitCm": null,
+          "rules": [
+            "It is 6°C and windy with passing showers (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "Outdoor event: plan for standing outside for a while, and for the ground underfoot.",
+            "Target formality for the clothes: 4–5 out of 5."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 2,
+            "finished": 4,
+            "explanation": 3,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "This is his client-presentation outfit (d05/d21/d51/d40) with d30 added. Charcoal, grey and navy are exactly the palette he says he wants to move beyond, and nothing here marks it as a celebration rather than a meeting."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "The rain advice says to wear d40 only for the dash from the car and 'keep it off while you stand outside'. At an outdoor ceremony at 6°C in wind and showers, that leaves him wet and cold in an unlined blazer. It should say the opposite: keep the coat on and accept some wet wool."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "There is no head or hand cover for standing still outside. The grey cashmere beanie d63 could at least go in a pocket for drinks afterwards."
+              }
+            ],
+            "comment": "A warm, well-proportioned and believable outfit that suits his colouring, but it is his work uniform with a blazer on top and has no wedding idea. The rain guidance is muddled and would leave him exposed standing outside."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 2,
+            "hasIdea": 3,
+            "finished": 2,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "CLASH_WITHOUT_LOGIC",
+                "detail": "The structured worsted suit jacket d31 is worn over navy pleated trousers d20. An orphaned suit jacket in a near-neighbour dark colour reads as a mismatched suit rather than intentional separates. The sheen and structure of worsted don't sit with soft pleated wool."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "There is no scarf at 6°C in wind for an outdoor ceremony, even though d62 is available. The ceremony is also where he takes the waxed jacket off, so he stands outside in merino and a suit jacket alone."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "A hip-length waxed jacket d41 over a structured suit jacket risks the jacket hem showing and the sleeves bunching. On his long arms the d02 cuff may not show as described. Fit and length are not addressed."
+              }
+            ],
+            "comment": "The forest green d12 over a pale blue d02 collar is the best idea in the set and answers his wish for warmth. But it is built on an orphaned suit jacket that looks like a mistake, when the obvious fix was to wear the full suit d31+d32. The look also lacks a scarf for standing in the cold."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 2,
+            "finished": 3,
+            "explanation": 2,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Navy shirt stripe, navy merino d04, navy blazer d30, navy overcoat d40 and navy scarf d62. This is the most navy outfit possible for a client who says he lives in navy. It also largely duplicates Look 1."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "Letting the d08 stripe show 'just below the jumper hem' under a blazer creates a fussy, untucked line. That undermines the precise, considered finish he wants at a wedding."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "It is billed as a 'discovery look' but then admitted to be the least adventurous. 'Stand under cover where you can' doesn't work for an outdoor ceremony, and the cycling aside is irrelevant here."
+              }
+            ],
+            "comment": "Navy blazer over charcoal trousers d32 is a classic combination. However, the stripe-under-crew idea is too small to carry a whole look. As a third option it gives no range beyond Look 1."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 2,
+        "overall": 5,
+        "missedOpportunity": "The full charcoal suit d31+d32, softened with the forest green merino d12 (optionally over d02 with the collar open), black Chelsea boots d51, black belt d66 and watch d64, plus navy overcoat d40 and navy scarf d62 kept on outdoors. The olive waxed jacket d41 is the swap if the showers set in. A wedding is exactly the register where a suit is right; the earlier miss came from a studio lunch with a white shirt and Oxfords, not from the suit itself. Green knit at the neck makes it festive and warm without a tie.",
+        "summary": "These looks are competent and weather-aware: Chelsea boots are the right call on wet grass, there are no ties, and the stylist was honest about the missing umbrella and the camel suede d36. But the set misreads the past suit failure, so the stylist breaks up the suit (badly in Look 2) instead of using it softened, which is the best wedding answer this wardrobe has. Looks 1 and 3 are near-duplicate navy-and-charcoal outfits that ignore his aspiration for warmth. The rain guidance in Look 1 would leave him cold outdoors, and Look 2 has no scarf. Only Look 1 is sendable as-is, and it is forgettable."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 38365,
+        "costUsd": 0.0925404,
+        "inputTokens": 3259,
+        "outputTokens": 3916,
+        "cacheReadTokens": 5922,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "sarah",
+      "request": "r04",
+      "requestText": "It's raining all day and I'll be walking a lot. What should I wear?",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 25841,
+          "costUsd": 0.044371,
+          "inputTokens": 428,
+          "outputTokens": 3096,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 5022
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "Navy Shirt Dress, Trench On",
+            "idea": "One-piece, midi and tonal: navy under beige, put-together but built to be rained on.",
+            "itemIds": [
+              "s36",
+              "s44",
+              "s50",
+              "s61",
+              "s63",
+              "s65"
+            ],
+            "anchorItemId": "s36",
+            "howToWear": "Belt the shirt dress at the waist and leave the top button undone. Wear the trench over it, belted loosely or open with the belt tied behind. Keep the sleeves down under the trench. Put the white trainers on with bare ankles. The midi hem clears the shoe, so nothing drags in puddles. Carry the nylon crossbody under the trench so it stays dry. Add the small hoops and the silver watch.",
+            "why": "The dress is cotton and light enough for 21°C humidity, and it has no hem to wick water. Navy is one of her flattering soft cool colours near the face. The straight, belted shape suits her broad shoulders and slim hips without clinging. Navy, beige and white is a grown-up version of her clean minimal DNA, with no black near her face. The trench is the only rain-ready outer layer she owns, and the leather trainers are comfortable for a day of walking."
+          },
+          {
+            "title": "Cuffed Jeans, Sage and Boots",
+            "idea": "The effortless jeans-and-tee formula, but softer and more considered, with colour rather than black.",
+            "itemIds": [
+              "s15",
+              "s21",
+              "s44",
+              "s51",
+              "s61",
+              "s63",
+              "s66"
+            ],
+            "anchorItemId": "s21",
+            "howToWear": "Tuck the front of the sage tee loosely into the high-rise jeans. Cuff the jeans twice so the hem sits at the ankle bone and clears the boot. Wear the trench open over the top. Put the black cap on under the trench's collar line only when the rain gets heavy, as the brim keeps rain off your face. Carry the crossbody and wear the hoops.",
+            "why": "It repeats the spirit of her jeans-and-linen-shirt look that worked, with a light wash and a cool sage that flatters her colouring. The Chelsea boots are the most wet-proof shoes she has and fully cover the foot, though they will feel warm at 21°C. The cuff stops the denim from dragging through puddles. High-rise straight jeans fit her relaxed, straight preference and balance her shoulders. There is no black near her face except the cap brim."
+          },
+          {
+            "title": "Sage Co-ord, Rolled for Rain",
+            "idea": "Finally wearing the forgotten set: tonal sage, relaxed and quietly interesting.",
+            "itemIds": [
+              "s17",
+              "s27",
+              "s44",
+              "s50",
+              "s61",
+              "s63",
+              "s65"
+            ],
+            "anchorItemId": "s17",
+            "howToWear": "Wear the sage linen shirt and the wide-leg trousers as a matched set. Leave the shirt untucked, or half-tucked at the front, with the sleeves pushed to the elbow. Roll the trousers two or three turns so the hem sits just above the ankle and clears the white trainers. Put the trench over the top. Add the hoops and the silver watch.",
+            "why": "This was bought as a set and worn only once. Tonal sage is flattering for her cool colouring and is a step up from her black basics without being loud. Linen is breathable in humid heat, and the wide-leg shape balances her broad shoulders. The honest caveat is that linen creases and darkens when damp. The trench will cover most of it and the rolled hem avoids wicking, but it is the least rain-proof of the three looks."
+          }
+        ],
+        "note": "The trench is the only rain-ready outer layer in the wardrobe, so all three looks use it. There is no umbrella here, and the cap is the closest thing to extra head cover. The satin pieces, leather jacket, slides and running shoes were left out because they don't suit sustained rain."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late spring",
+          "tempC": 21,
+          "weather": "warm, humid, rain all day",
+          "rain": true,
+          "heavyRain": true,
+          "tempBand": "warm",
+          "needsOuterwear": false,
+          "cycling": false,
+          "walkingALot": true,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": null,
+          "heelLimitCm": 0,
+          "rules": [
+            "It is 21°C and warm, humid, rain all day (warm).",
+            "Sustained rain: outerwear must be rain-ready, shoes must cope with wet ground, and avoid delicate fabrics (suede, velvet, silk) where they will get wet. Full-length hems will drag and wick on wet ground unless they clear the shoe.",
+            "Lots of walking: comfortable shoes the client can walk in all day.",
+            "Flat shoes only."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 5,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 3,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "s50 white leather trainers will survive the rain but mark and soak at the seams over a full day of walking. s51 flat Chelsea boots are the obvious rain shoe and work well with a navy midi shirt dress."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "'No hem to wick water' is muddled. The midi hem of s36 sits below the knee-length s44 and will get splashed. The real point is that bare legs dry faster than wet trouser hems, and that should have been said."
+              }
+            ],
+            "comment": "This is the strongest look and the one to lead with. s36 navy at the face, the beige s44 trench and a clean flat shoe give the grown-up, non-black version of her DNA, and bare legs are honestly the smartest way to handle 21°C humid rain. Swap s50 for s51 and it's a 5."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "s21 light-wash denim below a knee-length trench will be wet from the knee down, show dark water marks, get heavy and chafe over a day of walking. Cuffing doesn't fix that."
+              },
+              {
+                "code": "BAD_COLOUR_AT_FACE",
+                "detail": "The s66 black cap puts black right at her face. It's minor, but it is exactly what her colouring brief warns against."
+              },
+              {
+                "code": "NO_REAL_TECHNIQUE",
+                "detail": "The cap instruction ('under the trench's collar line') makes no sense. A sporty cap with a belted gabardine trench is also a register clash that isn't handled."
+              }
+            ],
+            "comment": "Using s51 Chelsea boots is right, and the s15 sage tee is a good under-used colour. But denim is the worst bottom for all-day rain, and the s66 cap/s44 trench pairing feels unconsidered rather than deliberately undone."
+          },
+          {
+            "look": 3,
+            "answersBrief": 2,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Wide-leg s27 linen below the trench will flap, splash and show water marks in sage. Rolling wide-leg linen two or three turns won't hold while walking."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "Rolled wide-leg trousers to above the ankle make a bulky culotte-like hem with flat trainers. The better move is to leave the hem full length over s51 boots."
+              }
+            ],
+            "comment": "Reviving the s17/s27 co-ord is exactly the right instinct for her aspiration, and the stylist is honest about the caveat. But an all-day rainy walking day is the wrong day to debut pale linen wide-legs, and s50 trainers compound it."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 3,
+        "overall": 6,
+        "missedOpportunity": "s36 navy midi shirt dress + s44 beige trench + s51 black flat Chelsea boots + s61 nylon crossbody + s63 hoops + s65 watch. It keeps Look 1's flattering navy and grown-up line while giving her the one genuinely wet-proof shoe for a day of walking. Save the s17/s27 co-ord for a dry day.",
+        "summary": "The colour thinking is right for Sarah: navy, sage and beige, no black at the face, and under-used pieces brought forward. Using the s44 trench across all three looks is unavoidable and correctly explained. The weakness is rain logic below the knee. Look 1 is close to excellent but should be in s51 boots. Look 2 puts her in light denim for an all-day wet walk. Look 3 is a lovely idea on the wrong day. Lead with Look 1 in boots, replace the jeans, and save the co-ord for a dry day."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 33736,
+        "costUsd": 0.079079,
+        "inputTokens": 2475,
+        "outputTokens": 3399,
+        "cacheReadTokens": 5995,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "sarah",
+      "request": "r07",
+      "requestText": "I'm presenting to senior leadership next week. I want to look authoritative but still like me.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 28737,
+          "costUsd": 0.0361902,
+          "inputTokens": 544,
+          "outputTokens": 3460,
+          "cacheReadTokens": 5022,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "The Quiet Authority",
+            "idea": "Tonal blues and tailoring: a sharp, composed version of her shirt-and-trousers uniform.",
+            "itemIds": [
+              "s30",
+              "s08",
+              "s40",
+              "s52",
+              "s60",
+              "s63",
+              "s65"
+            ],
+            "anchorItemId": "s30",
+            "howToWear": "Tuck the light blue shirt in fully to show the high waist of the navy pleated trousers. Leave the top button open and the collar crisp. Wear the black blazer open with the sleeves pushed up slightly. Small gold hoops and the silver watch are all the jewellery you need. The blazer is a polyester blend, so carry it on the commute and put it on in the meeting room.",
+            "why": "Navy pleated trousers are her only tailored bottom, and wide-straight pleats suit her slim hips and balance her broad shoulders. Light blue next to her face is a soft cool colour that flatters her fair, low-contrast colouring, with no black near her face. A fully tucked shirt keeps the oversized blazer from adding bulk on top. Navy, blue and black reads polished at formality 3, in the clean minimal register she already likes."
+          },
+          {
+            "title": "Sage Column",
+            "idea": "A tonal sage suit in linen: calm, deliberate and quietly confident.",
+            "itemIds": [
+              "s17",
+              "s27",
+              "s56",
+              "s60",
+              "s64",
+              "s63",
+              "s65"
+            ],
+            "anchorItemId": "s27",
+            "howToWear": "Wear the shirt and trousers as a full set. Tuck the shirt in loosely at the front only, and leave one more button open than usual. Keep the cuffs rolled once, neatly. Pointed silver flats lengthen the wide leg, with the hem just skimming the shoe. Add the fine gold chain, hoops and watch. Press the linen the night before, because creasing is the risk.",
+            "why": "It's an unworn co-ord in sage, a colour that flatters her cool colouring, and head-to-toe tone reads like a suit without being stiff. The relaxed wide leg and straight shirt keep the shapes she's comfortable in, and the pointed silver flat adds polish. It's honest to say linen is formality 2, so this sits just under the target. It's the coolest option for a humid 24°C, and it's more interesting than another black outfit."
+          },
+          {
+            "title": "Cobalt Moment",
+            "idea": "One confident colour with a crisp white shirt: interesting without being loud.",
+            "itemIds": [
+              "s34",
+              "s07",
+              "s40",
+              "s52",
+              "s60",
+              "s64",
+              "s63",
+              "s65"
+            ],
+            "anchorItemId": "s34",
+            "howToWear": "Tuck the white linen shirt into the cobalt satin midi skirt, then blouse it slightly at the front so it isn't pulled tight. Roll the sleeves to just below the elbow. Wear the black blazer open over the top, or take it off if the room is warm. Black ballet flats keep it relaxed. Add the gold chain, hoops and watch. Steam the shirt before you wear it.",
+            "why": "The cobalt skirt has never been worn, and cobalt is one of her best colours. A bias-cut satin midi at formality 3 gives presentation-level polish in a column shape, not a fussy one, and it works with her slim hips. White near her face keeps things fresh, and the blazer adds the authority the brief asks for. The result looks put-together and a bit more interesting, but not loud."
+          }
+        ],
+        "note": "The wardrobe has no lightweight tailored jacket in a soft colour. Her only blazer is black, so I kept white or light blue at her face in the looks that use it. Linen creases, so steam or press the shirts beforehand."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late spring",
+          "tempC": 24,
+          "weather": "sunny and humid",
+          "rain": false,
+          "heavyRain": false,
+          "tempBand": "warm",
+          "needsOuterwear": false,
+          "cycling": false,
+          "walkingALot": false,
+          "muchTimeOutside": false,
+          "outdoorEvent": false,
+          "formality": [
+            3,
+            4
+          ],
+          "heelLimitCm": 0,
+          "rules": [
+            "It is 24°C and sunny and humid (warm).",
+            "Target formality for the clothes: 3–4 out of 5.",
+            "Flat shoes only."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "Oversized s08 poplin fully tucked under an oversized s40 blazer builds volume at the shoulders, her broadest point. A less voluminous shirt (s07) or a better-fitting jacket would balance her frame more cleanly."
+              },
+              {
+                "code": "BAD_COLOUR_AT_FACE",
+                "detail": "The s40 black lapels still frame her face. The light blue collar softens this, and the stylist acknowledges it, so it is a minor issue, not a failure."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "A polyester blazer at 24°C and humid will be sweaty under presentation lights. She should be told it is optional, and that the shirt-and-tailored-trouser base must stand on its own if she takes it off."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Black s52 round-toe flats and the black s60 tote put black at the extremities. The pointed silver s56 would sharpen the line of the pleated wide leg, and the tan s68 belt would mark the high waist more deliberately."
+              }
+            ],
+            "comment": "The right anchor: s30 is her only tailored bottom and exactly what 'authoritative' needs, and the tonal blue palette suits her. The oversized-on-oversized top half and the black-on-navy jacket keep it from being as crisp as it could be."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 5,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "'Tuck in loosely at the front only' plus 'one more button open than usual' pulls the look toward weekend brunch. A suit-effect co-ord wants either a full tuck or the shirt worn straight and untucked, and a sensible neckline for a leadership room."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Formality 2 linen creases within an hour of sitting and commuting. The stylist flags this honestly, but it caps how authoritative the look will read by the time she presents."
+              }
+            ],
+            "comment": "A lovely, very-her answer: the unworn s17/s27 co-ord worn as a tonal suit, with s56 pointed silver flats adding polish, and the coolest option for a humid day. It is a touch soft on authority, and the styling notes undercut the suit idea."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "A linen shirt (s07) tucked and bloused into a bias-cut satin skirt (s34) creates lumps at the waist and shows every ridge through the satin. It is not the 'column' the explanation claims. With the oversized s40 on top, the silhouette gets top-heavy on her broad shoulders."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Satin in 24°C humidity shows sweat marks and clings when she stands and moves while presenting. That is a real risk on a high-stakes day."
+              },
+              {
+                "code": "NOT_HER_STYLE",
+                "detail": "A bias satin midi skirt is a long way from her relaxed, straight-shape, trouser-led DNA. A presentation is the wrong day to debut a never-worn impulse piece she is unsure how to style. It would be better introduced at drinks or a wedding."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "The note claims bias-cut satin 'works with her slim hips', but bias satin clings rather than skims. It also does not address satin reading evening-wear in a very casual tech office."
+              }
+            ],
+            "comment": "A good instinct to put the cobalt to work, and the colour is right for her. But satin plus a tucked linen shirt plus a black poly blazer is fiddly, warm and risky for a leadership presentation. A stylist would save s34 for a lower-stakes first outing."
+          }
+        ],
+        "usesWardrobesBest": 4,
+        "range": 4,
+        "overall": 7,
+        "missedOpportunity": "s30 navy pleated trousers + s07 white linen shirt (her proven winner) fully tucked + s68 tan belt + s56 silver pointed flats + s63 hoops + s65 watch, with s40 carried only as an option. This elevates her own proven white-linen-shirt-and-straight-leg uniform into tailoring that reads authoritative, needs no black at the face, and suits a humid 24°C. s36 navy shirt dress belted with s68 was also an unexplored one-piece option.",
+        "summary": "A solid, thoughtful set. Look 1 rightly anchors on s30, the only tailored piece, and Look 2 finally puts the unworn sage co-ord to work in her best colours. The stylist respects the flat-shoe directive and avoids black at the face. The weaknesses are a reliance on the black polyester blazer in humid heat, small styling notes that undercut the authority (the French tuck and extra open button in Look 2), and a satin-skirt look that is the wrong debut for an unworn piece on a high-stakes day. Better use of s56, s68 and her proven s07 shirt would have made the strongest look sharper."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 42040,
+        "costUsd": 0.091123,
+        "inputTokens": 2551,
+        "outputTokens": 3986,
+        "cacheReadTokens": 5995,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "sarah",
+      "request": "r08",
+      "requestText": "Wedding guest — outdoor afternoon ceremony, and the forecast says it might rain.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 35371,
+          "costUsd": 0.043908199999999994,
+          "inputTokens": 1018,
+          "outputTokens": 4137,
+          "cacheReadTokens": 5022,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [],
+      "output": {
+        "looks": [
+          {
+            "title": "Slip Dress Under a Trench",
+            "idea": "Quiet, grown-up minimalism: one satin dress, softened by a trench and silver flats.",
+            "itemIds": [
+              "s37",
+              "s44",
+              "s56",
+              "s61",
+              "s63",
+              "s64"
+            ],
+            "anchorItemId": "s37",
+            "howToWear": "Wear the slip dress with the fine gold chain resting on bare skin and the small hoops. Keep the trench open and unbelted for the ceremony so the beige falls beside your face instead of black. Add the silver flats so it isn't head-to-toe black. Wear the nylon crossbody under the trench so it reads as part of the outfit. If a downpour starts, belt the trench and stay under cover. The midi hem will show below a knee-length trench, so avoid wet grass and keep the dress dry.",
+            "why": "This is the only piece you own at formality 4, and the bias cut is clean and unfussy like your COS and Toteme references. The beige trench and gold chain keep black from sitting harshly against your cool, low-contrast colouring. The silver flats break up the black and are comfortable to stand in. Two honest limits: satin marks if it gets wet, so the trench is essential. The nylon crossbody is the most casual part of the look, and the wardrobe has no dressy bag. If the venue is soft grass, swap to the black Chelsea boots (s51), which cope with wet ground best but are warmer."
+          },
+          {
+            "title": "Navy Tailoring, Soft White",
+            "idea": "Crisp navy trousers and a white shirt: a wedding look that stays relaxed and a bit more grown-up.",
+            "itemIds": [
+              "s30",
+              "s07",
+              "s52",
+              "s44",
+              "s61",
+              "s63",
+              "s64"
+            ],
+            "anchorItemId": "s30",
+            "howToWear": "Tuck the white linen shirt fully into the high-rise pleated trousers. Leave the top button or two open, with the gold chain showing, and roll the sleeves to just below the elbow. Wear the black ballet flats so the wide trouser hem just skims the shoe. Wear the trench over your shoulders or belted for the walk in. Wool-blend trousers and leather flats cope with a shower. In a downpour, belt the trench and keep moving to cover.",
+            "why": "Navy and soft white are in your flattering colour range and sit well near your face. The straight pleated trouser is the relaxed, tailored shape you like and suits broad shoulders and slim hips. Honest caveat: the linen shirt is flagged as too casual, so this lands at about formality 3. It's the most weather-proof option, but it is a smart-casual answer rather than full wedding dress. A dressy top is the gap in the wardrobe. Linen will crease in the humidity, which suits the relaxed feel."
+          },
+          {
+            "title": "Cobalt, Finally Worn",
+            "idea": "One saturated cobalt satin skirt with soft cream, the colour she loves and has never worn.",
+            "itemIds": [
+              "s34",
+              "s13",
+              "s56",
+              "s44",
+              "s61",
+              "s63",
+              "s64"
+            ],
+            "anchorItemId": "s34",
+            "howToWear": "Tuck the cream ribbed tank into the satin midi skirt and keep the fit smooth, with the skirt skimming your hips. Add the gold chain and hoops, and wear the silver flats so the metallic finish echoes the satin sheen. Wear the trench open over the top for travel and the ceremony. Remove it only when you're under cover. If it pours, belt the trench, keep the skirt tucked as far under it as possible and shelter.",
+            "why": "Cobalt is one of your named flattering colours, and cream next to your face is much softer than black. The bias-cut skirt is clean and minimal, not fussy, so it makes the outfit more interesting without being loud. Honest caveats: satin marks if it gets wet, and the trench is shorter than the skirt, so the hem is exposed in a downpour. The ribbed tank is flagged as too casual, which is the weak link, so this sits around formality 3. A dressier top would fix it."
+          }
+        ],
+        "note": "The wardrobe has no wedding-appropriate top, no dressy bag and no rain-ready dress shoe, and all the formal pieces are satin, which is delicate in the rain. Only the slip dress reaches the formality target. The other two looks are best-fit options. Pack a compact umbrella (not in the wardrobe) and take a spare layer so the satin stays dry."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late spring",
+          "tempC": 24,
+          "weather": "sunny and humid",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "warm",
+          "needsOuterwear": false,
+          "cycling": false,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": true,
+          "formality": [
+            4,
+            5
+          ],
+          "heelLimitCm": 5,
+          "rules": [
+            "It is 24°C and sunny and humid (warm).",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "Outdoor event: plan for standing outside for a while, and for the ground underfoot.",
+            "Target formality for the clothes: 4–5 out of 5.",
+            "No heels higher than 5cm."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "BAD_COLOUR_AT_FACE",
+                "detail": "s37 puts black satin right at her neckline and shoulders. Her profile says black near her face makes her look tired. The open trench (s44) only frames it, and once the coat comes off she is back in a black slip."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Choosing it because it is 'the only formality-4 piece' is box-ticking. A black slip under a trench is the generic answer and drifts towards the heavy black she is trying to leave behind."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Satin is the worst fabric to choose for a rain risk, and the midi hem hangs below the knee-length trench. Keeping a gabardine trench on through an outdoor ceremony at 24°C and humid will be sticky."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "The black nylon crossbody (s61) pulls a wedding look down. The fallback of Chelsea boots (s51) with a satin slip at 24°C is a poor suggestion."
+              }
+            ],
+            "comment": "Wearable and appropriately dressy, with honest caveats about the satin and the bag. But it reaches for black satin on a rain-risk day for a client whose colouring and brief both argue against black."
+          },
+          {
+            "look": 2,
+            "answersBrief": 2,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 2,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "s30 with s07 is a leadership-review outfit, not a wedding-guest look. The stylist admits it is smart-casual, which is honest, but a stronger wardrobe answer existed."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "Black round-toe flats (s52) and the nylon crossbody (s61) make it read even more like the office. Nothing lifts it to occasion: the silver flats (s56) would at least have added some festivity."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "'The linen shirt is flagged as too casual' leaks internal tagging rather than explaining visually why it falls short."
+              }
+            ],
+            "comment": "The colours and shape suit her well and it copes with a shower. But she would look like she came straight from work, and the sage linen co-ord does this job far better."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 3,
+            "visuallyResolved": 3,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "A slim ribbed tank (s13) tucked into clinging bias satin puts her broad shoulders on display above a body-skimming line. That cuts against her preference for relaxed, straight shapes and edges toward the bodycon she dislikes."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "The tank is the wrong top and the stylist knows it. Tucking the white linen shirt (s07, her proven piece) into s34 with sleeves rolled, or wearing the cream cardigan (s42) buttoned as a top, would give a grown-up Toteme/Jenni Kayne line and cover the shoulders."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "This is a second satin look for a rain-risk outdoor ceremony, with the hem exposed below the trench."
+              }
+            ],
+            "comment": "Getting the never-worn cobalt skirt (s34) out is the best instinct in the set, and the colour is right for her. It is let down by a gym-weight tank that is too casual and the wrong shape for her frame."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 3,
+        "overall": 5,
+        "missedOpportunity": "The sage linen co-ord (s17 + s27, worn once) as a relaxed suit. Wear the shirt buttoned or open over the cream tank (s13), tucked loosely into the wide-leg trousers, with silver pointed flats (s56), gold chain and hoops (s63, s64), the tan belt (s68) optionally, and the trench (s44) for showers. It is breathable for 24°C humidity, tolerates rain far better than satin, and puts a flattering soft cool colour at her face. It is exactly her COS/Jenni Kayne relaxed-minimal language, lifted for an occasion. A close second is cobalt s34 with the white linen shirt s07 tucked in, plus s56.",
+        "summary": "The stylist was honest about the wardrobe's gaps, which deserves credit, and was right to try the cobalt skirt. But the set leans on two satin looks for an outdoor ceremony that may get rain, and opens with black at the face for a client told black makes her look tired. The navy-and-white option is an office outfit. Every look repeats the same trench, nylon bag and jewellery. The obvious hero, the unworn sage linen co-ord, was overlooked: it is weather-smart, flattering, wedding-appropriate and exactly her style."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 43054,
+        "costUsd": 0.095171,
+        "inputTokens": 2723,
+        "outputTokens": 4154,
+        "cacheReadTokens": 5995,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "lena",
+      "request": "r04",
+      "requestText": "It's raining all day and I'll be walking a lot. What should I wear?",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 26244,
+          "costUsd": 0.037963,
+          "inputTokens": 444,
+          "outputTokens": 3064,
+          "cacheReadTokens": 0,
+          "cacheWriteTokens": 2574
+        }
+      ],
+      "checks": [
+        {
+          "look": 3,
+          "code": "TOO_SIMILAR",
+          "severity": "minor",
+          "detail": "Shares most of its clothing with look 1."
+        }
+      ],
+      "output": {
+        "looks": [
+          {
+            "title": "Green Wool, Black Cargo",
+            "idea": "Cosy, undone grunge in deep green and black, built to keep the warmth in on a wet walk.",
+            "itemIds": [
+              "l04",
+              "l06",
+              "l11",
+              "l10",
+              "l15",
+              "l14"
+            ],
+            "anchorItemId": "l04",
+            "howToWear": "Wear the chunky jumper loose over the cargos. Tuck the cargo hems into the boot tops, or roll them once above the ankle, so nothing drags in puddles or catches in the pedals. Wear the cropped puffer on top and let the jumper hem show below it. Tuck the chain inside the jumper neck so it can't catch on the bike. Carry the tote across your body.",
+            "why": "Deep green suits her high-contrast colouring near the face. The jumper is the warmest top she owns (4/5), and the twill cargos hold up in rain far better than the baggy denim, which would soak and wick. The cropped puffer and chunky boots stop the oversized-plus-relaxed volume from feeling shapeless. The boots are leather and grippy, so they can handle wet ground, the bike and a full day on foot."
+          },
+          {
+            "title": "Band Tee Under Hoodie",
+            "idea": "Music-led layering with the band tee peeking out, a studio-and-café-day uniform that still looks like her.",
+            "itemIds": [
+              "l02",
+              "l01",
+              "l06",
+              "l11",
+              "l10",
+              "l15",
+              "l14"
+            ],
+            "anchorItemId": "l02",
+            "howToWear": "Put the band tee on first and let its boxy hem hang a couple of centimetres below the hoodie. Layer the hoodie over it and pull the cargos on low and relaxed. Tuck or roll the hems into the boots. Wear the cropped puffer over everything and zip it up for the bike. Wear the chain over the tee, under the hoodie.",
+            "why": "It's her core Style DNA: oversized, faded, a bit undone and music-led. Two cotton layers plus the puffer give real warmth at 3°C, and the black base keeps the faded tee graphic near her face. The cropped puffer and boots keep the proportions tidy, and nothing hangs low enough to tangle on the bike."
+          },
+          {
+            "title": "Tartan, Tights and Green",
+            "idea": "A fitted-and-short bottom with a big knit on top, bringing her under-worn tartan into a rainy weekday.",
+            "itemIds": [
+              "l07",
+              "l04",
+              "l13",
+              "l11",
+              "l10",
+              "l15"
+            ],
+            "anchorItemId": "l07",
+            "howToWear": "Wear the tights under the A-line tartan mini and pull the jumper on over it, leaving it untucked so it falls to mid-hip. Put the boots on and pull the tights smooth over the ankle. Add the cropped puffer on top and carry the tote across your body.",
+            "why": "This follows her most successful formula, a big top over a short skirt with tights and boots. The skirt has only been worn 6 times, and red and deep green both flatter her colouring. The mini has no hem to drag or catch on the bike, and the wool and 80-denier tights keep her warmer than bare legs would. Legs will still be colder than in trousers, so pick the cargo looks if the wind is up."
+          }
+        ],
+        "note": "Nothing in this wardrobe is genuinely rain-ready. The puffer is nylon but not waterproof, and the leather jacket (l09) isn't either, so I've left it at home today. The puffer is the better bet for warmth and for shedding light rain, but it will soak through in a sustained downpour. Keep trips between shelter short, and what's missing is a proper waterproof shell or rain jacket. I've also left out the suede-and-leather trainers, the slip dress, the tank and the baggy jeans, because they'd be too wet, too light or too prone to wick. Line the canvas tote with a bag or keep your things in a dry pouch, because the canvas will soak."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 3,
+          "weather": "cold rain all day",
+          "rain": true,
+          "heavyRain": true,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": true,
+          "walkingALot": true,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": null,
+          "heelLimitCm": null,
+          "rules": [
+            "It is 3°C and cold rain all day (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Sustained rain: outerwear must be rain-ready, shoes must cope with wet ground, and avoid delicate fabrics (suede, velvet, silk) where they will get wet. Full-length hems will drag and wick on wet ground unless they clear the shoe.",
+            "The client cycles today: no long or loose hems that can catch, no coats that tangle on the bike, shoes that grip the pedals.",
+            "Lots of walking: comfortable shoes the client can walk in all day."
+          ]
+        },
+        "draftViolations": [
+          "Look 1: Sustained rain but no rain-ready outerwear.",
+          "Look 2: Sustained rain but no rain-ready outerwear.",
+          "Look 3: Sustained rain but no rain-ready outerwear."
+        ],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Letting the oversized l04 hem hang below the cropped l10 leaves a band of wool exposed to rain all day; it will be damp and heavy by the afternoon. The look also gives her no head cover, even though the only hood in the wardrobe (l01) could sit under the puffer."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "The chain (l14) is tucked inside the jumper, so it does nothing visually. A large canvas tote (l15) cannot really be carried 'across the body' on a bike."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Sensible green and black, but there is no styling move beyond tucking hems into boots."
+              }
+            ],
+            "comment": "A solid, warm, rain-sensible base. Twill cargos tucked into the l11 boots is the right call over l05 denim, and the green at her face is good. It is still the safe answer: the jumper hem is left out to soak, and the hood that the wardrobe actually offers is ignored."
+          },
+          {
+            "look": 2,
+            "answersBrief": 4,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 2,
+            "finished": 2,
+            "explanation": 2,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "It claims the black base keeps 'the faded tee graphic near her face', but l02 is fully under l01, so only a hem sliver shows. The chain l14 is placed under the hoodie, where it is invisible."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "This is Look 1 with the jumper swapped for hoodie plus tee. It uses the same l06, l11, l10, l15 and l14, and the 'music-led' idea is buried under the hoodie."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "The l01 hood is the only rain cover for her head in the wardrobe and should be pulled out over the l10 collar. The stylist never mentions it."
+              },
+              {
+                "code": "NO_REAL_TECHNIQUE",
+                "detail": "A tee hem peeking 2cm below a hoodie that sits under a cropped puffer gives three stacked hemlines at the hip without a clear intent."
+              }
+            ],
+            "comment": "It is wearable and on-DNA, but it is a near-duplicate of Look 1, and its stated point (the band tee) is not visible. Its one real asset for the rain, the hood, goes unmentioned."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 5,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "At 3°C with rain all day and lots of walking, 80-denier nylon tights (l13) will get wet and stay cold on the legs. The stylist's hedge says to switch only if it's windy; wet legs are the real issue. Swapping l04 for l01 would also bring the hood from her proven formula."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "No jewellery here, and l14 on the outside of the cable knit would sharpen the grunge read. The tote carry is the same impractical crossbody note as in Look 1."
+              }
+            ],
+            "comment": "This is the most 'her' look. It takes her proven gig formula into daytime with the under-worn l07, and red tartan plus forest green suits her high-contrast colouring, with the boots keeping it grunge rather than preppy. It is honestly the least rain-proof of the three, and the stylist does acknowledge that."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 2,
+        "overall": 6,
+        "missedOpportunity": "Her proven favourite, made rain-ready: l01 hoodie with the hood pulled out over the l10 cropped puffer collar for head cover, l07 tartan mini, l13 tights, l11 boots, and l14 worn over the hoodie. This uses the only hood in the wardrobe in place of the jumper in Look 3, and tells her to put on dry tights at the studio.",
+        "summary": "The note is honest and useful: it says plainly that nothing here is waterproof, sensibly drops l12, l05, l08 and l09, and advises lining the tote. All three looks are warm enough, cyclable and on-brand, and Look 3 earns its place. The range is thin, though: Looks 1 and 2 share five of their pieces, and Look 2's selling point is hidden under the hoodie. The biggest miss in a rainy brief is the head. The l01 hood is the only head cover she owns and is never mentioned. Smaller fixes: the exposed wool hem under the cropped puffer, a hidden chain, and an unrealistic crossbody tote."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 34584,
+        "costUsd": 0.08200539999999999,
+        "inputTokens": 2449,
+        "outputTokens": 3251,
+        "cacheReadTokens": 2197,
+        "cacheWriteTokens": 1350
+      }
+    },
+    {
+      "wardrobe": "lena",
+      "request": "r07",
+      "requestText": "I'm presenting to senior leadership next week. I want to look authoritative but still like me.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 26070,
+          "costUsd": 0.0302714,
+          "inputTokens": 377,
+          "outputTokens": 2926,
+          "cacheReadTokens": 2574,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [
+        {
+          "look": 2,
+          "code": "TOO_SIMILAR",
+          "severity": "minor",
+          "detail": "Shares most of its clothing with look 1."
+        },
+        {
+          "look": 3,
+          "code": "TOO_SIMILAR",
+          "severity": "minor",
+          "detail": "Shares most of its clothing with look 1."
+        },
+        {
+          "look": 3,
+          "code": "TOO_SIMILAR",
+          "severity": "minor",
+          "detail": "Shares most of its clothing with look 2."
+        }
+      ],
+      "output": {
+        "looks": [
+          {
+            "title": "Tartan Authority",
+            "idea": "Her gig uniform, sharpened: deep green, red tartan and black, with every line deliberate.",
+            "itemIds": [
+              "l04",
+              "l07",
+              "l13",
+              "l11",
+              "l09",
+              "l14",
+              "l15"
+            ],
+            "anchorItemId": "l07",
+            "howToWear": "Tuck the front of the jumper into the skirt and leave the back loose, so the waist shows and the knit still looks oversized. Keep the sleeves long and unpushed. Wear the opaque tights and lace-up boots, with the laces pulled tight and tucked in. Put the leather jacket on over the top and zip it halfway so the green stays visible. Wear the chain outside the jumper at the neckline. Carry the tote on your shoulder or cross-body so the strap stays clear of the bike.",
+            "why": "Green and red both suit her colouring, and the dark, structured pieces read as intentional. The wool skirt and the hip-length leather jacket give a clean, strong outline, and the chunky boots grip the pedals. The jacket stops at the hip so nothing catches on the bike. The jumper and tights carry most of the warmth, and the jacket is a thin windbreak over them for a cold 4°C. It stays true to her streetwear-grunge style and avoids the corporate look she dislikes."
+          },
+          {
+            "title": "Green Knit, Full Armour",
+            "idea": "Soft oversized knit against a sharp mini, finished in black so it looks like a uniform.",
+            "itemIds": [
+              "l04",
+              "l07",
+              "l13",
+              "l11",
+              "l10",
+              "l14",
+              "l15"
+            ],
+            "anchorItemId": "l04",
+            "howToWear": "Wear the jumper untucked at the front and just long enough to skim the top of the skirt, so the mini still shows. Zip the cropped puffer to the chin for the ride. Wear the chain over the knit. Put on the black tights and boots, with the boot laces tied neatly. Unzip the puffer once you arrive so the green jumper is the main thing people see.",
+            "why": "The cable-knit jumper gives volume on top and the mini balances it, which is the proportion she likes. Forest green is strong near her dark hair and fair skin. This is the warmest option: the puffer is rated 5/5 and the jumper 4/5, which suits a cold wind on the bike. The cropped puffer won't tangle with the chain or pedals. The wool-and-cable-knit texture keeps it looking like her."
+          },
+          {
+            "title": "Undone but Decided",
+            "idea": "The same strong base with a looser, trainer-led ease, for when the room is relaxed.",
+            "itemIds": [
+              "l04",
+              "l07",
+              "l13",
+              "l12",
+              "l09",
+              "l15"
+            ],
+            "anchorItemId": "l09",
+            "howToWear": "Pull the jumper down fully over the waistband of the skirt so the shape is slouchy and the hem sits at the top of the skirt. Wear the black tights with the retro trainers. Wear the leather jacket open over the jumper with the cuffs left as they are. Hang the tote on your shoulder and skip the chain, so the green and the brown leather do the work.",
+            "why": "The vintage leather jacket and the retro white-and-green trainers pick up the green in the jumper and add the vintage, music-led edge she likes. The trainers grip the pedals and give her an easy way to get there. This is the least authoritative of the three, because the trainers are casual, and the least warm, because the 80 denier tights are all that covers her ankles. Choose it only if the room is relaxed and the ride is short."
+          }
+        ],
+        "note": "Her wardrobe can't fully reach the 3–4/5 formality target. Her most formal pieces are the slip dress, which is risky on the bike and too light for 4°C, and the tartan skirt and jumper, which are only 2/5. Every other top and bottom is flagged as too casual for this brief. That is why all three looks use the same jumper, skirt and tights, and only the outer layer, shoes and accessories change. What would help: a black tailored blazer or structured jacket, and a pair of smart black trousers. Both would give her a more authoritative option on the bike and still sit within her style."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 4,
+          "weather": "grey and dry, cold wind",
+          "rain": false,
+          "heavyRain": false,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": true,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": false,
+          "formality": [
+            3,
+            4
+          ],
+          "heelLimitCm": null,
+          "rules": [
+            "It is 4°C and grey and dry, cold wind (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "The client cycles today: no long or loose hems that can catch, no coats that tangle on the bike, shoes that grip the pedals.",
+            "Target formality for the clothes: 3–4 out of 5."
+          ]
+        },
+        "draftViolations": [],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 3,
+            "finished": 4,
+            "explanation": 3,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Built on her proven gig formula (l07+l13+l11) with the hoodie swapped for l04. It feels like her, but a red tartan mini is not the most authoritative silhouette this wardrobe offers. The long black line of l06 cargo trousers was never tested."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "Says the pieces read as 'intentional' and 'structured', but a cable knit and an A-line tartan mini are not structured. It never explains what actually makes this look authoritative in a leadership room."
+              }
+            ],
+            "comment": "The best of the three. Deep green at the face suits her high contrast, the half-tuck gives the oversized knit a waist, and the brown vintage leather jacket (l09) with the chain (l14) keeps it grunge rather than preppy. Still, it is her gig outfit with a jumper on, and it reads more 'night out' than 'commanding the room'."
+          },
+          {
+            "look": 2,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 2,
+            "finished": 3,
+            "explanation": 2,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "Identical to Look 1 (l04, l07, l13, l11, l14, l15) except the jacket is swapped from l09 to l10. That is an outerwear choice, not a second look."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "An untucked oversized chunky knit worn to 'skim' an A-line mini will in practice swallow most of the skirt. The result is a shapeless block on top of tights rather than a deliberate volume-and-short balance."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "Quotes warmth ratings ('rated 5/5') instead of visual reasoning. 'Full armour' is never actually delivered once the puffer comes off indoors."
+              }
+            ],
+            "comment": "A warmer travel version of Look 1, which is useful as a single line of advice ('swap to l10 if the wind is bad'). It is not a separate recommendation. Indoors it becomes Look 1 without the waist definition."
+          },
+          {
+            "look": 3,
+            "answersBrief": 2,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 3,
+            "hasIdea": 2,
+            "finished": 2,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "The same l04/l07/l13 base for a third time. The stylist openly calls it the least authoritative option, for a brief that is explicitly about authority."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "Low-top trainers (l12) with only 80-denier tights at the ankle, on a bike in 4°C wind, will leave her cold."
+              },
+              {
+                "code": "UNFINISHED",
+                "detail": "Drops the chain (l14) and pulls the jumper fully down. That removes both the waist and the hardware that gave Look 1 its edge, and the result is slouchy rather than 'decided'."
+              }
+            ],
+            "comment": "The honest caveat is appreciated, but a look you have to talk the client out of should not be in the recommendation. The green-and-white trainers echoing the jumper is a nice touch, but it works against the brief."
+          }
+        ],
+        "usesWardrobesBest": 2,
+        "range": 1,
+        "overall": 4,
+        "missedOpportunity": "A tonal column built on trousers instead of the mini: l06 black cargo trousers + l04 forest green jumper (half-tucked or worn with a slight blouson at the hip) + l11 black lace-up boots + l09 vintage brown leather jacket + l14 chain worn outside the knit + l15 tote. A long unbroken black leg into black boots reads far more authoritative than a tartan mini, and green at the face suits her high contrast. The leather and chain keep it Berlin-grunge rather than corporate. It is also fully bike-proof and warmer at 4°C. The tartan look could then stay as one 'softer' alternative.",
+        "summary": "The stylist note is genuinely good. It honestly states that the wardrobe tops out around 2/5 formality and names the right purchases: a black blazer or structured jacket, and smart black trousers. The recommendation itself, however, is one outfit served three times. l04, l07 and l13 appear in every look, and only the coat and shoes change. Look 1 is a credible, on-DNA answer. Look 2 is a coat swap. Look 3 is admitted to be wrong for the brief and leaves her ankles cold. The bigger miss is the assumption that only the skirt can carry authority. In this wardrobe, the l06 black trousers paired with green knit, the leather jacket and boots form the more commanding silhouette, and they were dismissed purely on a formality number. The package needs at least one trouser-based look and Look 3 replaced before it goes to the client."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 37198,
+        "costUsd": 0.08112939999999999,
+        "inputTokens": 2580,
+        "outputTokens": 3505,
+        "cacheReadTokens": 3547,
+        "cacheWriteTokens": 0
+      }
+    },
+    {
+      "wardrobe": "lena",
+      "request": "r08",
+      "requestText": "Wedding guest — outdoor afternoon ceremony, and the forecast says it might rain.",
+      "engineCalls": [
+        {
+          "stage": "generate",
+          "model": "claude-sonnet-5-5",
+          "latencyMs": 33186,
+          "costUsd": 0.0389534,
+          "inputTokens": 583,
+          "outputTokens": 3753,
+          "cacheReadTokens": 2574,
+          "cacheWriteTokens": 0
+        }
+      ],
+      "checks": [
+        {
+          "look": 3,
+          "code": "SAME_ANCHOR",
+          "severity": "major",
+          "detail": "Same anchor as look 1 (l08)."
+        },
+        {
+          "look": 3,
+          "code": "TOO_SIMILAR",
+          "severity": "minor",
+          "detail": "Shares most of its clothing with look 1."
+        }
+      ],
+      "output": {
+        "looks": [
+          {
+            "title": "Black Satin Grunge Ceremony",
+            "idea": "Slip dress with boots and a chain is club-night dressing, turned up to wedding-guest level.",
+            "itemIds": [
+              "l08",
+              "l13",
+              "l11",
+              "l10",
+              "l14",
+              "l15"
+            ],
+            "anchorItemId": "l08",
+            "howToWear": "Wear the slip dress with the 80 denier tights and the chunky lace-up boots. Add the silver chain over the bare neckline. The cropped puffer zips over the top and stops at the hip, so the midi hem hangs free below it. For the ride, gather the hem and knot or pin it above the knee, tucked under the puffer so it can't reach the chain or the pedal. Let it down at the venue. Keep the tote bag short on the strap so it doesn't swing into the wheel.",
+            "why": "This is the only piece Lena owns that gets near the 4-5 formality target: black satin is the one dressy fabric in the wardrobe. Black near her face suits her high-contrast colouring. Boots and a chain keep it grungy rather than polished, which fits her style. The boots have a chunky sole for wet grass and grip on the pedals. The puffer is her warmest layer for standing outside at 4°C, though the dress itself is very thin and the tights carry most of the warmth. The puffer isn't rain-ready, and satin marks in the wet, so keep the dress covered if it showers."
+          },
+          {
+            "title": "Tartan and Forest Green",
+            "idea": "A deep-green oversized jumper over a short tartan skirt, which is her usual balance of big top and short bottom, in a festive-dark palette.",
+            "itemIds": [
+              "l07",
+              "l04",
+              "l13",
+              "l11",
+              "l09",
+              "l14",
+              "l15"
+            ],
+            "anchorItemId": "l07",
+            "howToWear": "Pull the chunky green jumper over the tartan mini and leave it loose, with the hem skimming the top of the skirt. Add the black opaque tights and the lace-up boots. Put the leather jacket over the top and wear the chain outside the jumper's neckline. The A-line mini has no hem to catch on the bike. The jacket is hip length, so it won't tangle.",
+            "why": "This is the warmest option: wool skirt, cable-knit jumper, tights and jacket. Forest green and red both suit her colouring. It repeats the tartan, tights and boots combination that is her favourite gig outfit, so it will feel like her. It is honestly only about 2/5 formal. It will read as dressed-up grunge and not a classic wedding outfit. The leather jacket isn't rain-ready, so this look depends on a short shower or a borrowed umbrella."
+          },
+          {
+            "title": "Slip Dress Over Knit",
+            "idea": "A 90s layering move: satin slip dress over a chunky jumper, so it is dressy and warm at once.",
+            "itemIds": [
+              "l08",
+              "l04",
+              "l13",
+              "l11",
+              "l10",
+              "l14",
+              "l15"
+            ],
+            "anchorItemId": "l08",
+            "howToWear": "Pull the green jumper on first and leave the sleeves long. Layer the slip dress over it, like a pinafore, and the jumper hem can peek out at the bottom or sit tucked under. Add the black tights, boots, chain and the puffer. Knot or pin up the midi hem for the bike, as in Look 1.",
+            "why": "It's the same dress as Look 1, but the jumper adds real warmth for standing through an outdoor ceremony, and deep green is flattering near her face. The layering is undone and music-led, so it avoids anything corporate. It is less formal than Look 1 because of the jumper, and the hem still needs managing on the bike. It's a good option if the cold matters more than the dress code."
+          }
+        ],
+        "note": "Her wardrobe doesn't fully meet the 4-5 formality brief. There are no tailored pieces and no wool coat. The slip dress is the only dressy piece. None of the outer layers are rain-ready (the puffer and leather jacket are not waterproof, and the tote is canvas). The boots are the best wet-weather choice, and every look uses them. If heavy rain comes, don't ride in the satin: wait it out, take the U-Bahn or tram, or borrow a compact umbrella and walk. A waterproof shell or a plain dark wool coat, and a simple black blazer or dressier knit, would fill the gaps."
+      },
+      "trace": {
+        "conditions": {
+          "season": "late autumn",
+          "tempC": 4,
+          "weather": "grey and dry, cold wind",
+          "rain": true,
+          "heavyRain": false,
+          "tempBand": "cold",
+          "needsOuterwear": true,
+          "cycling": true,
+          "walkingALot": false,
+          "muchTimeOutside": true,
+          "outdoorEvent": true,
+          "formality": [
+            4,
+            5
+          ],
+          "heelLimitCm": null,
+          "rules": [
+            "It is 4°C and grey and dry, cold wind (cold).",
+            "Every look needs outerwear for getting there and back, and the whole look must be warm enough for the time spent outside.",
+            "Possible showers: prefer shoes that cope with wet ground, especially if walking or standing outside; a wool coat is fine for short trips, but say how to handle a downpour.",
+            "The client cycles today: no long or loose hems that can catch, no coats that tangle on the bike, shoes that grip the pedals.",
+            "Outdoor event: plan for standing outside for a while, and for the ground underfoot.",
+            "Target formality for the clothes: 4–5 out of 5."
+          ]
+        },
+        "draftViolations": [
+          "Look 3: SAME_ANCHOR — Same anchor as look 1 (l08).",
+          "Look 1: Not bike-friendly: l08 (Black satin slip dress).",
+          "Look 2: Under-dressed: dressiest piece is formality 2, target 4–5.",
+          "Look 3: Not bike-friendly: l08 (Black satin slip dress)."
+        ],
+        "revised": false
+      },
+      "judgement": {
+        "looks": [
+          {
+            "look": 1,
+            "answersBrief": 4,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 4,
+            "hasIdea": 4,
+            "finished": 4,
+            "explanation": 4,
+            "stylistWouldSignOff": true,
+            "failures": [
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "At 4°C in a cold wind she is bare-armed and bare-chested under the l10 puffer for the whole ceremony. A base layer under l08 (l03 ribbed tank, or the l02 tee as a deliberate 90s under-layer) would add warmth without losing the line."
+              },
+              {
+                "code": "COULD_BE_MORE_PRACTICAL",
+                "detail": "The l10 nylon puffer is the most casual piece in the outfit. The boxy l09 leather jacket is the classic partner for a slip dress and reads more dressed for the photos. Suggest swapping to it once she's at the venue, or explain why warmth wins."
+              }
+            ],
+            "comment": "This is the strongest honest answer the wardrobe has. l08 with the 80-denier l13 tights, l11 boots and the l14 chain makes her club style ceremony-worthy, and the bike-hem instructions are genuinely useful. It needs one more warmth layer under the satin to really survive an outdoor ceremony at 4°C."
+          },
+          {
+            "look": 2,
+            "answersBrief": 2,
+            "feelsLikeClient": 5,
+            "visuallyResolved": 3,
+            "hasIdea": 2,
+            "finished": 3,
+            "explanation": 4,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "WRONG_REGISTER",
+                "detail": "A chunky cable l04 jumper over the l07 tartan mini is her gig uniform with the hoodie swapped out. It is about 2/5 formality, which is clearly under-dressed for a wedding even by student standards."
+              },
+              {
+                "code": "SAFE_DEFAULT",
+                "detail": "This reruns her known gig outfit rather than solving the occasion."
+              },
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "An oversized jumper hanging loose to the top of an A-line mini swallows the skirt, so it reads as jumper plus legs. A front tuck or half-tuck is needed to show the skirt's shape."
+              },
+              {
+                "code": "CLASH_WITHOUT_LOGIC",
+                "detail": "Red tartan, forest green and the brown l09 leather together tip into Christmas-jumper territory. Nothing ties the brown to the rest."
+              }
+            ],
+            "comment": "It is warm and unmistakably Lena, and the stylist is honest that it's only 2/5 formal. But it doesn't answer 'wedding guest', and the loose jumper over the mini is unstyled. Useful only as a cold-weather fallback for a very relaxed wedding."
+          },
+          {
+            "look": 3,
+            "answersBrief": 3,
+            "feelsLikeClient": 4,
+            "visuallyResolved": 2,
+            "hasIdea": 3,
+            "finished": 3,
+            "explanation": 3,
+            "stylistWouldSignOff": false,
+            "failures": [
+              {
+                "code": "PROPORTION_PROBLEM",
+                "detail": "A thin-strapped, bias-cut l08 satin dress over an oversized chunky cable l04 jumper bunches and drags. Bias satin needs a smooth base. A tucked-under jumper hem adds bulk at the hips, and the straps will sit awkwardly on thick cable."
+              },
+              {
+                "code": "NO_REAL_TECHNIQUE",
+                "detail": "The 90s layering move is a slip over a fine tee or tank, or a chunky jumper over the slip. The stylist inverted it and chose the wrong knit weight."
+              },
+              {
+                "code": "WEAK_EXPLANATION",
+                "detail": "The explanation doesn't address how a chunky knit physically sits under bias satin. 'Peek out or tucked under' is a non-decision."
+              }
+            ],
+            "comment": "The instinct is right: combine the dressy satin with the warm green knit. The execution is backwards. Flip it so l04 goes over l08 and you get the best look in the wardrobe."
+          }
+        ],
+        "usesWardrobesBest": 3,
+        "range": 3,
+        "overall": 6,
+        "missedOpportunity": "Put l04, the forest-green chunky jumper, OVER l08, the black satin slip dress, with a slight front tuck so the satin midi skirt flows out below. This is her own big-top-and-slim-bottom balance and a real 90s move, and the satin still reads as the dressy element. Add l13 tights, l11 boots and l14 chain on the jumper, with l10 puffer for the bike and wind, or l09 leather for photos. Pin the hem for cycling. Green at the face suits her, it's warm for 4°C, and it sits higher on the wedding scale than Look 2.",
+        "summary": "The note is honest and well judged: the stylist says plainly that there's no coat, no tailoring and nothing rain-ready, and recommends public transport if it pours. Look 1 is a sound, sendable answer, though it needs a warmth layer under the satin. Look 2 is her gig outfit and under-dresses the occasion. Look 3 has the right idea but the wrong construction: a chunky knit under bias satin will look lumpy, and the jumper-over-slip version was the real win. Looks 2 and 3 also overlap heavily, so the range is thinner than three looks suggest."
+      },
+      "judgeCall": {
+        "stage": "judge",
+        "model": "claude-opus-5-5",
+        "latencyMs": 36856,
+        "costUsd": 0.0799294,
+        "inputTokens": 2660,
+        "outputTokens": 3429,
+        "cacheReadTokens": 3547,
+        "cacheWriteTokens": 0
+      }
+    }
+  ]
+}
