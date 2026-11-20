@@ -101,6 +101,7 @@ export type EngineContext = {
 export type EngineResult = {
   output: StylistOutput;
   calls: CallRecord[];
+  trace?: unknown; // intermediate steps, kept for diagnosing failures
 };
 
 export type Engine = {

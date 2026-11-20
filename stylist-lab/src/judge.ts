@@ -17,6 +17,7 @@ export const JUDGE_FAILURES = {
   PROPORTION_PROBLEM: 'major',
   COSTUME: 'major',                    // trying too hard / reads as costume
   REPEATS_KNOWN_MISS: 'major',         // repeats something the history says didn't work
+  COULD_BE_MORE_PRACTICAL: 'minor',    // workable, but a more practical choice existed
   NO_REAL_TECHNIQUE: 'minor',          // no specific styling move
   WEAK_EXPLANATION: 'minor',           // vague, generic or filler explanation
   UNFINISHED: 'minor',                 // missing an obvious finishing piece the wardrobe has
@@ -59,7 +60,13 @@ How to judge:
 - Real life counts: weather, what the client will be doing, comfort constraints and permanent directives are hard requirements.
 - If a brief is beyond what the wardrobe can do (for example a formal wedding from a tiny student wardrobe), the best answer finds the strongest honest option and says plainly what the wardrobe lacks. Reward that honesty.
 - Scores: 5 = exceptional, what you'd be proud to send; 4 = strong; 3 = competent but unremarkable; 2 = weak; 1 = wrong.
-- Tag every failure you see with the named codes. Be specific and concrete in comments; name item ids.`;
+- Tag every failure you see with the named codes. Be specific and concrete in comments; name item ids.
+
+Severity matters — use the critical codes (WRONG_REGISTER, BREAKS_DIRECTIVE, WRONG_FOR_WEATHER, IMPRACTICAL) only when the look would genuinely fail the client in real life: she or he would be properly cold or wet, could not do the stated activity, would be clearly mis-dressed for the occasion, or a permanent directive is broken. If a look is workable but a better choice existed (a more rain-ready coat, a bigger bag, a slightly sharper shoe), that is COULD_BE_MORE_PRACTICAL, UNFINISHED or SAFE_DEFAULT — not a critical failure.`;
+
+// Bump whenever the judge's instructions, schema or model change. Results
+// scored by different judge versions must never be compared directly.
+export const JUDGE_VERSION = 'v2';
 
 export async function judge(ctx: EngineContext, output: StylistOutput): Promise<{ judgement: Judgement; call: CallRecord }> {
   const { data, call } = await callStructured({
