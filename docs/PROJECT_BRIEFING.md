@@ -2,7 +2,7 @@
 
 **For:** an outside AI asked to help rethink the whole approach.
 **As of:** 26 November 2026.
-**How to read this:** it's written to stand alone; you don't need access to the code. Where something is uncertain, unverified or our own interpretation, it says so. Section 10 lists the questions we most want help with.
+**How to read this:** it's written to stand alone; you don't need access to the code. Where something is uncertain, unverified or our own interpretation, it says so. Section 11 lists the questions we most want help with.
 
 ---
 
@@ -28,23 +28,147 @@
 
 ## 2. Timeline at a glance
 
-| Phase | What happened |
-|---|---|
-| **1. Original app** | A Next.js app with a closet, AI tagging, a "styling team" of six AI specialist personas, and many features. |
-| **2. Quality complaints and patching** | The owner found the advice safe and repetitive. Many rounds of prompt rules, retries and checks were added, each measured. Scores barely moved. |
-| **3. Data-loss incident** | The production database (a free-tier Upstash Redis) was deleted by the provider. The entire real wardrobe (78 items plus photos) was lost, with no backup. |
-| **4. Architecture review and rebuild plan** | An outside AI reviewed a description of the system and proposed a redesign. We wrote a staged rebuild plan, then rebuilt storage (Postgres + Cloudflare R2). |
-| **5. Pause on the app; standalone "stylist lab"** | We stopped changing the app and built a separate test bench: invented wardrobes, a fixed request set, automatic checks and an AI judge. The goal is to get the stylist itself excellent before integrating it. |
-| **6. Lab experiments** | A one-call baseline, then several "smarter" engines. None has beaten the simple baseline yet. API credits ran out mid-experiment. |
+The whole project is in one Git repository: 191 commits between 27 June and 19 November 2026. It was built entirely by an AI coding assistant (Claude Code) working with the owner, who is not an engineer and directed everything through conversation. Sections 3–7 tell the story in order.
+
+| When (2026) | Phase | What happened |
+|---|---|---|
+| Before 27 Jun | **Prototype** | A single-file prototype built as a Claude.ai artifact (`wardrobe-ledger.jsx`): browser storage, with AI calls made from the page itself. |
+| 27 Jun – 3 Jul | **1. Building the app** | Moved to a real Next.js app on Railway. Built the closet, photo upload, AI tagging and the first AI features. Storage was redesigned about six times. |
+| 3 – 7 Jul | **2. Features and "expert" voice** | Many features added: Style DNA, outfits, combinations, try-on, profiles, a journal and cost tracking. Specialist personas, brand voice and a self-correcting copy editor were introduced. |
+| 8 – 13 Jul | **3. The AI styling team** | A multi-agent "styling team" built: parallel specialists, a head stylist, a round table, a visual gate and an accessories director. Then cost reduction work. |
+| 16 Jul | **4. Measured quality, rounds of patching** | The owner found the advice safe and repetitive. Many measured fixes were tried; the scores barely moved. |
+| 16 Jul – 29 Sep | Pause | No commits. |
+| 29 – 30 Sep | **5. Outside review, then data loss** | First redesign steps from an outside AI review. Then the production database was found deleted, taking the entire real wardrobe with it (78 items and photos, no backup). |
+| 3 – 5 Nov | **6. Rebuild plan, new storage** | A staged rebuild plan written; storage rebuilt on Postgres and Cloudflare R2. |
+| 18 – 19 Nov | **7. Standalone stylist lab** | App work paused. A separate test bench built (invented wardrobes, a fixed request set, automatic checks, an AI judge). A one-call baseline and several "smarter" engines tested; none beats the baseline yet. API credits ran out mid-experiment. |
 
 ---
 
-## 3. The original app (phase 1)
+## 3. How the app was built (27 June – 16 July)
+
+This chapter covers how the original app came together, the decisions made along the way, and the engineering problems that kept recurring. Several of those problems shaped later decisions, and some still matter for a rethink.
+
+### 3.1 From prototype to a real app (27 June)
+
+- The idea began as a **Claude.ai artifact**: a single React file (`wardrobe-ledger.jsx`) that stored data in the artifact's browser storage and called Claude straight from the page.
+- It was re-platformed into a standalone **Next.js 14 app** (TypeScript, Tailwind), with all Claude calls moved to the server. The first version used SQLite and saved images to disk. The weather came from Open-Meteo, which is free and needs no key.
+- It was deployed to **Railway** on day one, auto-deploying on every push to GitHub.
+
+### 3.2 The closet and the fight with storage (27 June – 3 July)
+
+**Photo upload and tagging** was the first core loop. You photograph a piece; Claude vision tags its category, colours, pattern, material, formality and season. It took several fixes to work on iPhone:
+- The camera-only `capture` attribute was removed, so the photo library shows.
+- Multi-select needed a wrapping `<label>`, not a hidden input.
+- One persistent file input was needed, so repeat uploads work.
+- One bad photo is now isolated, so it can't fail the whole batch.
+
+Bulk upload with a sequential tagging queue and duplicate detection was added early.
+
+**Storage was redesigned about six times in a week,** because Railway's disk is wiped on every deploy:
+
+| Step | Storage approach |
+|---|---|
+| 1 | SQLite and images on disk (lost on redeploy) |
+| 2 | Images stored inside a JSON file |
+| 3 | Images stored as data URLs inside each item record |
+| 4 | **Upstash Redis** (a hosted, free-tier key-value store) |
+| 5 | Redis "hashes" to fix lost writes, then several fixes to how commands were sent |
+| 6 | Images moved to their own Redis keys |
+| 7 | Finally, plain get/set only, after hash operations kept misbehaving |
+
+A **double-encoding bug** (values stored as JSON inside JSON) corrupted the list of item IDs and caused "ghost items". A leftover data blob from another Railway project also produced ghost items. To clear such corruption, wipe endpoints were added:
+- `DELETE /api/items`
+- `GET /api/reset-wardrobe`, a "phone-friendly" wipe you could open in a browser
+
+That GET endpoint was later found to be a serious vulnerability: anything that opened the URL would erase the wardrobe.
+
+Every photo was still stored as base64 text inside Redis, and that Redis database was the only copy of everything. **This decision led directly to the data loss in September** (section 6).
+
+### 3.3 Feature build-out (27 June – 7 July)
+
+Features were added quickly, often several a day:
+
+- **Style DNA tab** (27–28 Jun):
+  - an archetype reading
+  - "style twins" (real people the wardrobe resembles)
+  - "style aspirations / style match" (how close you are to a target look)
+  - per-item "fashion currency" (timeless, current, dated or coming back)
+  - "learn more" deep dives
+- **Body and colour profile** (28 Jun): a questionnaire, plus colour analysis from a photo, injected into every prompt.
+- **Saved Looks and an Outfit Journal** (29 Jun), for logging what was worn.
+- **Combinations tab** (29 Jun): first every possible outfit worked out in code, then replaced with AI-picked, ranked outfits.
+- **Closet tools** (3 Jul): search and filters, cost per wear (price ÷ wears), and a seasonal review.
+- **Navigation:** reorganised into five tabs (3 Jul), with a first-launch onboarding carousel (4 Jul).
+- **Virtual try-on:** first through Fashn.ai (4 Jul), then Google Gemini image generation (5 Jul), plus Claude vision feedback on an outfit photo. These were later blocked by missing or unpaid API keys.
+- **A "wardrobe value" score ("Mirror")** for each item, and a gap audit with a "don't buy" list (6–7 Jul).
+- **An API cost tracker** with an admin dashboard (6 Jul).
+- **Voice input** for chat (8 Jul).
+
+### 3.4 Giving the AI an expert voice (3 – 7 July)
+
+- **A "senior stylist" persona** was applied to every AI route (3 Jul).
+- **Specialist personas** were introduced: Fashion Editor, Fit Specialist and Colour Analyst (5 Jul).
+- **Richer client context:** a "style brief" (colour analysis), "taste signals" from what was actually worn and saved, a lifestyle profile from a style-discovery quiz, and a personalised stylist persona generated from it.
+- **A brand-voice document** with banned words (for example "elevated", "effortless", "chic") was applied everywhere.
+- **A "Copy Director" editorial agent** was added. It audits generated text in the background. An auto-patching system then wrote new prompt rules from repeated violations, and those rules were injected into every later call, with no limit on how many could pile up.
+- **An early lesson about rules (6 Jul):** the combinations feature got hard "wearability rules" and a code validator. Within a day these were relaxed to "trust the stylist's judgement on layering; only enforce completeness", because strict rules were rejecting good outfits. The same tension recurred much later (section 9).
+- **The wardrobe as an image:** a photo grid of the whole wardrobe began being sent to the AI with outfit requests (6 Jul), so it could "see" the clothes.
+
+### 3.5 The multi-agent styling team (8 – 13 July)
+
+**Restructure:** Today, Outfit and Chat were merged into a single Stylist tab with outfit cards shown inline in the chat (8 Jul).
+
+**The multi-agent team (8–10 Jul):**
+- Five specialists run in parallel, then a head stylist and an accessories director.
+- Specialists return structured briefs with verdicts and confidence.
+- There's a "problem classification", and a round table if the specialists disagree.
+- Each request is routed only to the specialists it needs.
+- A "living Style Thesis" profile is maintained in the background.
+- A styling-technique library was added.
+- Response "modes" were replaced with flexible blocks (outfits, text, verdict, packing list, gaps, and so on).
+
+**Quality overhaul (10 Jul):**
+- a "visual gate" that checks real garment photos together
+- an Opus head stylist
+- richer tagging
+- taste exemplars
+- a quality gate against clashing combinations
+- a fix for the stylist repeating the same high-wear outfit
+
+A **Today tab** with a proactive daily brief was added, and the slow steps were run in parallel to cut waiting time.
+
+**Bugs in this stretch:**
+- Over-eager "directive" extraction caused a formality bias. For example, a one-off "work outfit" request was being saved as a permanent rule.
+- The usage log had its own double-encoding bug, so the cost dashboard silently recorded nothing for a while.
+
+**Cost work (11–13 Jul):**
+- stopped re-sending the wardrobe photo grid when not needed
+- three cuts based on the dashboard's data
+- prompt caching across the specialist pipeline
+- covered two untracked cost sources and corrected a wrong price
+
+**By mid-July** a typical chat message made about 10–14 AI calls, one or two of them on the most expensive model.
+
+### 3.6 Engineering problems that kept recurring
+
+- **Silent failures:** storage errors swallowed and shown as "empty", the usage log silently empty, uploads failing silently.
+- **Encoding and serialization bugs** in the hand-rolled Redis layer (double-encoding, three separate times).
+- **Truncated AI output:** JSON cut off mid-response, fixed repeatedly by raising token limits, splitting calls or a "smarter" brace-matching parser.
+- **Race conditions:** wear counts, and later a shared settings blob where one write clobbered another.
+- **Infrastructure kept free and fragile:** free-tier Redis as the only copy of the data, photos as base64 text, no backups and no authentication.
+- **Speed:** many sequential AI calls; slow, heavy-reasoning models.
+- **Prompt growth:** every quality issue was answered with more prompt text or another agent, and nothing was ever removed.
+
+---
+
+## 4. The original app as it stood in mid-July
 
 **Stack:**
 - Next.js 14 (App Router) with TypeScript, deployed on Railway (auto-deploys from the `master` branch on GitHub).
 - AI: Anthropic Claude only. At the time this meant Opus 4.8 for "taste-critical" calls, Sonnet 4.6 for most others and Haiku 4.5 for cheap background jobs.
-- Some Google APIs were planned (Custom Search for inspiration photos, Gemini for virtual try-on) but never configured in production.
+- Storage: Upstash Redis on the free tier, with photos as base64 text (see section 3.2).
+- Other services: Google Gemini image generation for virtual try-on and generated inspiration images (an earlier Fashn.ai try-on was replaced), and Google Custom Search for real-world style photos. By the September review, the Google keys weren't set in production, so these features returned nothing.
+- Weather: Open-Meteo, with OpenStreetMap for place names (free, no keys).
 
 **Features (five tabs plus extras):**
 - **Today:** a daily outfit brief based on the weather.
@@ -83,7 +207,7 @@
 
 ---
 
-## 4. The quality problem and what we tried (phase 2)
+## 5. The quality problem and what we tried (16 July)
 
 **The complaint:** the advice was safe and repetitive. It kept recommending the same few pieces, especially a plain black blazer thrown over everything. Prints, colour and dresses went unused, even though the real wardrobe was rich in them (about 52 of 78 items were prints, bold colours or dresses).
 
@@ -113,7 +237,7 @@ Maximisation score out of 10; the baseline was **3.0**.
 
 **Conclusions at the time:**
 - Each fix added another rule. The head-stylist prompt accumulated more than 11 overlapping "don't be repetitive / don't be safe" rules, plus the fixed minimalist lens contradicting several of them.
-- Our hypothesis: the system's **own aesthetic anchoring and rule pile-up** caused the blandness, more than any missing rule. This was later partly supported by lab evidence (section 8).
+- Our hypothesis: the system's **own aesthetic anchoring and rule pile-up** caused the blandness, more than any missing rule. This was later partly supported by lab evidence (section 9).
 
 **Other bugs found and fixed in this period:**
 - Settings stored in one shared Redis blob with an unguarded read-modify-write race.
@@ -124,16 +248,27 @@ Maximisation score out of 10; the baseline was **3.0**.
 
 ---
 
-## 5. The data-loss incident (phase 3)
+## 6. The data-loss incident (late September)
 
-- The free-tier Upstash database was deleted by the provider; its hostname stopped resolving.
-- It was the **only copy**: every photo was stored as base64 text inside it, and there was no backup.
-- Because the code swallowed errors, the app showed an empty wardrobe rather than an outage. That masked the cause for a while.
-- **Lesson:** storage was not fit for the only copy of someone's wardrobe.
+**What happened:**
+- Around 29–30 September, just after the first redesign steps were deployed, the live app began returning Railway's "Application not found".
+- Once Railway was restored, the app loaded but showed an **empty wardrobe**, and photo uploads failed.
+- Investigation showed every database write was failing, and that the free-tier Upstash database had been **deleted by the provider**: its hostname no longer existed. Free databases are archived or removed when idle, though we can't confirm the exact trigger.
+
+**Why it was total:**
+- It was the **only copy**: every photo was stored as base64 text inside it, and there was no backup or export.
+- Because the code swallowed errors, the app showed an empty wardrobe rather than an outage. That masked the cause for a while. At first, an unprotected "wipe" endpoint (section 3.2) was suspected; that was a real vulnerability and was fixed, but it wasn't the cause.
+
+**What followed:**
+- Database and storage failures now surface as errors.
+- The wipe endpoints require an explicit confirmation.
+- Storage was rebuilt (section 7).
+
+**Lesson:** the storage was not fit to hold the only copy of someone's wardrobe.
 
 ---
 
-## 6. The outside review and the rebuild plan (phase 4)
+## 7. The outside review and the rebuild plan (29 September – 5 November)
 
 ### The outside review
 
@@ -149,7 +284,7 @@ An outside AI reviewed a description of the system and recommended:
 - controls on the self-patching editorial system
 - coverage analytics
 
-### What we built from it (phases 4–5)
+### What we built from it
 
 **In the app:**
 - Retrieval with exposure penalties and three role-based pools.
@@ -193,7 +328,7 @@ These were deployed but never measured, because the data loss happened right aft
 
 ---
 
-## 7. The stylist lab (phase 5)
+## 8. The stylist lab (18 – 19 November)
 
 **Why it exists:** the owner decided to pause app changes and get a stylist that produces genuinely good results first, testing on **synthetic wardrobes we invent**. Integration comes later. The lab lives in `stylist-lab/` in the same repo.
 
@@ -270,7 +405,7 @@ The season is worked out from hemisphere and date. Each city has default weather
 
 ---
 
-## 8. Lab results so far
+## 9. Lab results so far
 
 Models used: Claude Sonnet 5.5 ($2/$10 per million tokens, input/output), Opus 5.5 ($4/$20) for the judge, Haiku 5.5 ($0.10/$0.50) for one cheap variant.
 
@@ -384,7 +519,7 @@ Estimated cost: about $1.50 on the 12 hard cases, then about $5 for the full 40.
 
 ---
 
-## 9. Challenges and lessons so far
+## 10. Challenges and lessons so far
 
 1. **Rules make the model safer, not better.** Every layer of rules, retries and critique tended to reduce range and taste, even when it fixed the specific failure it targeted. The simplest prompt has outperformed every elaborate system so far.
 2. **Practicality is the main, fixable weakness of the simple approach.** It's largely knowable from data (temperature against warmth, rain against fabric, cycling against hems), so code can check it. The open question is how to enforce it without dulling taste.
@@ -407,7 +542,7 @@ Estimated cost: about $1.50 on the 12 hard cases, then about $5 for the full 40.
 
 ---
 
-## 10. What we'd like help rethinking
+## 11. What we'd like help rethinking
 
 1. **The overall approach to "stylist-level" quality.** Is "one strong model call plus code-enforced practicality" the right core, or is there a fundamentally better architecture? Options include few-shot exemplars, retrieval of expert looks, generating many candidates then selecting, fine-tuning-like approaches, or a different decomposition of the task.
 2. **How to enforce hard real-life constraints without dulling taste.** Constraints up front made outputs bland, and critique loops homogenised them. What works better? Our next idea is to generate freely, then make minimal fixes afterwards.
@@ -419,7 +554,7 @@ Estimated cost: about $1.50 on the 12 hard cases, then about $5 for the full 40.
 
 ---
 
-## 11. Reference
+## 12. Reference
 
 **Repository:** `rhianhartshorn/wardrobe-ledger` on GitHub, branch `master`.
 
