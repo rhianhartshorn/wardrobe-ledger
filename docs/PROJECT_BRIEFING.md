@@ -159,6 +159,233 @@ A **Today tab** with a proactive daily brief was added, and the slow steps were 
 - **Speed:** many sequential AI calls; slow, heavy-reasoning models.
 - **Prompt growth:** every quality issue was answered with more prompt text or another agent, and nothing was ever removed.
 
+### 3.7 Every feature: why it was built, how it changed, where it stands
+
+**Where the reasons come from:** the project's own records (commit messages) and the owner's requests in conversation. Where a reason wasn't recorded, it says so.
+
+**Status key:**
+
+| Status | Meaning |
+|---|---|
+| **Keep (v1)** | Part of the narrow first version in the rebuild plan |
+| **Parked** | Removed for now; its good ideas are recorded in `docs/PARKED_FEATURES.md` and it may return on the new engine |
+| **Retired** | Gone, but its useful ideas were absorbed elsewhere |
+| **New (planned)** | Proposed in the rebuild plan, not yet built |
+
+#### How the navigation changed
+
+The app's top-level structure was reorganised about six times in two weeks, while the team searched for the right core experience.
+
+| Date | Tabs | Why |
+|---|---|---|
+| 27 Jun | Closet · Add · Outfit · Style DNA · Mirror | First full version |
+| 3 Jul | Five tabs; Combinations moved into Looks, Mirror into Style | Not recorded (reorganising as features grew) |
+| 5 Jul | Closet · Outfit · Looks · Style (Add became a floating "+" button) | Simplify |
+| 6–7 Jul | A **Home/Today** landing tab added, then cut to a "single hero action" | To give the app a front door; then to reduce clutter |
+| 8 Jul | **Stylist** · Closet · Looks · Style (Today, Outfit and Chat collapsed into one chat tab with inline outfit cards) | One conversational place to ask for anything |
+| 10 Jul | **Today** · Stylist · Closet · Looks · Style | "The app opens to a proactive daily brief, not a chat box" |
+
+#### Closet and adding items: **Keep (v1)**
+
+- **Built (27 Jun):** photograph a piece and AI tags it. The core input to everything.
+- **Changes:**
+  - iPhone upload fixes over several days (photo library access, multi-select, repeat uploads).
+  - **Bulk upload** with a tagging queue, and **duplicate detection** that warns before saving a near-identical piece.
+  - **Tagging moved to the cheapest model** (Haiku) for speed (28 Jun).
+  - Fields kept being added as the stylist needed more to reason with:
+    - accessory type and material (5 Jul)
+    - fit and length (6 Jul)
+    - "visual notes" (print scale, sheen, fabric weight and drape, neckline or rise) on 10 Jul, plus a background job to backfill older items
+  - A **photo quality check** at upload.
+  - **Edit an item** (6 Jul), **search and filters** (3 Jul), and **price and cost per wear** (3 Jul), to show what pieces really cost per use.
+- **In the rebuild:**
+  - Tagging and the photo quality check merge into one call, saving cost.
+  - Attributes get **confidence levels**, with low-confidence tags shown for one-tap correction.
+  - Photos go to proper storage, with thumbnails.
+
+#### Outfit generator (the "Outfit" tab): **Retired**, folded into chat, Today and the planned occasion browser
+
+- **Built (27 Jun):** pick an occasion and get three outfits. It used web search at first, to link real-world inspiration.
+- **Changes:**
+  - **Web search removed** for speed (28 Jun).
+  - It began reading the client's **colouring and silhouette from their profile photo** before choosing outfits (5 Jul).
+  - **Weather made optional** so you could plan ahead (5 Jul).
+  - **Absorbed into the Stylist chat** on 8 Jul.
+- **What survives:** "plan ahead without weather" and the coaching tone ("Try…", "Wear…").
+
+#### Combinations: **Retired**, replaced by the planned "Dress for…" occasion browser
+
+- **Built (29 Jun):** first, every possible outfit was worked out in code.
+- **Changes:**
+  - **Replaced the same day with AI-picked, ranked outfits.** Reason: "pure logical pairing produced too many mediocre combinations".
+  - Capped at 20 because responses were being cut off. When it timed out, it was limited to 30 items and switched to the cheapest model (5 Jul).
+  - The full specialist team was added (fit, colour, accessories).
+  - **Hard wearability rules and a code validator (6 Jul).** Reason: "the model kept generating jumper+cardigan with no bottom". **Relaxed the same day** to check only completeness: "creative layering is left to the stylist's judgement rather than ruled out".
+  - **Upgraded back to Sonnet.** Reason: "Haiku couldn't reliably apply multi-constraint expert reasoning".
+  - Moved inside the Looks tab (3 Jul), lost when the Outfit tab was removed, then **reinstated** (8 Jul).
+- **What survives:** the clearest written definition of a complete outfit, and "fewer genuinely great looks beat padding".
+
+#### Stylist chat: **Keep (v1)**, the core surface
+
+- **Built:** first as a chat panel inside the Style tab. **Memory** of the last six messages added on 6 Jul; it became its own tab on 8 Jul.
+- **Changes:**
+  - It **mixed up earlier questions with the current one**, fixed 8 Jul.
+  - **Voice input** (8 Jul), changed to continuous mode on 10 Jul so pauses didn't cut people off.
+  - **Saved "directives"** (permanent preferences learned from chat).
+    - **Problem (11 Jul):** one-off requests like "needs work-appropriate outfits" were being stored as permanent rules, so casual requests kept coming back formal. "Prefers one outfit, not several" was also fighting the variety rules.
+    - **Fix:** much stricter extraction, and "what the client asks now always overrides an old directive".
+  - **A travel capsule mode** (10 Jul).
+  - **Response formats:** six fixed "modes" (outfit, capsule, focus, verdict, strategy, gap), replaced the same day by **flexible blocks**, so a wedding weekend can return several outfit blocks and a quick question just one text block.
+  - **The multi-agent team, the visual gate and the accessories director** sit behind it (section 3.5). The quality patching in section 5 was mostly done here.
+- **In the rebuild:** one streamlined pipeline replaces the committee, plus quick "edit this look" buttons ("bolder", "warmer", "swap the shoes").
+
+#### Today (daily brief): **Keep (v1)**, reworked
+
+- **Built:** a Home/Today landing tab (6 Jul) with a greeting, a "get dressed" button, nudges about unworn and dated pieces, and a journal prompt.
+- **Changes:**
+  - Cut back to one main action (7 Jul).
+  - Wardrobe nudges moved to the Style tab. Reason: "wardrobe evolution, not daily noise".
+  - **Removed on 8 Jul** when everything went into chat.
+  - **Rebuilt on 10 Jul** as a proactive brief: one weather-checked look plus a different alternative, avoiding anything worn in the last three days.
+  - **Cached for the day (13 Jul)**, because it was costing money by regenerating every time the app opened.
+  - **Stopped running automatically on app open (16 Jul),** at the owner's request: it triggered a location prompt and AI costs before the user had asked for anything. It now runs only when tapped.
+- **In the rebuild:** "Today's pick", drawn from the overnight occasion pools and adjusted for real weather.
+
+#### Style DNA / "Read My Style": **Keep (v1)**, with a taste board added
+
+- **Built (27 Jun):** archetype, colour story, strengths and gaps, aesthetic clusters.
+- **Changes:**
+  - Fashion currency was **split into its own call** because responses were being cut off (28 Jun).
+  - "Learn more" deep dives added.
+  - **Behaviour-based (5 Jul):** it began weighing what was actually worn and saved. Reason: "archetype now reflects actual behaviour, not just wardrobe contents".
+  - **Merged into one reading (5 Jul):** the separate Style DNA and Image Strategy readings became one "Read My Style" (archetype, brand statement, style twins, narrative arc, next chapter, colour story, strengths and gaps, style groups).
+  - A **photo grid** of the wardrobe was sent so it could "see" the clothes (6 Jul).
+  - The **full specialist team** was added (11 Jul).
+  - **Results saved (16 Jul),** at the owner's request: no re-running on every app open, with a nudge to refresh when new pieces are added, enough outfits have been logged, or 45 days have passed.
+  - **Saved as an "operational" profile (29 Sep):** measurable dimensions (colour appetite, pattern appetite, minimalism tolerance, and so on) plus the client's own style references and anti-references, replacing the fixed minimalist aesthetic.
+- **Bug:** a race condition was silently losing the saved reading. It was fixed twice.
+- **In the rebuild:** it also reads a **taste board** (looks you love) and the old style-discovery quiz answers, because what you own reflects past purchases, not who you want to be.
+
+#### Style Goals ("how do I achieve this?"): **Parked**, likely to return early
+
+- **Built (28 Jun):** name a target style or person. It shows who your wardrobe resembles, how close you are, and the steps to get there.
+- **Changes:**
+  - Body, colouring and expert context added (6 Jul). Reason: a match must suit *your* frame and colouring.
+  - Results saved (16 Jul).
+- **In the rebuild:** returns as a temporary goal layered on top of Style DNA, with current references from the knowledge base.
+
+#### Fashion currency: **Parked**, its idea folded into the living knowledge base
+
+- **Built (28 Jun):** rates each piece as timeless, current, dated or coming back, with a "how to wear it now" tip.
+- **Changes:**
+  - The tip became **mandatory** even for timeless pieces (5 Jul).
+  - It **refreshed itself each season by running automatically on app open**. Found in November to be firing unasked, and judging a leopard blouse "dated" from text alone.
+- **Why parked:** its sense of "current" is frozen at the model's training date.
+
+#### "Mirror" wardrobe value score: **Retired**, idea kept
+
+- **Built (27 Jun):** scored each item 0–10 on its value to *this* wardrobe, deliberately not on wear count alone. Rarely worn but essential pieces (a wedding-guest dress) still scored well. It also gave three purchase recommendations.
+- **Changes:** moved into the Style tab (3 Jul); **removed** on 6 Jul as part of a decluttering overhaul.
+- **In the rebuild:** a per-item value figure, computed from the outfit graph rather than by an AI.
+
+#### Ways to wear this piece: **Parked**, likely to return early
+
+- **Built (28 Jun):** for one hero piece, three ways to wear it from the wardrobe, plus one look suggesting one or two pieces to buy.
+- **Change:** web search removed for speed.
+- **Why it's valued:** the "three from your wardrobe plus one aspirational" structure.
+
+#### Gap audit ("What's Missing"): **Parked**
+
+- **Built (6 Jul):** priority-ranked missing pieces, each backed by data from the wardrobe, with specific shopping direction.
+- **Changes:** a **"don't buy" list** (7 Jul), for example "you already own four black jumpers"; the full team added (11 Jul).
+- **In the rebuild:** gaps measured from the outfit graph, merged with purchase vetting.
+
+#### Body and colour profile, lifestyle profile: **Keep (v1)**
+
+- **Built:**
+  - Body and colour questionnaire (28 Jun), injected into every prompt.
+  - Colour analysis from a photo, treated as fact.
+  - Lifestyle profile (6 Jul): work dress code, occasions, travel, climate, comfort, avoidances.
+- **Change:** the three were scattered across the app and were **consolidated into one profile page** (8 Jul).
+
+#### Style discovery quiz and personalised persona: **Retired**, folded into the planned taste intake
+
+- **Built (5 Jul):** a short visual quiz (mood picks, how you want to feel, what matters, lifestyle mix, who you dress for) with no fashion vocabulary needed. It generated a stylist "persona" brief that was injected into every call.
+- **Changes:** a free-text "anything else?" step (6 Jul); it only appears after 10+ items, and is skipped if the profile is already filled in.
+- **In the rebuild:** its questions become part of the taste intake, feeding Style DNA directly.
+
+#### Image strategy (personal brand read): **Parked**, folded into Style DNA
+
+- **Built (5 Jul):** what your wardrobe says to a stranger, tensions, signal gaps and a "next chapter".
+- **Change:** merged into "Read My Style" the same day.
+
+#### Saved Looks and Outfit Journal: **Keep (v1)**
+
+- **Built (29 Jun):** save looks; log what you wore and when, which drives wear counts.
+- **Changes:**
+  - **"Worked / didn't work" feedback (6 Jul)**, fed back into every recommendation as taste calibration.
+  - Journal redesigned as **stats first** (8 Jul): outfits logged, streak, most-worn pieces, best cost per wear.
+  - Saved looks grouped by formality, with what worked shown first (9 Jul).
+- **In the rebuild:** one-tap "Wore it / Save / Not for me (with a reason)" on every outfit card, feeding retrieval directly.
+
+#### Virtual try-on and outfit inspiration images: **Parked**
+
+- **Built:**
+  - Try-on through **Fashn.ai** (4 Jul). It took several request-format fixes and hit a billing error.
+  - **Replaced by Google Gemini image generation (5 Jul)**, plus Claude vision feedback on an outfit photo. Fashn.ai code removed 6 Jul.
+  - Try-on added to outfit cards, Looks and Combinations (8 Jul).
+  - Generated **inspiration images** (a generic model wearing your pieces) added 10 Jul.
+- **Why parked:** cost, privacy (it uses your photo), and the Google key wasn't set in production. Cheaper "look boards" come first.
+
+#### Style twins photos and "similar looks online": **Parked**
+
+- **Built:** real-world photos via Google Custom Search for style twins (10 Jul), and on-demand "similar looks" on outfit cards (16 Jul, at the owner's request).
+- **Status:** **they never worked in production**, because the search keys weren't set.
+- **In the rebuild:** the living knowledge base's source links mostly replace them.
+
+#### "Learn more" deep dives: **Parked**
+
+- **Built (28 Jun):** magazine-style breakdowns of an outfit, a piece's currency, a buying guide, a style cluster or a style icon.
+- **Change:** specialist voices added (5 Jul).
+- **In the rebuild:** a "why this works" view generated from each recommendation's record of how it was chosen.
+
+#### Brand voice and the self-patching "Copy Director": brand voice **kept**; editorial system **parked behind controls**
+
+- **Built (5 Jul):**
+  - a brand-voice document and banned words, applied everywhere
+  - a Copy Director that audited generated text in the background
+  - an **auto-patching** step that wrote new prompt rules from repeated violations
+- **Problem:** the rules piled up with no limit.
+- **In the rebuild:** a cap, deduplication, expiry and admin review.
+
+#### Cost dashboard: **Keep**
+
+- **Built (6 Jul):** logs every AI call with its cost.
+- **Changes:**
+  - Several crash fixes.
+  - A **double-encoding bug** meant it **silently recorded nothing** for a while (fixed 11 Jul).
+  - Later moved to Postgres, with response times and storage health added.
+- **Impact:** it drove the 13 July cost cuts: the head stylist alone was over half of all spend, and Today regenerated on every open.
+
+#### Weather: **Keep**
+
+- **Built:** free weather (Open-Meteo).
+- **Changes:** fixes so iPhone location only fires after a tap, and doesn't hang (3–5 Jul); added to the Stylist tab (8 Jul).
+
+#### Onboarding carousel: **Keep**
+
+- **Built (4 Jul):** three first-launch screens.
+
+#### New in the rebuild plan (not yet built)
+
+- **"Dress for…" occasion browser:** pick a common occasion and see 6–9 looks for the current season where you live, prepared overnight so browsing costs nothing (the owner's idea).
+- **Taste board.**
+- **One-tap feedback with reasons.**
+- **"Edit this look" buttons.**
+- **A record of how every recommendation was chosen.**
+- **Wardrobe-coverage analytics.**
+- **Later:** look boards, "this or that" choices, mirror selfies when logging a wear, a week-ahead plan (the owner said: not linked to a calendar), trip packing and purchase vetting.
+
 ---
 
 ## 4. The original app as it stood in mid-July
